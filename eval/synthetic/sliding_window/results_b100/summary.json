@@ -1,0 +1,154 @@
+{
+  "dsw_equal_weights": {
+    "recall": 0.7194444444444444,
+    "recall_current_block": 1.0,
+    "recall_earlier_block": 0.36875,
+    "mean_tokens": 96.75833333333334,
+    "n": 360
+  },
+  "recency_only_k8": {
+    "recall": 0.5555555555555556,
+    "recall_current_block": 1.0,
+    "recall_earlier_block": 0.0,
+    "mean_tokens": 74.09444444444445,
+    "n": 360
+  },
+  "fixed_token_window": {
+    "recall": 0.5666666666666667,
+    "recall_current_block": 1.0,
+    "recall_earlier_block": 0.025,
+    "mean_tokens": 93.4888888888889,
+    "n": 360
+  },
+  "dsw_vs_recency_only": {
+    "win": 59,
+    "tie": 301,
+    "loss": 0,
+    "win_rate": 0.1638888888888889,
+    "loss_rate": 0.0
+  },
+  "ablation": {
+    "n_configs": 35,
+    "best": [
+      {
+        "weights": {
+          "relevance": 0.5,
+          "freshness": 0.0,
+          "importance": 0.25,
+          "state": 0.25
+        },
+        "recall": 1.0,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 1.0,
+        "mean_tokens": 94.8,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.5,
+          "freshness": 0.0,
+          "importance": 0.5,
+          "state": 0.0
+        },
+        "recall": 1.0,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 1.0,
+        "mean_tokens": 35.43888888888889,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.5,
+          "freshness": 0.25,
+          "importance": 0.25,
+          "state": 0.0
+        },
+        "recall": 1.0,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 1.0,
+        "mean_tokens": 76.34444444444445,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.5,
+          "freshness": 0.5,
+          "importance": 0.0,
+          "state": 0.0
+        },
+        "recall": 1.0,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 1.0,
+        "mean_tokens": 96.48333333333333,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.75,
+          "freshness": 0.0,
+          "importance": 0.0,
+          "state": 0.25
+        },
+        "recall": 1.0,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 1.0,
+        "mean_tokens": 96.38055555555556,
+        "n": 360
+      }
+    ],
+    "worst": [
+      {
+        "weights": {
+          "relevance": 0.0,
+          "freshness": 0.0,
+          "importance": 0.0,
+          "state": 1.0
+        },
+        "recall": 0.5555555555555556,
+        "recall_current_block": 1.0,
+        "recall_earlier_block": 0.0,
+        "mean_tokens": 97.02222222222223,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.0,
+          "freshness": 0.25,
+          "importance": 0.75,
+          "state": 0.0
+        },
+        "recall": 0.49722222222222223,
+        "recall_current_block": 0.85,
+        "recall_earlier_block": 0.05625,
+        "mean_tokens": 44.419444444444444,
+        "n": 360
+      },
+      {
+        "weights": {
+          "relevance": 0.0,
+          "freshness": 0.0,
+          "importance": 1.0,
+          "state": 0.0
+        },
+        "recall": 0.3638888888888889,
+        "recall_current_block": 0.585,
+        "recall_earlier_block": 0.0875,
+        "mean_tokens": 33.99444444444445,
+        "n": 360
+      }
+    ],
+    "equal_weights_rank": 15,
+    "best_without_relevance": 0.6305555555555555,
+    "best_without_freshness": 1.0,
+    "best_without_importance": 1.0,
+    "best_without_state": 1.0
+  },
+  "shift_detector_vs_labels": {
+    "precision": 0.4493927125506073,
+    "recall": 0.69375,
+    "f1": 0.5454545454545455,
+    "tp": 111,
+    "fp": 136,
+    "fn": 49
+  }
+}
