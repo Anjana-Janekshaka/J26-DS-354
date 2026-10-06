@@ -1,0 +1,145 @@
+{
+  "n_probes": 180,
+  "n_with_oracle_label": 180,
+  "oracle_label_distribution": {
+    "sliding_window": 71,
+    "rag": 94,
+    "summarization": 9,
+    "hybrid": 6
+  },
+  "strategy_selection_macro_f1": 0.3544065996896186,
+  "per_class": {
+    "sliding_window": {
+      "precision": 0.5454545454545454,
+      "recall": 0.676056338028169,
+      "f1": 0.6037735849056604,
+      "support": 71
+    },
+    "summarization": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 9
+    },
+    "rag": {
+      "precision": 0.6166666666666667,
+      "recall": 0.39361702127659576,
+      "f1": 0.48051948051948057,
+      "support": 94
+    },
+    "hybrid": {
+      "precision": 0.2,
+      "recall": 1.0,
+      "f1": 0.33333333333333337,
+      "support": 6
+    }
+  },
+  "acceptable_choice_accuracy": 1.0,
+  "evidence_hit_rate": {
+    "adaptive": 1.0,
+    "sliding_window": 0.8277777777777777,
+    "summarization": 0.8777777777777778,
+    "rag": 0.9,
+    "hybrid": 1.0
+  },
+  "best_fixed_baseline": "rag",
+  "adaptive_minus_best_fixed": 0.09999999999999998,
+  "by_probe_kind": {
+    "debug_followup": {
+      "n": 30,
+      "adaptive_choice": {
+        "sliding_window": 30
+      },
+      "oracle": {
+        "rag": 30
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0
+    },
+    "duplicate_build": {
+      "n": 30,
+      "adaptive_choice": {
+        "hybrid": 30
+      },
+      "oracle": {
+        "rag": 15,
+        "hybrid": 6,
+        "sliding_window": 7,
+        "summarization": 2
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 0.9666666666666667,
+      "summarization_hit": 0.4666666666666667,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0
+    },
+    "early_recall": {
+      "n": 30,
+      "adaptive_choice": {
+        "sliding_window": 30
+      },
+      "oracle": {
+        "sliding_window": 30
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0
+    },
+    "implicit_followup": {
+      "n": 30,
+      "adaptive_choice": {
+        "sliding_window": 28,
+        "summarization": 2
+      },
+      "oracle": {
+        "sliding_window": 18,
+        "rag": 12
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 0.4,
+      "hybrid_hit": 1.0
+    },
+    "late_recall": {
+      "n": 30,
+      "adaptive_choice": {
+        "rag": 30
+      },
+      "oracle": {
+        "rag": 30
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 0.2,
+      "summarization_hit": 1.0,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0
+    },
+    "renamed_call": {
+      "n": 30,
+      "adaptive_choice": {
+        "rag": 30
+      },
+      "oracle": {
+        "summarization": 7,
+        "sliding_window": 16,
+        "rag": 7
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 0.8,
+      "summarization_hit": 0.8,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0
+    }
+  },
+  "llm_judge_oracle": {
+    "status": "not run (pass --judge with Claude credentials configured)"
+  },
+  "budget_tokens": 400,
+  "adaptive_minus_always_hybrid": 0.0
+}
