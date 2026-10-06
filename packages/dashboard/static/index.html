@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CEAI Memory Dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --surface-2: #f3f2ee;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --s-window: #2a78d6;
+  --s-summary: #eb6834;
+  --s-rag: #1baf7a;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --good: #0ca30c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #242423;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --s-window: #3987e5; --s-summary: #d95926; --s-rag: #199e70;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #242423;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+  --s-window: #3987e5; --s-summary: #d95926; --s-rag: #199e70;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  padding: 16px clamp(16px, 3vw, 32px); border-bottom: 1px solid var(--border); background: var(--surface-1); }
+header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+header .meta { color: var(--text-secondary); font-size: 13px; }
+.live { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.dot.on { background: var(--good); }
+button, select, input { font: inherit; color: var(--text-primary); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--axis); }
+main { padding: 16px clamp(16px, 3vw, 32px) 40px; display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+.card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .04em; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+.timeline-wrap { overflow-x: auto; padding: 16px 2px 4px; }
+.timeline { display: flex; gap: 2px; align-items: stretch; min-height: 64px; }
+.cell { flex: 1 0 18px; min-height: 40px; border-radius: 4px; border: 0; padding: 0;
+  display: flex; align-items: flex-end; justify-content: center; color: #fff; font-size: 11px; font-weight: 600;
+  padding-bottom: 3px; position: relative; cursor: pointer; }
+.cell.sel { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.cell .ov { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+.cell .esc { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); color: var(--warning); font-size: 11px; }
+.s-sliding_window { background: var(--s-window); }
+.s-summarization { background: var(--s-summary); }
+.s-rag { background: var(--s-rag); }
+.s-hybrid { background: repeating-linear-gradient(135deg, var(--s-window) 0 6px, var(--s-rag) 6px 12px); }
+.axis-labels { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 11px; margin-top: 4px;
+  font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  display: none; max-width: 280px; }
+.tip b { font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+.rationale { font-size: 15px; line-height: 1.55; }
+.rationale .part { display: block; padding: 4px 0; border-bottom: 1px dashed var(--grid); }
+.rationale .part:last-child { border-bottom: 0; color: var(--text-secondary); font-size: 13px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); }
+.badge.warn::before { content: "\26A0"; color: var(--warning); }
+.badge.ok::before { content: "\2713"; color: var(--good); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-muted); font-weight: 500; }
+td.num { font-variant-numeric: tabular-nums; text-align: right; }
+.bar { height: 8px; border-radius: 0 4px 4px 0; background: var(--s-window); }
+.bar-track { background: var(--surface-2); border-radius: 4px; width: 100%; }
+.mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.ctx { white-space: pre-wrap; max-height: 220px; overflow: auto; background: var(--surface-2); border-radius: 6px;
+  padding: 8px; margin-top: 8px; }
+.chosen { box-shadow: inset 0 0 0 2px var(--text-primary); }
+.empty { color: var(--text-muted); }
+.esc-list li { margin: 4px 0; }
+svg text { fill: var(--text-muted); font-size: 11px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>CEAI Memory Dashboard</h1>
+    <div class="meta"><span id="conv">no data</span> · <span class="live"><span id="dot" class="dot"></span><span id="mode">static</span></span></div>
+  </div>
+  <div class="row">
+    <button id="tableToggle" type="button">Table view</button>
+    <button id="theme" type="button">Theme</button>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <h2>Strategy per turn</h2>
+    <div class="legend" id="legend"></div>
+    <div class="timeline-wrap"><div class="timeline" id="timeline" role="list" aria-label="Strategy timeline"></div></div>
+    <div class="axis-labels"><span id="axFirst"></span><span id="axLast"></span></div>
+    <div id="tableView" class="hidden" style="margin-top:12px; overflow-x:auto"></div>
+  </section>
+
+  <section class="card">
+    <h2>Summarization loss score per turn <span class="badge">threshold 0.15</span></h2>
+    <div id="lossChart"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Decision <span id="decTurn"></span></h2>
+      <div class="row" id="decBadges" style="margin-bottom:8px"></div>
+      <div class="rationale" id="rationale"><span class="empty">Select a turn.</span></div>
+    </div>
+    <div class="card">
+      <h2>Feature vector (Tier 0/1 only)</h2>
+      <table id="fv"></table>
+      <h2 style="margin-top:16px">Escalations (consumed next turn)</h2>
+      <ul class="esc-list" id="escList"><li class="empty">None.</li></ul>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <div class="card" id="pnl-sliding_window"><h2>Sliding window</h2><div class="body empty">-</div></div>
+    <div class="card" id="pnl-summarization"><h2>Summarization</h2><div class="body empty">-</div></div>
+    <div class="card" id="pnl-rag"><h2>Retrieval (RAG)</h2><div class="body empty">-</div></div>
+  </section>
+
+  <section class="card" id="overrideCard">
+    <h2>Manual override (applies to the next decision)</h2>
+    <form class="row" id="overrideForm">
+      <select id="ovStrategy" aria-label="Strategy">
+        <option value="sliding_window">sliding_window</option>
+        <option value="summarization">summarization</option>
+        <option value="rag">rag</option>
+        <option value="hybrid">hybrid</option>
+      </select>
+      <select id="ovScope" aria-label="Scope">
+        <option value="next_turn">next turn only</option>
+        <option value="until_cleared">until cleared</option>
+      </select>
+      <input id="ovBy" placeholder="your name / role" required aria-label="Requested by">
+      <button type="submit">Queue override</button>
+      <span id="ovMsg" class="empty"></span>
+    </form>
+  </section>
+</main>
+<div class="tip" id="tip"></div>
+<script>
+(() => {
+  const STRATS = [
+    ["sliding_window", "W", "Sliding window"],
+    ["summarization", "S", "Summarization"],
+    ["rag", "R", "RAG"],
+    ["hybrid", "H", "Hybrid (window + RAG)"],
+  ];
+  const LETTER = Object.fromEntries(STRATS.map(s => [s[0], s[1]]));
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  let records = [], escalations = [], selected = -1, live = false, followLatest = true;
+
+  // ---- theme
+  try { const t = localStorage.getItem("ceai-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  $("theme").onclick = () => {
+    const cur = document.documentElement.dataset.theme ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("ceai-theme", next); } catch (e) {}
+    renderLoss();
+  };
+  $("tableToggle").onclick = () => $("tableView").classList.toggle("hidden");
+  $("legend").innerHTML = STRATS.map(([k, l, name]) =>
+    `<span><span class="sw s-${k}"></span>${l} = ${esc(name)}</span>`).join("") +
+    `<span><span style="color:var(--warning)">&#9888;</span> escalation raised</span><span>&#9873; override</span>`;
+
+  // ---- tooltip
+  const tip = $("tip");
+  function showTip(e, html) { tip.innerHTML = html; tip.style.display = "block";
+    const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px";
+    tip.style.top = (e.clientY + 14) + "px"; }
+  function hideTip() { tip.style.display = "none"; }
+
+  function escBySource() {
+    const m = {};
+    for (const ev of escalations) (m[ev.source_turn_id] ||= []).push(ev);
+    return m;
+  }
+
+  // ---- timeline
+  function renderTimeline() {
+    const tl = $("timeline"); const em = escBySource();
+    tl.innerHTML = "";
+    records.forEach((r, i) => {
+      const s = r.decision.selected_strategy;
+      const b = document.createElement("button");
+      b.type = "button"; b.className = `cell s-${s}` + (i === selected ? " sel" : "");
+      b.setAttribute("role", "listitem");
+      b.setAttribute("aria-label", `${r.turn_id}: ${s}`);
+      b.innerHTML = `${LETTER[s]}` + (r.decision.override.applied ? `<span class="ov">&#9873;</span>` : "") +
+        (em[r.turn_id] ? `<span class="esc">&#9888;</span>` : "");
+      b.onmouseenter = e => showTip(e, `<b>${esc(r.turn_id)}</b> · ${esc(s)}<br>task: ${esc(r.feature_vector.task_type)}` +
+        `<br>pressure: ${r.feature_vector.token_budget_pressure.toFixed(2)}` +
+        (em[r.turn_id] ? `<br>&#9888; ${em[r.turn_id].map(x => esc(x.kind)).join(", ")}` : ""));
+      b.onmousemove = e => showTip(e, tip.innerHTML);
+      b.onmouseleave = hideTip;
+      b.onclick = () => { selected = i; followLatest = i === records.length - 1; renderAll(); };
+      tl.appendChild(b);
+    });
+    $("axFirst").textContent = records[0]?.turn_id || "";
+    $("axLast").textContent = records.length ? records[records.length - 1].turn_id : "";
+    $("tableView").innerHTML = `<table><thead><tr><th>turn</th><th>strategy</th><th>task</th><th>pressure</th>` +
+      `<th>loss</th><th>override</th></tr></thead><tbody>` + records.map(r => `<tr><td class="mono">${esc(r.turn_id)}</td>` +
+      `<td>${esc(r.decision.selected_strategy)}</td><td>${esc(r.feature_vector.task_type)}</td>` +
+      `<td class="num">${r.feature_vector.token_budget_pressure.toFixed(2)}</td>` +
+      `<td class="num">${(r.module_outputs.summarization?.quality.loss_score ?? NaN).toFixed(3)}</td>` +
+      `<td>${r.decision.override.applied ? esc(r.decision.override.by) : ""}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ---- loss line (single series, one axis, threshold reference)
+  function renderLoss() {
+    const host = $("lossChart");
+    const pts = records.map((r, i) => [i, r.module_outputs.summarization?.quality.loss_score]).filter(p => p[1] != null);
+    if (!pts.length) { host.innerHTML = `<div class="empty">No summarization outputs yet.</div>`; return; }
+    const W = Math.max(320, host.clientWidth || 600), H = 150, L = 34, R = 10, T = 10, B = 22;
+    const n = Math.max(1, records.length - 1);
+    const x = i => L + (W - L - R) * (records.length === 1 ? 0.5 : i / n);
+    const y = v => T + (H - T - B) * (1 - v);
+    const line = pts.map((p, k) => `${k ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
+    const grid = [0, 0.5, 1].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>` +
+      `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(1)}</text>`).join("");
+    const thr = `<line x1="${L}" x2="${W - R}" y1="${y(0.15)}" y2="${y(0.15)}" stroke="var(--text-muted)" stroke-dasharray="4 4"/>` +
+      `<text x="${W - R}" y="${y(0.15) - 4}" text-anchor="end">0.15</text>`;
+    const dots = pts.filter(p => p[1] > 0.15).map(p =>
+      `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="4" fill="var(--s-summary)" stroke="var(--surface-1)" stroke-width="2"/>`).join("");
+    host.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Summarization loss score by turn">` +
+      grid + thr + `<path d="${line}" fill="none" stroke="var(--s-summary)" stroke-width="2" stroke-linejoin="round"/>` + dots +
+      `<line id="xh" y1="${T}" y2="${H - B}" stroke="var(--axis)" class="hidden"/>` +
+      `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" id="hit"/></svg>`;
+    const svg = host.querySelector("svg"), hit = host.querySelector("#hit"), xh = host.querySelector("#xh");
+    hit.onmousemove = e => {
+      const box = svg.getBoundingClientRect(); const px = (e.clientX - box.left) * W / box.width;
+      const i = Math.round(((px - L) / (W - L - R)) * n); const r = records[Math.max(0, Math.min(records.length - 1, i))];
+      if (!r) return; const q = r.module_outputs.summarization?.quality;
+      xh.setAttribute("x1", x(records.indexOf(r))); xh.setAttribute("x2", x(records.indexOf(r))); xh.classList.remove("hidden");
+      showTip(e, `<b>${esc(r.turn_id)}</b><br>loss: ${q ? q.loss_score.toFixed(3) : "-"} (tier ${q ? esc(q.tier_emitted) : "-"})` +
+        `<br>selected: ${esc(r.decision.selected_strategy)}`);
+    };
+    hit.onmouseleave = () => { hideTip(); xh.classList.add("hidden"); };
+    hit.onclick = e => { const box = svg.getBoundingClientRect(); const px = (e.clientX - box.left) * W / box.width;
+      selected = Math.max(0, Math.min(records.length - 1, Math.round(((px - L) / (W - L - R)) * n))); renderAll(); };
+  }
+
+  // ---- detail panels
+  const uses = (s, m) => s === m || (s === "hybrid" && (m === "sliding_window" || m === "rag"));
+  function ctxText(o) {
+    return typeof o.candidate_context === "string" ? o.candidate_context :
+      o.candidate_context.map(t => `${t.speaker || t.role}: ${t.content}`).join("\n");
+  }
+  function renderDetail() {
+    const r = records[selected];
+    if (!r) return;
+    const d = r.decision, fv = r.feature_vector;
+    $("decTurn").textContent = "· " + r.turn_id;
+    $("decBadges").innerHTML = `<span class="badge"><span class="sw s-${d.selected_strategy}"></span>${esc(d.selected_strategy)}</span>` +
+      `<span class="badge">${esc(d.controller_variant)}</span><span class="badge">${d.decision_latency_ms.toFixed(3)} ms</span>` +
+      (d.override.applied ? `<span class="badge warn">override by ${esc(d.override.by)}</span>` : `<span class="badge ok">no override</span>`);
+    $("rationale").innerHTML = d.rationale.split(" | ").map(p => `<span class="part">${esc(p)}</span>`).join("");
+    $("fv").innerHTML = Object.entries(fv).map(([k, v]) => `<tr><th>${esc(k)}</th><td class="mono">${esc(v ?? "null")}</td></tr>`).join("");
+    const em = escalations.filter(e => e.source_turn_id === r.turn_id);
+    $("escList").innerHTML = em.length ? em.map(e => `<li><span class="badge warn">${esc(e.kind)}</span> <span class="mono">${esc(JSON.stringify(e.detail))}</span></li>`).join("")
+      : `<li class="empty">None raised at this turn.</li>`;
+
+    const mo = r.module_outputs;
+    for (const m of ["sliding_window", "summarization", "rag"]) {
+      const card = $("pnl-" + m), body = card.querySelector(".body"), o = mo[m];
+      card.classList.toggle("chosen", uses(d.selected_strategy, m));
+      if (!o) { body.innerHTML = `<span class="empty">no output</span>`; continue; }
+      body.classList.remove("empty");
+      let html = `<div class="row" style="margin-bottom:8px"><span class="badge">${o.token_count} tokens</span>` +
+        `<span class="badge">${o.readiness.estimated_latency_ms.toFixed(1)} ms</span>` +
+        (uses(d.selected_strategy, m) ? `<span class="badge ok">used this turn</span>` : "") + `</div>`;
+      const q = o.quality;
+      if (m === "sliding_window") {
+        html += `<table>` + ["relevance", "freshness", "importance", "state", "composite"].map(k =>
+          `<tr><th>${k}</th><td style="width:60%"><div class="bar-track"><div class="bar" style="width:${(q.scores[k] * 100).toFixed(0)}%"></div></div></td>` +
+          `<td class="num">${q.scores[k].toFixed(2)}</td></tr>`).join("") + `</table>` +
+          `<div style="margin-top:6px">selected: <span class="mono">${esc(q.selected_turn_ids.join(" "))}</span></div>`;
+      } else if (m === "summarization") {
+        html += `<table><tr><th>tier emitted</th><td>${esc(q.tier_emitted)}</td></tr>` +
+          `<tr><th>loss score</th><td class="mono">${q.loss_score.toFixed(3)} ${q.loss_threshold_exceeded ? '<span class="badge warn">&gt; 0.15</span>' : '<span class="badge ok">ok</span>'}</td></tr>` +
+          `<tr><th>symbol retention</th><td class="mono">${q.symbol_retention_rate == null ? "n/a (no code)" : (q.symbol_retention_rate * 100).toFixed(0) + "%"}</td></tr></table>`;
+      } else {
+        html += `<table><tr><th>granularity</th><td>${esc(q.granularity_tag)}</td></tr>` +
+          `<tr><th>retrieved</th><td class="mono">${esc(q.retrieved_chunk_ids.join(" "))}</td></tr>` +
+          `<tr><th>flags</th><td>${q.contradiction_flags.length ? q.contradiction_flags.map(f =>
+            `<div class="mono"><span style="color:var(--warning)">&#9888;</span> ${esc(f.chunk_id)} &rarr; ${esc(f.superseded_by)} (${f.nli_confidence.toFixed(2)})</div>`).join("") : "none"}</td></tr></table>`;
+      }
+      html += `<details><summary>candidate context</summary><div class="ctx mono">${esc(ctxText(o))}</div></details>`;
+      body.innerHTML = html;
+    }
+  }
+
+  function renderAll() {
+    if (records.length && (selected < 0 || followLatest)) selected = records.length - 1;
+    $("conv").textContent = records.length ? `${records.length} decisions` : "no decisions yet";
+    renderTimeline(); renderLoss(); renderDetail();
+  }
+
+  // ---- data source: embedded (static export) or live polling
+  async function poll() {
+    try {
+      const res = await fetch("api/state?since=" + records.length, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      if (data.records.length) records = records.concat(data.records);
+      escalations = data.escalations;
+      if (data.conversation) $("conv").dataset.c = data.conversation;
+      live = true; $("dot").classList.add("on"); $("mode").textContent = "live";
+      renderAll();
+    } catch (e) { $("dot").classList.remove("on"); $("mode").textContent = live ? "disconnected" : "static"; }
+  }
+  if (window.__CEAI_DATA__) {
+    records = window.__CEAI_DATA__.records || []; escalations = window.__CEAI_DATA__.escalations || [];
+    $("overrideCard").classList.add("hidden");
+    renderAll();
+  } else {
+    poll(); setInterval(poll, 1500);
+    $("overrideForm").onsubmit = async e => {
+      e.preventDefault();
+      const body = { strategy: $("ovStrategy").value, scope: $("ovScope").value, by: $("ovBy").value.trim() };
+      try {
+        const res = await fetch("api/override", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        $("ovMsg").textContent = res.ok ? "queued - applies at the next decision" : "rejected: " + (await res.text());
+      } catch (err) { $("ovMsg").textContent = "server unreachable"; }
+    };
+  }
+  addEventListener("resize", () => renderLoss());
+})();
+</script>
+</body>
+</html>

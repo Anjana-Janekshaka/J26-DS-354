@@ -1,0 +1,133 @@
+{
+  "n_items": 401,
+  "budget_tokens": 1024,
+  "strategies": {
+    "sliding_window": {
+      "cue_hit_rate": 0.08977556109725686,
+      "cue_any_rate": 0.13466334164588528,
+      "mean_coverage": 0.2110247583543832,
+      "mean_tokens": 836.6009975062344
+    },
+    "summarization": {
+      "cue_hit_rate": 0.08478802992518704,
+      "cue_any_rate": 0.1745635910224439,
+      "mean_coverage": 0.2329320113556311,
+      "mean_tokens": 988.8852867830424
+    },
+    "rag": {
+      "cue_hit_rate": 0.16708229426433915,
+      "cue_any_rate": 0.4089775561097257,
+      "mean_coverage": 0.3680730133295508,
+      "mean_tokens": 989.2668329177058
+    },
+    "hybrid": {
+      "cue_hit_rate": 0.18453865336658354,
+      "cue_any_rate": 0.3341645885286783,
+      "mean_coverage": 0.34935090768002686,
+      "mean_tokens": 954.4189526184539
+    },
+    "adaptive": {
+      "cue_hit_rate": 0.08728179551122195,
+      "cue_any_rate": 0.1770573566084788,
+      "mean_coverage": 0.2359547575205219,
+      "mean_tokens": 988.7605985037407
+    },
+    "naive_summary": {
+      "cue_hit_rate": 0.18453865336658354,
+      "cue_any_rate": 0.20947630922693267,
+      "mean_coverage": 0.28968689359575533,
+      "mean_tokens": 903.2394014962593
+    }
+  },
+  "by_relation_type": {
+    "causal": {
+      "sliding_window": 0.06930693069306931,
+      "summarization": 0.0594059405940594,
+      "rag": 0.2376237623762376,
+      "hybrid": 0.19801980198019803,
+      "adaptive": 0.0594059405940594,
+      "naive_summary": 0.1782178217821782,
+      "n": 101
+    },
+    "goal": {
+      "sliding_window": 0.05,
+      "summarization": 0.05,
+      "rag": 0.15,
+      "hybrid": 0.15,
+      "adaptive": 0.06,
+      "naive_summary": 0.08,
+      "n": 100
+    },
+    "state": {
+      "sliding_window": 0.07,
+      "summarization": 0.07,
+      "rag": 0.19,
+      "hybrid": 0.18,
+      "adaptive": 0.07,
+      "naive_summary": 0.16,
+      "n": 100
+    },
+    "value": {
+      "sliding_window": 0.17,
+      "summarization": 0.16,
+      "rag": 0.09,
+      "hybrid": 0.21,
+      "adaptive": 0.16,
+      "naive_summary": 0.32,
+      "n": 100
+    }
+  },
+  "by_cue_distance": {
+    "<50 turns": {
+      "sliding_window": 0.6923076923076923,
+      "summarization": 0.6346153846153846,
+      "rag": 0.057692307692307696,
+      "hybrid": 0.6538461538461539,
+      "adaptive": 0.6346153846153846,
+      "naive_summary": 1.0,
+      "n": 52
+    },
+    "50-200 turns": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.21311475409836064,
+      "hybrid": 0.14754098360655737,
+      "adaptive": 0.0,
+      "naive_summary": 0.18032786885245902,
+      "n": 122
+    },
+    ">200 turns": {
+      "sliding_window": 0.0,
+      "summarization": 0.004405286343612335,
+      "rag": 0.16740088105726872,
+      "hybrid": 0.09691629955947137,
+      "adaptive": 0.00881057268722467,
+      "naive_summary": 0.0,
+      "n": 227
+    }
+  },
+  "controller": {
+    "choice_distribution": {
+      "summarization": 391,
+      "rag": 9,
+      "sliding_window": 1
+    },
+    "task_type_distribution": {
+      "chat": 380,
+      "exploration": 11,
+      "qa": 9,
+      "debugging": 1
+    },
+    "oracle_distribution": {
+      "none": 297,
+      "sliding_window": 34,
+      "rag": 58,
+      "summarization": 3,
+      "hybrid": 9
+    },
+    "macro_f1_vs_objective_oracle": 0.022625519667412858
+  },
+  "llm_judge": "not run (deterministic cue-in-context scoring only)",
+  "best_fixed_baseline": "rag",
+  "adaptive_minus_best_fixed": -0.0798004987531172
+}
