@@ -1,0 +1,184 @@
+{"category": "location", "older": "I live in Madrid.", "newer": "I moved to Berlin last month.", "label": 1, "id": "cp0000", "split": "test"}
+{"category": "location", "older": "I'm based in Madrid these days.", "newer": "These days I'm living in Berlin, not Madrid.", "label": 1, "id": "cp0001", "split": "test"}
+{"category": "job", "older": "I work at Wayne Corp as a backend engineer.", "newer": "I left Wayne Corp and joined Stark Labs.", "label": 1, "id": "cp0002", "split": "dev"}
+{"category": "job", "older": "My job is backend engineer.", "newer": "I switched careers and now work as a accountant.", "label": 1, "id": "cp0003", "split": "test"}
+{"category": "preference", "older": "My favorite color is blue.", "newer": "My favorite color is green now.", "label": 1, "id": "cp0004", "split": "test"}
+{"category": "schedule", "older": "The team meeting is on Friday.", "newer": "The team meeting was moved to Tuesday.", "label": 1, "id": "cp0005", "split": "test"}
+{"category": "config", "older": "The API server listens on port 8300.", "newer": "The API server now runs on port 3800.", "label": 1, "id": "cp0006", "split": "test"}
+{"category": "tooling", "older": "We use DynamoDB as the main database.", "newer": "We migrated the main database from DynamoDB to PostgreSQL.", "label": 1, "id": "cp0007", "split": "dev"}
+{"category": "tooling", "older": "Let's use Memcached for caching.", "newer": "We switched the cache to Redis.", "label": 1, "id": "cp0008", "split": "test"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0009", "split": "dev"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Priya last month.", "label": 1, "id": "cp0010", "split": "test"}
+{"category": "count", "older": "I have 2 kids.", "newer": "I have 1 kids.", "label": 1, "id": "cp0011", "split": "test"}
+{"category": "code", "older": "```python\ndef load_config(due):\n    ...\n```", "newer": "```python\ndef load_config(user_id):\n    ...\n```", "label": 1, "id": "cp0012", "split": "test"}
+{"category": "different_event", "older": "I went swimming with friends on Friday.", "newer": "I went hiking with my dog on Tuesday.", "label": 0, "id": "cp0013", "split": "test"}
+{"category": "added_detail", "older": "I live in Tokyo.", "newer": "I love the cafes in Tokyo.", "label": 0, "id": "cp0014", "split": "dev"}
+{"category": "added_detail", "older": "I work at Wayne Corp.", "newer": "At Wayne Corp I lead the platform team.", "label": 0, "id": "cp0015", "split": "test"}
+{"category": "paraphrase", "older": "We use PostgreSQL as the main database.", "newer": "Our data is stored in PostgreSQL.", "label": 0, "id": "cp0016", "split": "test"}
+{"category": "compatible_pref", "older": "I like ramen.", "newer": "I also enjoy sushi.", "label": 0, "id": "cp0017", "split": "test"}
+{"category": "other_service", "older": "The API server listens on port 4500.", "newer": "The metrics exporter listens on port 6900.", "label": 0, "id": "cp0018", "split": "dev"}
+{"category": "travel", "older": "I live in Tokyo.", "newer": "I'm flying to London for a conference next week.", "label": 0, "id": "cp0019", "split": "dev"}
+{"category": "pet", "older": "I have a parrot named Priya.", "newer": "Priya the parrot loves long walks.", "label": 0, "id": "cp0020", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef load_config(uid):\n    ...\n```", "newer": "```python\ndef create_invoice(path):\n    ...\n```", "label": 0, "id": "cp0021", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0022", "split": "dev"}
+{"category": "location", "older": "I live in Lisbon.", "newer": "I moved to Paris last month.", "label": 1, "id": "cp0023", "split": "dev"}
+{"category": "location", "older": "I'm based in Lisbon these days.", "newer": "These days I'm living in Paris, not Lisbon.", "label": 1, "id": "cp0024", "split": "test"}
+{"category": "job", "older": "I work at Acme as a data analyst.", "newer": "I left Acme and joined Hooli.", "label": 1, "id": "cp0025", "split": "test"}
+{"category": "job", "older": "My job is data analyst.", "newer": "I switched careers and now work as a nurse.", "label": 1, "id": "cp0026", "split": "test"}
+{"category": "preference", "older": "My favorite food is tacos.", "newer": "My favorite food is sushi now.", "label": 1, "id": "cp0027", "split": "dev"}
+{"category": "schedule", "older": "The team meeting is on Thursday.", "newer": "The team meeting was moved to Friday.", "label": 1, "id": "cp0028", "split": "test"}
+{"category": "config", "older": "The API server listens on port 5300.", "newer": "The API server now runs on port 6100.", "label": 1, "id": "cp0029", "split": "test"}
+{"category": "tooling", "older": "We use Cassandra as the main database.", "newer": "We migrated the main database from Cassandra to DynamoDB.", "label": 1, "id": "cp0030", "split": "dev"}
+{"category": "tooling", "older": "Let's use Memcached for caching.", "newer": "We switched the cache to Varnish.", "label": 1, "id": "cp0031", "split": "test"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0032", "split": "test"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Ana last month.", "label": 1, "id": "cp0033", "split": "dev"}
+{"category": "count", "older": "I have 1 kids.", "newer": "I have 3 kids.", "label": 1, "id": "cp0034", "split": "test"}
+{"category": "code", "older": "```python\ndef send_digest(payload):\n    ...\n```", "newer": "```python\ndef send_digest(due_date):\n    ...\n```", "label": 1, "id": "cp0035", "split": "dev"}
+{"category": "different_event", "older": "I went to a concert on Tuesday.", "newer": "I baked bread on Wednesday.", "label": 0, "id": "cp0036", "split": "dev"}
+{"category": "added_detail", "older": "I live in Seoul.", "newer": "I love the cafes in Seoul.", "label": 0, "id": "cp0037", "split": "test"}
+{"category": "added_detail", "older": "I work at Globex.", "newer": "At Globex I lead the platform team.", "label": 0, "id": "cp0038", "split": "test"}
+{"category": "paraphrase", "older": "We use PostgreSQL as the main database.", "newer": "Our data is stored in PostgreSQL.", "label": 0, "id": "cp0039", "split": "dev"}
+{"category": "compatible_pref", "older": "I like purple.", "newer": "I also enjoy green.", "label": 0, "id": "cp0040", "split": "dev"}
+{"category": "other_service", "older": "The API server listens on port 3500.", "newer": "The metrics exporter listens on port 3900.", "label": 0, "id": "cp0041", "split": "test"}
+{"category": "travel", "older": "I live in Seoul.", "newer": "I'm flying to Toronto for a conference next week.", "label": 0, "id": "cp0042", "split": "dev"}
+{"category": "pet", "older": "I have a parrot named Yuki.", "newer": "Yuki the parrot loves long walks.", "label": 0, "id": "cp0043", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef load_config(since):\n    ...\n```", "newer": "```python\ndef fetch_orders(timeout):\n    ...\n```", "label": 0, "id": "cp0044", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0045", "split": "test"}
+{"category": "location", "older": "I live in Sydney.", "newer": "I moved to Seoul last month.", "label": 1, "id": "cp0046", "split": "dev"}
+{"category": "location", "older": "I'm based in Sydney these days.", "newer": "These days I'm living in Seoul, not Sydney.", "label": 1, "id": "cp0047", "split": "test"}
+{"category": "job", "older": "I work at Globex as a backend engineer.", "newer": "I left Globex and joined Wayne Corp.", "label": 1, "id": "cp0048", "split": "dev"}
+{"category": "job", "older": "My job is backend engineer.", "newer": "I switched careers and now work as a product manager.", "label": 1, "id": "cp0049", "split": "dev"}
+{"category": "preference", "older": "My favorite food is ramen.", "newer": "My favorite food is tacos now.", "label": 1, "id": "cp0050", "split": "dev"}
+{"category": "schedule", "older": "The team meeting is on Friday.", "newer": "The team meeting was moved to Thursday.", "label": 1, "id": "cp0051", "split": "test"}
+{"category": "config", "older": "The API server listens on port 7400.", "newer": "The API server now runs on port 3200.", "label": 1, "id": "cp0052", "split": "test"}
+{"category": "tooling", "older": "We use SQLite as the main database.", "newer": "We migrated the main database from SQLite to PostgreSQL.", "label": 1, "id": "cp0053", "split": "dev"}
+{"category": "tooling", "older": "Let's use Redis for caching.", "newer": "We switched the cache to Memcached.", "label": 1, "id": "cp0054", "split": "test"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0055", "split": "test"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Yuki last month.", "label": 1, "id": "cp0056", "split": "test"}
+{"category": "count", "older": "I have 4 kids.", "newer": "I have 2 kids.", "label": 1, "id": "cp0057", "split": "dev"}
+{"category": "code", "older": "```python\ndef create_invoice(timeout):\n    ...\n```", "newer": "```python\ndef create_invoice(uid):\n    ...\n```", "label": 1, "id": "cp0058", "split": "dev"}
+{"category": "different_event", "older": "I played chess on Thursday.", "newer": "I went swimming with friends on Friday.", "label": 0, "id": "cp0059", "split": "dev"}
+{"category": "added_detail", "older": "I live in London.", "newer": "I love the cafes in London.", "label": 0, "id": "cp0060", "split": "test"}
+{"category": "added_detail", "older": "I work at Hooli.", "newer": "At Hooli I lead the platform team.", "label": 0, "id": "cp0061", "split": "dev"}
+{"category": "paraphrase", "older": "We use MySQL as the main database.", "newer": "Our data is stored in MySQL.", "label": 0, "id": "cp0062", "split": "dev"}
+{"category": "compatible_pref", "older": "I like sushi.", "newer": "I also enjoy ramen.", "label": 0, "id": "cp0063", "split": "dev"}
+{"category": "other_service", "older": "The API server listens on port 8700.", "newer": "The metrics exporter listens on port 8100.", "label": 0, "id": "cp0064", "split": "test"}
+{"category": "travel", "older": "I live in London.", "newer": "I'm flying to Tokyo for a conference next week.", "label": 0, "id": "cp0065", "split": "test"}
+{"category": "pet", "older": "I have a parrot named Kofi.", "newer": "Kofi the parrot loves long walks.", "label": 0, "id": "cp0066", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef load_config(account):\n    ...\n```", "newer": "```python\ndef send_digest(due):\n    ...\n```", "label": 0, "id": "cp0067", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0068", "split": "test"}
+{"category": "location", "older": "I live in Madrid.", "newer": "I moved to Nairobi last month.", "label": 1, "id": "cp0069", "split": "test"}
+{"category": "location", "older": "I'm based in Madrid these days.", "newer": "These days I'm living in Nairobi, not Madrid.", "label": 1, "id": "cp0070", "split": "test"}
+{"category": "job", "older": "I work at Umbrella as a backend engineer.", "newer": "I left Umbrella and joined Globex.", "label": 1, "id": "cp0071", "split": "dev"}
+{"category": "job", "older": "My job is backend engineer.", "newer": "I switched careers and now work as a data analyst.", "label": 1, "id": "cp0072", "split": "dev"}
+{"category": "preference", "older": "My favorite sport is soccer.", "newer": "My favorite sport is golf now.", "label": 1, "id": "cp0073", "split": "test"}
+{"category": "schedule", "older": "The team meeting is on Monday.", "newer": "The team meeting was moved to Thursday.", "label": 1, "id": "cp0074", "split": "dev"}
+{"category": "config", "older": "The API server listens on port 6600.", "newer": "The API server now runs on port 3000.", "label": 1, "id": "cp0075", "split": "dev"}
+{"category": "tooling", "older": "We use MySQL as the main database.", "newer": "We migrated the main database from MySQL to Cassandra.", "label": 1, "id": "cp0076", "split": "test"}
+{"category": "tooling", "older": "Let's use Varnish for caching.", "newer": "We switched the cache to Redis.", "label": 1, "id": "cp0077", "split": "test"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0078", "split": "test"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Leo last month.", "label": 1, "id": "cp0079", "split": "dev"}
+{"category": "count", "older": "I have 2 kids.", "newer": "I have 4 kids.", "label": 1, "id": "cp0080", "split": "test"}
+{"category": "code", "older": "```python\ndef load_config(since):\n    ...\n```", "newer": "```python\ndef load_config(timeout):\n    ...\n```", "label": 1, "id": "cp0081", "split": "dev"}
+{"category": "different_event", "older": "I went to a concert on Thursday.", "newer": "I baked bread on Friday.", "label": 0, "id": "cp0082", "split": "test"}
+{"category": "added_detail", "older": "I live in Lisbon.", "newer": "I love the cafes in Lisbon.", "label": 0, "id": "cp0083", "split": "dev"}
+{"category": "added_detail", "older": "I work at Pied Piper.", "newer": "At Pied Piper I lead the platform team.", "label": 0, "id": "cp0084", "split": "dev"}
+{"category": "paraphrase", "older": "We use Cassandra as the main database.", "newer": "Our data is stored in Cassandra.", "label": 0, "id": "cp0085", "split": "test"}
+{"category": "compatible_pref", "older": "I like sushi.", "newer": "I also enjoy pizza.", "label": 0, "id": "cp0086", "split": "test"}
+{"category": "other_service", "older": "The API server listens on port 8100.", "newer": "The metrics exporter listens on port 3700.", "label": 0, "id": "cp0087", "split": "dev"}
+{"category": "travel", "older": "I live in Lisbon.", "newer": "I'm flying to London for a conference next week.", "label": 0, "id": "cp0088", "split": "dev"}
+{"category": "pet", "older": "I have a cat named Priya.", "newer": "Priya the cat loves long walks.", "label": 0, "id": "cp0089", "split": "test"}
+{"category": "code_other_symbol", "older": "```python\ndef create_invoice(path):\n    ...\n```", "newer": "```python\ndef get_user_tasks(due_date):\n    ...\n```", "label": 0, "id": "cp0090", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0091", "split": "dev"}
+{"category": "location", "older": "I live in Madrid.", "newer": "I moved to London last month.", "label": 1, "id": "cp0092", "split": "dev"}
+{"category": "location", "older": "I'm based in Madrid these days.", "newer": "These days I'm living in London, not Madrid.", "label": 1, "id": "cp0093", "split": "dev"}
+{"category": "job", "older": "I work at Globex as a teacher.", "newer": "I left Globex and joined Acme.", "label": 1, "id": "cp0094", "split": "dev"}
+{"category": "job", "older": "My job is teacher.", "newer": "I switched careers and now work as a data analyst.", "label": 1, "id": "cp0095", "split": "dev"}
+{"category": "preference", "older": "My favorite sport is golf.", "newer": "My favorite sport is tennis now.", "label": 1, "id": "cp0096", "split": "dev"}
+{"category": "schedule", "older": "The team meeting is on Monday.", "newer": "The team meeting was moved to Tuesday.", "label": 1, "id": "cp0097", "split": "test"}
+{"category": "config", "older": "The API server listens on port 6200.", "newer": "The API server now runs on port 7400.", "label": 1, "id": "cp0098", "split": "dev"}
+{"category": "tooling", "older": "We use DynamoDB as the main database.", "newer": "We migrated the main database from DynamoDB to PostgreSQL.", "label": 1, "id": "cp0099", "split": "test"}
+{"category": "tooling", "older": "Let's use Memcached for caching.", "newer": "We switched the cache to Redis.", "label": 1, "id": "cp0100", "split": "dev"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0101", "split": "dev"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Yuki last month.", "label": 1, "id": "cp0102", "split": "dev"}
+{"category": "count", "older": "I have 3 kids.", "newer": "I have 2 kids.", "label": 1, "id": "cp0103", "split": "dev"}
+{"category": "code", "older": "```python\ndef get_user_tasks(uid):\n    ...\n```", "newer": "```python\ndef get_user_tasks(due_date):\n    ...\n```", "label": 1, "id": "cp0104", "split": "dev"}
+{"category": "different_event", "older": "I went swimming with friends on Wednesday.", "newer": "I went hiking with my dog on Friday.", "label": 0, "id": "cp0105", "split": "test"}
+{"category": "added_detail", "older": "I live in Seoul.", "newer": "I love the cafes in Seoul.", "label": 0, "id": "cp0106", "split": "test"}
+{"category": "added_detail", "older": "I work at Hooli.", "newer": "At Hooli I lead the platform team.", "label": 0, "id": "cp0107", "split": "dev"}
+{"category": "paraphrase", "older": "We use PostgreSQL as the main database.", "newer": "Our data is stored in PostgreSQL.", "label": 0, "id": "cp0108", "split": "dev"}
+{"category": "compatible_pref", "older": "I like pizza.", "newer": "I also enjoy tacos.", "label": 0, "id": "cp0109", "split": "test"}
+{"category": "other_service", "older": "The API server listens on port 3200.", "newer": "The metrics exporter listens on port 5600.", "label": 0, "id": "cp0110", "split": "dev"}
+{"category": "travel", "older": "I live in Seoul.", "newer": "I'm flying to Sydney for a conference next week.", "label": 0, "id": "cp0111", "split": "test"}
+{"category": "pet", "older": "I have a dog named Omar.", "newer": "Omar the dog loves long walks.", "label": 0, "id": "cp0112", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef load_config(account):\n    ...\n```", "newer": "```python\ndef send_digest(payload):\n    ...\n```", "label": 0, "id": "cp0113", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0114", "split": "test"}
+{"category": "location", "older": "I live in Paris.", "newer": "I moved to Toronto last month.", "label": 1, "id": "cp0115", "split": "dev"}
+{"category": "location", "older": "I'm based in Paris these days.", "newer": "These days I'm living in Toronto, not Paris.", "label": 1, "id": "cp0116", "split": "test"}
+{"category": "job", "older": "I work at Stark Labs as a product manager.", "newer": "I left Stark Labs and joined Globex.", "label": 1, "id": "cp0117", "split": "test"}
+{"category": "job", "older": "My job is product manager.", "newer": "I switched careers and now work as a data analyst.", "label": 1, "id": "cp0118", "split": "test"}
+{"category": "preference", "older": "My favorite color is purple.", "newer": "My favorite color is red now.", "label": 1, "id": "cp0119", "split": "dev"}
+{"category": "schedule", "older": "The team meeting is on Tuesday.", "newer": "The team meeting was moved to Friday.", "label": 1, "id": "cp0120", "split": "test"}
+{"category": "config", "older": "The API server listens on port 5900.", "newer": "The API server now runs on port 5500.", "label": 1, "id": "cp0121", "split": "test"}
+{"category": "tooling", "older": "We use DynamoDB as the main database.", "newer": "We migrated the main database from DynamoDB to Cassandra.", "label": 1, "id": "cp0122", "split": "test"}
+{"category": "tooling", "older": "Let's use Varnish for caching.", "newer": "We switched the cache to Memcached.", "label": 1, "id": "cp0123", "split": "dev"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0124", "split": "dev"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Omar last month.", "label": 1, "id": "cp0125", "split": "dev"}
+{"category": "count", "older": "I have 4 kids.", "newer": "I have 2 kids.", "label": 1, "id": "cp0126", "split": "dev"}
+{"category": "code", "older": "```python\ndef fetch_orders(user_id):\n    ...\n```", "newer": "```python\ndef fetch_orders(timeout):\n    ...\n```", "label": 1, "id": "cp0127", "split": "dev"}
+{"category": "different_event", "older": "I went to a concert on Thursday.", "newer": "I visited a museum on Wednesday.", "label": 0, "id": "cp0128", "split": "test"}
+{"category": "added_detail", "older": "I live in Seoul.", "newer": "I love the cafes in Seoul.", "label": 0, "id": "cp0129", "split": "dev"}
+{"category": "added_detail", "older": "I work at Umbrella.", "newer": "At Umbrella I lead the platform team.", "label": 0, "id": "cp0130", "split": "dev"}
+{"category": "paraphrase", "older": "We use Cassandra as the main database.", "newer": "Our data is stored in Cassandra.", "label": 0, "id": "cp0131", "split": "dev"}
+{"category": "compatible_pref", "older": "I like sushi.", "newer": "I also enjoy ramen.", "label": 0, "id": "cp0132", "split": "test"}
+{"category": "other_service", "older": "The API server listens on port 4300.", "newer": "The metrics exporter listens on port 5900.", "label": 0, "id": "cp0133", "split": "test"}
+{"category": "travel", "older": "I live in Seoul.", "newer": "I'm flying to Toronto for a conference next week.", "label": 0, "id": "cp0134", "split": "test"}
+{"category": "pet", "older": "I have a rabbit named Sam.", "newer": "Sam the rabbit loves long walks.", "label": 0, "id": "cp0135", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef parse_rows(since):\n    ...\n```", "newer": "```python\ndef create_invoice(path):\n    ...\n```", "label": 0, "id": "cp0136", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0137", "split": "dev"}
+{"category": "location", "older": "I live in Seoul.", "newer": "I moved to Madrid last month.", "label": 1, "id": "cp0138", "split": "dev"}
+{"category": "location", "older": "I'm based in Seoul these days.", "newer": "These days I'm living in Madrid, not Seoul.", "label": 1, "id": "cp0139", "split": "dev"}
+{"category": "job", "older": "I work at Globex as a designer.", "newer": "I left Globex and joined Wayne Corp.", "label": 1, "id": "cp0140", "split": "dev"}
+{"category": "job", "older": "My job is designer.", "newer": "I switched careers and now work as a backend engineer.", "label": 1, "id": "cp0141", "split": "dev"}
+{"category": "preference", "older": "My favorite color is purple.", "newer": "My favorite color is green now.", "label": 1, "id": "cp0142", "split": "test"}
+{"category": "schedule", "older": "The team meeting is on Thursday.", "newer": "The team meeting was moved to Wednesday.", "label": 1, "id": "cp0143", "split": "test"}
+{"category": "config", "older": "The API server listens on port 8100.", "newer": "The API server now runs on port 4000.", "label": 1, "id": "cp0144", "split": "test"}
+{"category": "tooling", "older": "We use SQLite as the main database.", "newer": "We migrated the main database from SQLite to MySQL.", "label": 1, "id": "cp0145", "split": "dev"}
+{"category": "tooling", "older": "Let's use Memcached for caching.", "newer": "We switched the cache to Redis.", "label": 1, "id": "cp0146", "split": "test"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0147", "split": "dev"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Yuki last month.", "label": 1, "id": "cp0148", "split": "dev"}
+{"category": "count", "older": "I have 2 kids.", "newer": "I have 1 kids.", "label": 1, "id": "cp0149", "split": "dev"}
+{"category": "code", "older": "```python\ndef create_invoice(user_id):\n    ...\n```", "newer": "```python\ndef create_invoice(account):\n    ...\n```", "label": 1, "id": "cp0150", "split": "dev"}
+{"category": "different_event", "older": "I went to a concert on Tuesday.", "newer": "I played chess on Monday.", "label": 0, "id": "cp0151", "split": "dev"}
+{"category": "added_detail", "older": "I live in Berlin.", "newer": "I love the cafes in Berlin.", "label": 0, "id": "cp0152", "split": "test"}
+{"category": "added_detail", "older": "I work at Stark Labs.", "newer": "At Stark Labs I lead the platform team.", "label": 0, "id": "cp0153", "split": "dev"}
+{"category": "paraphrase", "older": "We use MySQL as the main database.", "newer": "Our data is stored in MySQL.", "label": 0, "id": "cp0154", "split": "test"}
+{"category": "compatible_pref", "older": "I like blue.", "newer": "I also enjoy red.", "label": 0, "id": "cp0155", "split": "dev"}
+{"category": "other_service", "older": "The API server listens on port 4700.", "newer": "The metrics exporter listens on port 8500.", "label": 0, "id": "cp0156", "split": "dev"}
+{"category": "travel", "older": "I live in Berlin.", "newer": "I'm flying to Seoul for a conference next week.", "label": 0, "id": "cp0157", "split": "dev"}
+{"category": "pet", "older": "I have a cat named Omar.", "newer": "Omar the cat loves long walks.", "label": 0, "id": "cp0158", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef create_invoice(user_id):\n    ...\n```", "newer": "```python\ndef fetch_orders(limit):\n    ...\n```", "label": 0, "id": "cp0159", "split": "dev"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0160", "split": "dev"}
+{"category": "location", "older": "I live in Lisbon.", "newer": "I moved to Tokyo last month.", "label": 1, "id": "cp0161", "split": "dev"}
+{"category": "location", "older": "I'm based in Lisbon these days.", "newer": "These days I'm living in Tokyo, not Lisbon.", "label": 1, "id": "cp0162", "split": "dev"}
+{"category": "job", "older": "I work at Stark Labs as a teacher.", "newer": "I left Stark Labs and joined Initech.", "label": 1, "id": "cp0163", "split": "test"}
+{"category": "job", "older": "My job is teacher.", "newer": "I switched careers and now work as a nurse.", "label": 1, "id": "cp0164", "split": "test"}
+{"category": "preference", "older": "My favorite sport is soccer.", "newer": "My favorite sport is basketball now.", "label": 1, "id": "cp0165", "split": "test"}
+{"category": "schedule", "older": "The team meeting is on Thursday.", "newer": "The team meeting was moved to Friday.", "label": 1, "id": "cp0166", "split": "test"}
+{"category": "config", "older": "The API server listens on port 4900.", "newer": "The API server now runs on port 9700.", "label": 1, "id": "cp0167", "split": "test"}
+{"category": "tooling", "older": "We use MySQL as the main database.", "newer": "We migrated the main database from MySQL to PostgreSQL.", "label": 1, "id": "cp0168", "split": "test"}
+{"category": "tooling", "older": "Let's use Varnish for caching.", "newer": "We switched the cache to Memcached.", "label": 1, "id": "cp0169", "split": "dev"}
+{"category": "status", "older": "The test suite is failing on main.", "newer": "All tests pass on main now.", "label": 1, "id": "cp0170", "split": "dev"}
+{"category": "relationship", "older": "I'm single right now.", "newer": "I got engaged to Leo last month.", "label": 1, "id": "cp0171", "split": "test"}
+{"category": "count", "older": "I have 1 kids.", "newer": "I have 2 kids.", "label": 1, "id": "cp0172", "split": "dev"}
+{"category": "code", "older": "```python\ndef create_invoice(timeout):\n    ...\n```", "newer": "```python\ndef create_invoice(user_id):\n    ...\n```", "label": 1, "id": "cp0173", "split": "test"}
+{"category": "different_event", "older": "I played chess on Friday.", "newer": "I went hiking with my dog on Monday.", "label": 0, "id": "cp0174", "split": "test"}
+{"category": "added_detail", "older": "I live in Berlin.", "newer": "I love the cafes in Berlin.", "label": 0, "id": "cp0175", "split": "dev"}
+{"category": "added_detail", "older": "I work at Pied Piper.", "newer": "At Pied Piper I lead the platform team.", "label": 0, "id": "cp0176", "split": "test"}
+{"category": "paraphrase", "older": "We use DynamoDB as the main database.", "newer": "Our data is stored in DynamoDB.", "label": 0, "id": "cp0177", "split": "test"}
+{"category": "compatible_pref", "older": "I like ramen.", "newer": "I also enjoy sushi.", "label": 0, "id": "cp0178", "split": "test"}
+{"category": "other_service", "older": "The API server listens on port 3700.", "newer": "The metrics exporter listens on port 6100.", "label": 0, "id": "cp0179", "split": "test"}
+{"category": "travel", "older": "I live in Berlin.", "newer": "I'm flying to Sydney for a conference next week.", "label": 0, "id": "cp0180", "split": "test"}
+{"category": "pet", "older": "I have a rabbit named Sam.", "newer": "Sam the rabbit loves long walks.", "label": 0, "id": "cp0181", "split": "dev"}
+{"category": "code_other_symbol", "older": "```python\ndef create_invoice(user_id):\n    ...\n```", "newer": "```python\ndef send_digest(uid):\n    ...\n```", "label": 0, "id": "cp0182", "split": "test"}
+{"category": "unrelated", "older": "The quarterly revenue report is due Friday.", "newer": "I painted the living room green.", "label": 0, "id": "cp0183", "split": "test"}
