@@ -51,6 +51,19 @@ _REQUEST = re.compile(
     r"^(?:can you|could you|please|i need|we need|let'?s|now|next,?|also,?|write|implement|add|create|build|fix|refactor|rename|update|make)\b",
     re.I,
 )
+# First-person self-disclosure: standing states, habits, goals and beliefs ("I've been so nervous
+# about...", "so now I always...", "I'm saving for...", "I believe..."). These are the persona facts
+# a conversational memory must keep even when they name no entity, so they outrank generic
+# statements and feed the L2 open goals / L3 persona.
+_USER_STATE = re.compile(
+    r"\b(?:I(?:'ve| have)? been (?:feeling|trying|working|saving|learning|struggling|getting)|I(?:'m| am) (?:feeling|trying|saving|planning|working on|learning|determined|committed|worried|nervous|afraid|scared|excited|proud)|"
+    r"I (?:\w+ly )?(?:feel|felt|believe|value|think that|want to|hope to|plan to|intend to|refuse|always|never|only|usually|no longer|stopped|started|switched|quit|decided|prefer|love|hate|can'?t stand)|"
+    r"so now I|ever since|my (?:goal|dream|plan|priority|rule) is|is important to me|matters to me)\b",
+    re.I,
+)
+_GOAL = re.compile(r"\b(?:want to|hope to|plan to|intend to|trying to|saving (?:for|to|up)|working (?:toward|towards|on)|my (?:goal|dream|plan) is|so I can)\b", re.I)
+_MAX_USER_STATES_PER_TURN = 2
+
 _PROPER = re.compile(r"(?<![.!?]\s)(?<!^)\b([A-Z][a-z]{2,}(?: [A-Z][a-z]{2,})*)\b")
 _NUMBERISH = re.compile(r"\b\d[\d,.:/-]*\b")
 _MAX_STATEMENTS_PER_TURN = 3
@@ -105,12 +118,16 @@ def extract_facts(turn: ConversationTurn, fact_seq: list[int]) -> tuple[list[Fac
         facts.append(new(f"choice:{m.group(2).strip().lower().replace(' ', '_')}", m.group(1), "attribute"))
 
     statements: list[tuple[float, int, str]] = []
+    n_states = 0
     for i, sent in enumerate(sentences(prose)):
         if len(sent.split()) < 4:
             continue
         if any(span in sent for span in keyed_spans) and not _CONSTRAINT.search(sent):
             continue  # already captured as a keyed (mergeable) fact; a free copy would go stale
-        if _CONSTRAINT.search(sent):
+        if turn.role == "user" and n_states < _MAX_USER_STATES_PER_TURN and not sent.endswith("?") and _USER_STATE.search(sent):
+            facts.append(new(f"user_state:{turn.turn_id}:{i}", sent, "user_state"))
+            n_states += 1
+        elif _CONSTRAINT.search(sent):
             constraints.append(sent)
             facts.append(new(f"constraint:{turn.turn_id}:{i}", sent, "constraint"))
         elif _DECISION.search(sent):
@@ -132,9 +149,9 @@ def rule_l1(record_id: str, turns: list[ConversationTurn], fact_seq: list[int]) 
         f, c = extract_facts(t, fact_seq)
         speaker = t.speaker or t.role
         for fact in f:
-            if fact.kind in ("statement", "request", "decision", "constraint") and t.speaker:
+            if fact.kind in ("statement", "request", "decision", "constraint", "user_state") and t.speaker:
                 fact.value = f"{speaker}: {fact.value}"
-            if fact.kind in ("statement",) and t.metadata.get("date"):
+            if fact.kind in ("statement", "user_state") and t.metadata.get("date"):
                 fact.value = f"[{t.metadata['date']}] {fact.value}"
         facts += f
         constraints += c
@@ -162,7 +179,7 @@ def rule_l2(record_id: str, l1s: list[L1Record]) -> L2Record:
                 decisions.append(f"renamed {f.key.split(':')[-1]} -> {f.value.split('->')[-1].strip()}")
             elif f.kind == "attribute" and f.key.startswith(("choice:", "setting:")):
                 decisions.append(f"{f.key.split(':', 1)[1].replace('_', ' ')}: {f.value}")
-    open_goals = [f.value for r in l1s for f in r.facts if f.kind == "request"][-3:]
+    open_goals = [f.value for r in l1s for f in r.facts if f.kind == "request" or (f.kind == "user_state" and _GOAL.search(f.value))][-4:]
     return L2Record(
         record_id=record_id,
         intent=intent,
@@ -174,6 +191,7 @@ def rule_l2(record_id: str, l1s: list[L1Record]) -> L2Record:
 
 def rule_l3(record_id: str, l2s: list[L2Record], attributes: dict[str, str]) -> L3Record:
     persona_bits = [f"{k.split('.', 1)[1].replace('.', ' ')}: {v}" for k, v in attributes.items() if k.startswith("user.")]
+    persona_bits += [v for k, v in attributes.items() if k.startswith("user_state:")][-4:]
     coding = sum(1 for r in l2s if r.intent.startswith("Coding"))
     domain = "a developer in an ongoing coding session" if coding >= len(l2s) / 2 else "a person in an ongoing conversation"
     persona = domain + (f" ({'; '.join(persona_bits)})" if persona_bits else "")

@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-FactKind = Literal["code_signature", "rename", "attribute", "decision", "constraint", "request", "statement"]
+FactKind = Literal["code_signature", "rename", "attribute", "decision", "constraint", "request", "user_state", "statement"]
 
 
 class Fact(BaseModel):

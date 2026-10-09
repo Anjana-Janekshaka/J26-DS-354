@@ -59,4 +59,6 @@ class SummaryState:
         return [f for f in self.superseded if f.key == key]
 
     def attributes(self) -> dict[str, str]:
-        return {k: f.value for k, f in self.active.items() if f.kind == "attribute"}
+        """Keyed attributes plus standing user states (oldest first), the inputs to the L3 persona."""
+        states = sorted((f for f in self.active.values() if f.kind == "user_state"), key=lambda f: f.source_turn_id)
+        return {**{k: f.value for k, f in self.active.items() if f.kind == "attribute"}, **{f.key: f.value for f in states}}

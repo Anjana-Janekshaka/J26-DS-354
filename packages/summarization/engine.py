@@ -46,6 +46,7 @@ _SECTION_ORDER = [
     ("constraint", "Constraints"),
     ("decision", "Decisions"),
     ("request", "Open requests"),
+    ("user_state", "User states, habits & goals"),
     ("statement", "Facts"),
 ]
 
@@ -197,7 +198,7 @@ class HierarchicalSummarizer:
         (verbatim, merged) instead of leaving it empty. ``tier_emitted`` still reports the main tier."""
         spare = remaining - count_tokens(summary) - 10
         lines: list[str] = []
-        keyed_first = {"code_signature": 0, "rename": 0, "attribute": 0, "constraint": 1, "decision": 1}
+        keyed_first = {"code_signature": 0, "rename": 0, "attribute": 0, "constraint": 1, "decision": 1, "user_state": 1}
         ordered = sorted(self.state.active.values(), key=lambda f: f.source_turn_id, reverse=True)
         for f in sorted(ordered, key=lambda f: keyed_first.get(f.kind, 2)):
             line = f"- {f.value} ({f.source_turn_id})"
