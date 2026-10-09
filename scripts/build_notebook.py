@@ -88,9 +88,16 @@ if not CODE.exists():
     if REPO_URL:
         subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
     else:
-        zips = glob.glob("/kaggle/input/**/ceai-memory-middleware.zip", recursive=True) + glob.glob("/content/ceai-memory-middleware.zip")
-        assert zips, "upload dist/ceai-memory-middleware.zip (or set REPO_URL)"
-        shutil.unpack_archive(zips[0], "/tmp")
+        # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
+        # /kaggle/input is read-only, so copy to /tmp before the editable install.
+        dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
+        zips = glob.glob("/kaggle/input/**/ceai-memory-middleware.zip", recursive=True) + glob.glob("/content/ceai-memory-middleware.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware.zip")
+        if dirs:
+            shutil.copytree(dirs[0], CODE)
+        elif zips:
+            shutil.unpack_archive(zips[0], "/tmp")
+        else:
+            raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
 os.chdir(CODE)
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
 print("code ready at", CODE)

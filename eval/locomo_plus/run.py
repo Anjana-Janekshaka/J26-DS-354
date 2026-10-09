@@ -32,7 +32,7 @@ from integration import MemoryPipeline, assemble_prompt
 from retrieval import RetrievalConfig, SentenceTransformerEmbedder
 from summarization import NaiveSummarizer
 
-from .loader import load
+from .loader import load, split
 
 HERE = Path(__file__).parent
 STRATEGIES = ["sliding_window", "summarization", "rag", "hybrid"]
@@ -52,13 +52,20 @@ def bucket(distance: int) -> str:
     return "<50 turns" if distance < 50 else "50-200 turns" if distance <= 200 else ">200 turns"
 
 
-def run_item(item, budget: int, emb) -> dict:
+def run_item(item, budget: int, emb, warmup: int = 0, rule_config=None) -> dict:
     pipe = MemoryPipeline(f"plus-{item.item_id}", token_budget=budget, embedder=emb, nli=None,
-                          retrieval_config=RetrievalConfig(check_contradictions=False))
+                          retrieval_config=RetrievalConfig(check_contradictions=False), rule_config=rule_config)
     naive = NaiveSummarizer(tail_keep=4)
     cue_index = None
+    n = len(item.turns)
     for i, t in enumerate(item.turns):
-        turn = pipe.add_turn("user", t.text, speaker=t.speaker, metadata={"date": t.date})
+        meta = {"date": t.date}
+        if i >= n - warmup:
+            # In deployment every user message is a decision turn; replaying the last ``warmup``
+            # turns that way gives the controller its normal decision history and escalations.
+            turn = pipe.user_turn(t.text, respond=False, speaker=t.speaker, metadata=meta).turn
+        else:
+            turn = pipe.add_turn("user", t.text, speaker=t.speaker, metadata=meta)
         naive.ingest(turn)
         if t.kind == "cue":
             cue_index = i
@@ -90,18 +97,20 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=1024)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--split", choices=["dev", "test", "all"], default="all", help="even item ids = dev, odd = test")
+    ap.add_argument("--warmup-turns", type=int, default=0, help="replay the last N history turns as decision turns")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    items = load(args.limit)
+    items = split(load(args.limit), args.split)
     emb = CachingEmbedder(SentenceTransformerEmbedder())
     rows = []
     t0 = time.time()
     with open(out / "items.jsonl", "w", encoding="utf-8") as f:
         for n, item in enumerate(items, 1):
-            row = run_item(item, args.budget, emb)
+            row = run_item(item, args.budget, emb, args.warmup_turns)
             rows.append(row)
             f.write(json.dumps(row) + "\n")
             if n % 25 == 0:
@@ -114,6 +123,8 @@ def main() -> None:
 
     summary: dict = {
         "n_items": len(rows),
+        "split": args.split,
+        "warmup_turns": args.warmup_turns,
         "budget_tokens": args.budget,
         "strategies": {s: {"cue_hit_rate": rate(rows, s), "cue_any_rate": rate(rows, s, "cue_any"),
                            "mean_coverage": statistics.mean(r[s]["coverage"] for r in rows),

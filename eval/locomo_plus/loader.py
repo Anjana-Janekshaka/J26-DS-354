@@ -107,3 +107,12 @@ def load(limit: int | None = None) -> list[PlusItem]:
             )
         )
     return items
+
+
+def split(items: list[PlusItem], which: str) -> list[PlusItem]:
+    """Fixed dev/test split: even item ids are dev, odd are test (the source file is ordered in
+    blocks of ~100 per relation type, so parity splits every type evenly). Tune on dev only."""
+    if which == "all":
+        return items
+    want = 0 if which == "dev" else 1
+    return [it for it in items if it.item_id % 2 == want]
