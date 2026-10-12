@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import TimeoutError as FutureTimeout
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,11 +25,13 @@ from contracts import (
     count_tokens,
 )
 
+from .compression import TierStat, build_report, l1_stat, l2_stat, l3_stat
 from .extract import extract_facts
 from .generators import RuleBasedGenerator, TierGenerator
 from .loss import LossWorker, anchor_loss, symbol_retention_rate
 from .merge import SummaryState
 from .records import L1Record, L2Record, L3Record
+from .triggers import DriftMonitor, EmbedFn
 
 
 class SummarizationConfig(BaseModel):
@@ -37,6 +40,17 @@ class SummarizationConfig(BaseModel):
     l2_fanin: int = Field(default=3, ge=1)
     loss_timeout_s: float | None = None  # None: wait for the worker (deterministic)
     merge_contradictions: bool = True  # False only for the ablation: every fact kept, nothing superseded
+    # Trigger policy. "turns" (default) is the original fixed schedule (l1_span / l2_fanin) and is the
+    # static-schedule ablation. "tokens" follows the proposal: L1 when the buffered turns outside the
+    # raw tail reach l1_token_threshold (or the newest turn drifts from the buffer, if an embedder is
+    # supplied); L2 when pending L1 renderings reach l2_token_threshold; L3 rebuilt when L2 renderings
+    # since the last L3 reach l3_token_threshold.
+    trigger_mode: Literal["turns", "tokens"] = "turns"
+    l1_token_threshold: int = Field(default=1500, ge=1)
+    l2_token_threshold: int = Field(default=1000, ge=1)
+    l3_token_threshold: int = Field(default=1500, ge=1)
+    drift_threshold: float = Field(default=0.30, ge=-1.0, le=1.0)  # needs calibrating per embedder
+    drift_min_tokens: int = Field(default=300, ge=1)  # never cut an L1 chunk smaller than this on drift
 
 
 _SECTION_ORDER = [
@@ -54,9 +68,19 @@ _SECTION_ORDER = [
 class HierarchicalSummarizer:
     name = "summarization"
 
-    def __init__(self, generator: TierGenerator | None = None, config: SummarizationConfig | None = None):
+    def __init__(
+        self,
+        generator: TierGenerator | None = None,
+        config: SummarizationConfig | None = None,
+        embed: EmbedFn | None = None,
+    ):
         self.generator = generator or RuleBasedGenerator()
         self.config = config or SummarizationConfig()
+        self._drift = DriftMonitor(embed, self.config.drift_threshold) if embed is not None and self.config.trigger_mode == "tokens" else None
+        self._turn_tokens: dict[str, int] = {}
+        self._stats: dict[str, TierStat] = {}
+        self._l2_in_l3 = 0
+        self._l3_cache: tuple[tuple, L3Record] | None = None
         self.turns: list[ConversationTurn] = []
         self.summarized: list[ConversationTurn] = []
         self.unsummarized: list[ConversationTurn] = []
@@ -86,21 +110,68 @@ class HierarchicalSummarizer:
             for fact in facts:
                 if fact.kind in ("code_signature", "rename", "attribute"):
                     self.state.apply(fact)
-        while len(self.unsummarized) >= cfg.tail_keep + cfg.l1_span:
-            chunk = self.unsummarized[: cfg.l1_span]
-            self.unsummarized = self.unsummarized[cfg.l1_span :]
-            rec = self.generator.l1(f"L1-{len(self.l1) + 1:04d}", chunk, self._fact_seq)
-            self.l1.append(rec)
-            for fact in rec.facts:
-                if not cfg.merge_contradictions:
-                    fact = fact.model_copy(update={"key": f"{fact.key}#{fact.fact_id}"})
-                self.state.apply(fact)
-            self.summarized.extend(chunk)
-            if len(self.l1) - self._l1_in_l2 >= cfg.l2_fanin:
-                group = self.l1[self._l1_in_l2 : self._l1_in_l2 + cfg.l2_fanin]
-                self.l2.append(self.generator.l2(f"L2-{len(self.l2) + 1:04d}", group))
-                self._l1_in_l2 += cfg.l2_fanin
-                self.l3 = self.generator.l3("L3-current", self.l2, self.state.attributes())
+        while (chunk := self._next_chunk()) is not None:
+            self._summarize_chunk(chunk)
+
+    # ------------------------------------------------------------------ triggers
+    def _tokens(self, turn: ConversationTurn) -> int:
+        if turn.turn_id not in self._turn_tokens:
+            self._turn_tokens[turn.turn_id] = count_tokens(turn.render())
+        return self._turn_tokens[turn.turn_id]
+
+    def _next_chunk(self) -> list[ConversationTurn] | None:
+        """The turns to roll into the next L1 record, or None when no trigger has fired."""
+        cfg = self.config
+        if cfg.trigger_mode == "turns":
+            return self.unsummarized[: cfg.l1_span] if len(self.unsummarized) >= cfg.tail_keep + cfg.l1_span else None
+        eligible = self.unsummarized[: max(0, len(self.unsummarized) - cfg.tail_keep)]  # raw tail is never summarized
+        if not eligible:
+            return None
+        total = sum(self._tokens(t) for t in eligible)
+        if total >= cfg.l1_token_threshold:
+            return eligible
+        if self._drift is not None and len(eligible) >= 2:
+            before_drift = total - self._tokens(eligible[-1])
+            if before_drift >= cfg.drift_min_tokens and self._drift.drifted(eligible):
+                return eligible[:-1]  # the drifting turn opens the next chunk
+        return None
+
+    def _summarize_chunk(self, chunk: list[ConversationTurn]) -> None:
+        cfg = self.config
+        self.unsummarized = self.unsummarized[len(chunk) :]
+        rec = self.generator.l1(f"L1-{len(self.l1) + 1:04d}", chunk, self._fact_seq)
+        self.l1.append(rec)
+        for fact in rec.facts:
+            if not cfg.merge_contradictions:
+                fact = fact.model_copy(update={"key": f"{fact.key}#{fact.fact_id}"})
+            self.state.apply(fact)
+        self.summarized.extend(chunk)
+        self._stats[rec.record_id] = l1_stat(rec, sum(self._tokens(t) for t in chunk))
+        self._roll_up()
+
+    def _roll_up(self) -> None:
+        cfg = self.config
+        pending = self.l1[self._l1_in_l2 :]
+        if cfg.trigger_mode == "turns":
+            group = pending[: cfg.l2_fanin]
+            if len(pending) < cfg.l2_fanin:
+                return
+        else:
+            group = pending
+            if sum(self._stats[r.record_id].tokens_out for r in group) < cfg.l2_token_threshold:
+                return
+        rec2 = self.generator.l2(f"L2-{len(self.l2) + 1:04d}", group)
+        self.l2.append(rec2)
+        self._stats[rec2.record_id] = l2_stat(rec2, [self._stats[r.record_id] for r in group])
+        self._l1_in_l2 += len(group)
+        if cfg.trigger_mode == "turns" or sum(self._stats[r.record_id].tokens_out for r in self.l2[self._l2_in_l3 :]) >= cfg.l3_token_threshold:
+            self.l3 = self.generator.l3("L3-current", self.l2, self.state.attributes())
+            self._l2_in_l3 = len(self.l2)
+            self._stats[self.l3.record_id] = l3_stat(self.l3, [self._stats[r.record_id] for r in self.l2])
+
+    def compression_report(self) -> dict:
+        """Token-reduction ratio per tier (and per record) against the proposal's targets."""
+        return build_report(list(self._stats.values()))
 
     # ------------------------------------------------------------------ rendering
     def render_l1(self) -> str:
@@ -147,9 +218,15 @@ class HierarchicalSummarizer:
         return records
 
     def _l3_record(self, l2s: list[L2Record]) -> L3Record | None:
-        if self.l3 is not None and len(l2s) == len(self.l2):
+        if self.l3 is not None and len(l2s) == len(self.l2) == self._l2_in_l3:
             return self.l3
-        return self.generator.l3("L3-current", l2s, self.state.attributes()) if l2s else None
+        if not l2s:
+            return None
+        attrs = self.state.attributes()
+        key = (tuple(r.record_id for r in l2s), tuple(sorted(attrs.items())))
+        if self._l3_cache is None or self._l3_cache[0] != key:
+            self._l3_cache = (key, self.generator.l3("L3-current", l2s, attrs))
+        return self._l3_cache[1]
 
     def _annotate_superseded(self, line: str) -> str:
         """Apply the merge across tiers: L2/L3 records are immutable history written before later
