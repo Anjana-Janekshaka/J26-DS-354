@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import statistics
 import time
 import warnings
@@ -35,7 +36,9 @@ from contracts.text import CachingEmbedder
 from eval.metrics import answer_in_context, evidence_hit, macro_f1, ndcg_at_k, oracle_label, token_f1
 from integration import MemoryPipeline, assemble_prompt
 from eval.judge import GRADES, grade
-from integration.llm_client import describe, get_llm
+from concurrent.futures import ThreadPoolExecutor
+
+from integration.llm_client import concurrency, describe, get_llm, stats as llm_stats
 from retrieval import CrossEncoderNLI, RetrievalConfig, RetrievalEngine, SentenceTransformerEmbedder
 
 from .loader import CATEGORY_NAMES, load
@@ -68,7 +71,14 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
     ingest_s = time.time() - t0
 
     rows = []
-    for q in conv.qa[: args.max_questions]:
+    questions = conv.qa
+    if args.max_questions and args.max_questions < len(questions):
+        # Seeded random sample, kept in original order. LoCoMo lists questions grouped by category,
+        # so taking the first N would over-sample some categories and skip others entirely.
+        rng = random.Random(f"{args.sample_seed}:{conv.sample_id}")
+        keep = set(rng.sample(range(len(questions)), args.max_questions))
+        questions = [q for i, q in enumerate(questions) if i in keep]
+    for q in questions:
         ev_texts = [text_of[e] for e in q.evidence if e in text_of]
         r = pipe.user_turn(q.question, remember=False, respond=False)
         budget = r.signal.token_usage.budget
@@ -107,17 +117,29 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
             }
         if args.llm and llm is not None and q.answer is not None and q.category != 5:
             row["question"], row["gold_answer"] = q.question, str(q.answer)
-            for s in ("adaptive", "rag", "sliding_window", "summarization", "hybrid"):
-                pred = llm(QA_SYSTEM, f"[Memory context]\n{ctx[s].context}\n\nQuestion: {q.question}")
+            names = ("adaptive", "rag", "sliding_window", "summarization", "hybrid")
+            # Identical contexts (adaptive always equals one fixed strategy) are answered once, and the
+            # distinct calls go out in parallel (the server batches them).
+            unique_ctx = list(dict.fromkeys(ctx[s].context for s in names))
+            with ThreadPoolExecutor(concurrency()) as pool:
+                answers = dict(zip(unique_ctx, pool.map(
+                    lambda c: llm(QA_SYSTEM, f"[Memory context]\n{c}\n\nQuestion: {q.question}"), unique_ctx)))
+                grades: dict[str, str | None] = {}
+                if judge is not None:
+                    preds = list(dict.fromkeys(answers.values()))
+                    grades = dict(zip(preds, pool.map(lambda a: grade(judge, q.question, str(q.answer), a), preds)))
+            for s in names:
+                pred = answers[ctx[s].context]
                 row[s]["answer"] = pred
                 row[s]["qa_f1"] = token_f1(pred, str(q.answer))
                 if judge is not None:
-                    g = grade(judge, q.question, str(q.answer), pred)
+                    g = grades[pred]
                     row[s]["judge_grade"] = g
                     row[s]["judge_score"] = GRADES.get(g) if g else None
         rows.append(row)
     stats = {"conv": conv.sample_id, "turns": len(conv.turns), "questions": len(conv.qa), "ingest_s": ingest_s,
              "total_s": time.time() - t0, "nli_pairs": getattr(nli, "calls", 0),
+             "llm": llm_stats(llm) if llm is not None else None, "judge": llm_stats(judge) if judge is not None else None,
              "chunk_granularity_adaptive": dict(Counter(c.granularity for c in gran["adaptive"].chunks.values() if c.active))}
     pipe.close()
     return rows, stats
@@ -177,7 +199,8 @@ def main() -> None:
     ap.add_argument("--no-nli", action="store_true", help="skip the NLI contradiction stage (much faster on CPU)")
     ap.add_argument("--llm", action="store_true", help="also answer questions with the configured LLM and score token-F1")
     ap.add_argument("--judge-answers", action="store_true", help="grade LLM answers with the judge model (correct/partial/wrong)")
-    ap.add_argument("--max-questions", type=int, default=None, help="cap questions per conversation (sampled plan)")
+    ap.add_argument("--max-questions", type=int, default=None, help="random sample of N questions per conversation")
+    ap.add_argument("--sample-seed", type=int, default=0, help="seed for --max-questions sampling")
     ap.add_argument("--llm-summaries", action="store_true", help="build L1/L2/L3 with the configured LLM instead of the rule-based generator")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
@@ -198,7 +221,8 @@ def main() -> None:
         rows, stats = run_conversation(conv, args, emb, nli, llm, judge)
         all_rows += rows
         all_stats.append(stats)
-        print(f"{conv.sample_id}: {stats['turns']} turns, {stats['questions']} questions, {stats['total_s']:.0f}s", flush=True)
+        print(f"{conv.sample_id}: {stats['turns']} turns, {stats['questions']} questions, {stats['total_s']:.0f}s"
+              + (f", LLM {stats['llm']['calls']} calls @ {stats['llm']['s_per_call']} s/call" if stats.get('llm') and stats['llm']['calls'] else ""), flush=True)
         with open(out / "questions.jsonl", "a" if len(all_stats) > 1 else "w", encoding="utf-8") as f:
             f.write("\n".join(json.dumps(r) for r in rows) + "\n")
 

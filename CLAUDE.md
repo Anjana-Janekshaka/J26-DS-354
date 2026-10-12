@@ -438,3 +438,109 @@ For each component, one slide/section with exactly three things, no more:
 
 Then one integration slide: the coding-demo CAUGHT/MISSED table (§9) as the single visual that ties
 all four components' claims together — this is the slide judges/panel remember.
+
+---
+
+## 12. Build log & current status (updated 2026-10-12)
+
+Sections 1–11 are the plan. This section records what was actually built, what the numbers are
+so far, and the decisions taken during the build that later work must respect. Name components
+by role here and in code, never by person.
+
+### 12.1 What exists
+
+- **Every package in §3 is implemented** and wired end to end in `integration/`: contracts, conversation
+  manager, sliding window, summarization, retrieval, rule-based controller, decision logger and
+  dashboard (live server + static export).
+  - The P2 items are explicit `TODO: v2` stubs: the LR/RF/GBDT controller, loss Method 2 and the
+    summary repair loop.
+  - Run `pytest -m "not models"` for the fast suite.
+- **`demo/coding_session/` was rebuilt from the §9 description.** The original `ceai-demo/` scaffold
+  was not available.
+- **Evaluation harnesses** (each writes `results/summary.json`):
+  - `eval/locomo` (primary)
+  - `eval/locomo_plus` (supplementary; deterministic "did the cue reach the context")
+  - `eval/synthetic/{sliding_window,summarization,retrieval,controller}`
+- **Free-LLM workflow**, used for answer accuracy, LLM-written summaries and judges:
+  - `integration/llm_client.py`: adapter for OpenAI-compatible endpoints (Ollama, vLLM, LM Studio,
+    Groq, OpenRouter, DeepInfra), with a disk cache so interrupted runs resume.
+  - `notebooks/free_gpu_eval.ipynb`: runs on Colab or Kaggle with Ollama. It checks for the GPU and
+    prints a runtime estimate before the long part. Rebuild it with `scripts/build_notebook.py`, and
+    package the code for upload with `scripts/package_for_notebook.py`.
+  - `eval/judge.py`: correct / partial / wrong answer judge (1 / 0.5 / 0).
+  - `eval/human_agreement/`: blind labelling sheets plus judge-vs-human Cohen's kappa. A judge's
+    numbers are citable only if kappa is at least 0.6.
+
+### 12.2 Results so far
+
+Source: the `summary.json` files. Results from before the controller-family evaluation merged on
+the development branch should be rerun before they go on slides.
+
+| Where | Result |
+|---|---|
+| Coding demo (§9) | adaptive **2/2**, fixed 6-exchange window 0/2, always-window 1/2, always-summarization 2/2, always-RAG 2/2 |
+| Controller, synthetic (180 probes) | evidence hit: adaptive **1.000** vs best single strategy (RAG) 0.900, **+0.10**; always-hybrid ties at 1.000. Selection macro-F1 0.35 |
+| LoCoMo, 1,986 questions, NLI off | evidence hit: adaptive 0.443 vs RAG 0.444, a tie (almost every question routes to RAG); hybrid 0.358 |
+| LoCoMo answer accuracy, Colab pilot (`eval/locomo/results_colab_pilot`) | Qwen2.5-7B answering and judging, 100 questions. Judge score: RAG 0.310, hybrid 0.315, adaptive 0.310, window 0.140, summarization 0.100. **Pilot only:** the sample was the first 50 questions per conversation (since replaced by a seeded random sample) |
+| LoCoMo-Plus, 401 items | cue hit: adaptive 0.087 vs RAG 0.167 vs hybrid 0.185, a **negative result**: statement-style triggers are routed to summarization |
+| Summarization (30 degradation traces, budget 1000) | structured + merge vs naive: loss 0.06 vs 0.37; symbol retention 0.90 vs 0.00; stale-fact leakage **0.00 vs 0.50** |
+| Sliding window (budget 100) | gold-turn recall 0.719 vs recency-only 0.556 (59 wins / 0 losses) |
+| RAG contradiction flags (184 pairs) | test P 0.82 / R 0.73 / F1 0.77 at threshold 0.95, chosen on dev |
+| RAG granularity (LoCoMo, equal 400-word budget) | recall: adaptive 0.428, segment 0.421, turn 0.381 |
+
+### 12.3 Findings that narrow the §6 claims
+
+Present these as they are; don't argue around them.
+
+- **§6.1 controller:** on pure-recall benchmarks (LoCoMo) adaptive *ties* the best fixed strategy,
+  because the right choice is always RAG. Its gains show on mixed workloads: the coding traps and
+  the synthetic switch set. Frame it as **"no regret when one strategy is right, a gain when the
+  conversation changes type."**
+- **§6.2 sliding window:** **equal weights are not optimal** in the ablation; relevance at 0.5 or
+  more wins. Weights should be selected on dev, not defended as equal.
+- **§6.4 RAG:**
+  - **The NLI model cannot tell code identifiers apart**, so code-symbol staleness uses an exact AST
+    signature diff (`verifier="signature_diff"`).
+  - **The NLI scores are made bidirectional** (minimum of both directions). That removed the
+    one-directional false positives seen in the demo.
+- **Judges:** a 7B judge is fine for grading answers. It is **not** usable for the controller's
+  strategy oracle: it agreed with the objective oracle at only 0.33 (kappa 0.11). That half of the
+  dual-source oracle needs a much stronger judge (70B class or Claude).
+
+### 12.4 Rules adopted during the build
+
+- **Dev/test discipline.**
+  - LoCoMo-Plus: even item ids are dev, odd are test.
+  - The synthetic sets are split at conversation level.
+  - Tune only on dev, and report test once.
+- **Non-committing probes.** Evaluation questions are probes (`user_turn(..., remember=False)`): they
+  never change turn counts, controller history or escalations.
+- **The §5 rule is enforced structurally.** `RuleBasedController.decide()` receives only the
+  `TurnSignal`, and escalations apply on the next turn only.
+- **Fair comparisons only.** Every system or strategy compared gets the same conversations, the same
+  token budget, the same answering model and the same judge. Never compare against numbers copied
+  from other papers.
+- **Commits are authored by the student only**, with no AI attribution lines.
+
+### 12.5 Open work (in this order)
+
+1. **LoCoMo-Plus fixes.** Evaluate on dev, then report test once:
+   - the controller routing fix for statement-style chat turns,
+   - the summarizer's new `user_state` facts (first-person states, habits, goals, beliefs),
+   - warm-up decision turns (`--warmup-turns`). On dev alone this lifted adaptive from 0.090 to 0.169
+     but dropped short-range cues, so it isn't final.
+2. **Human agreement labelling** of the pilot judge: sheets are generated per annotator.
+3. **A stronger judge** for the controller's strategy oracle: a pay-per-token 70B model (about $1) or Claude.
+4. **External baselines** in the same harness: Mem0, LangChain summary-buffer memory, and full
+   context. Measure answer accuracy, write-time LLM calls and the coding traps.
+5. **An OpenAI-compatible proxy** so CEAI can sit in front of any chat app or agent, with the
+   dashboard live during the presentation demo.
+6. **Final frozen run.** Rerun everything on the final code, with the random question sample, and
+   regenerate the README tables from the `summary.json` files.
+
+### 12.6 Branches
+
+- `development` is the integration branch.
+- Each component has a working branch: `retrieval-augmented`, `summarization`,
+  `sliding-window-conversation-manager` and `runtime-controller`.
+- Component work merges into `development`, normally by pull request.

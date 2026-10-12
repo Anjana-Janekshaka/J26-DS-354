@@ -94,6 +94,7 @@ class OpenAICompatibleLLM:
         self.timeout_s = timeout_s
         self.max_retries = max_retries
         self.calls = 0
+        self.seconds = 0.0
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
@@ -110,6 +111,7 @@ class OpenAICompatibleLLM:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         delay = 2.0
+        t_start = time.time()
         for attempt in range(self.max_retries + 1):
             req = urllib.request.Request(self.url, data=body, headers=headers, method="POST")
             try:
@@ -128,6 +130,7 @@ class OpenAICompatibleLLM:
             time.sleep(wait)
             delay = min(delay * 2, 60.0)
         self.calls += 1
+        self.seconds += time.time() - t_start
         usage = data.get("usage") or {}
         self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
         self.completion_tokens += int(usage.get("completion_tokens") or 0)
@@ -183,7 +186,9 @@ def get_llm(cache_path: str | Path | None = None, role: str = "answer"):
         model = pick("MODEL")
         if not model:
             raise LLMUnavailable("CEAI_LLM_BASE_URL is set but CEAI_LLM_MODEL is not")
-        llm = OpenAICompatibleLLM(base, model, api_key=pick("API_KEY"))
+        # Short replies are all the harnesses need; a low cap stops a chatty model spending minutes per call.
+        default_cap = "16" if role == "judge" else "96"
+        llm = OpenAICompatibleLLM(base, model, api_key=pick("API_KEY"), max_tokens=int(pick("MAX_TOKENS") or default_cap))
     elif credentials_present():
         try:
             llm = ClaudeLLM()
@@ -192,6 +197,19 @@ def get_llm(cache_path: str | Path | None = None, role: str = "answer"):
     if llm is not None and cache_path is not None:
         return CachedLLM(llm, cache_path)
     return llm
+
+
+def concurrency() -> int:
+    """Parallel requests the harnesses may send (match OLLAMA_NUM_PARALLEL / the server's batch size)."""
+    return max(1, int(os.environ.get("CEAI_LLM_CONCURRENCY", "4")))
+
+
+def stats(llm) -> dict:
+    inner = getattr(llm, "inner", llm)
+    calls = getattr(inner, "calls", 0)
+    return {"calls": calls, "cache_hits": getattr(llm, "hits", 0), "seconds": round(getattr(inner, "seconds", 0.0), 1),
+            "s_per_call": round(getattr(inner, "seconds", 0.0) / calls, 2) if calls else None,
+            "prompt_tokens": getattr(inner, "prompt_tokens", 0), "completion_tokens": getattr(inner, "completion_tokens", 0)}
 
 
 def describe(llm) -> str:

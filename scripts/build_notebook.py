@@ -50,9 +50,10 @@ sample (3 conversations × 100 questions) is about 1–2 hours end to end.
     code("""
 # ---- configuration ------------------------------------------------------------------------
 ANSWER_MODEL = "qwen2.5:7b-instruct"    # answers questions / writes summaries
-JUDGE_MODEL = "qwen2.5:14b-instruct"    # grades answers; keep it larger than the answer model
-CONVERSATIONS = 3                       # LoCoMo conversations (10 = full set)
-MAX_QUESTIONS = 100                     # questions per conversation (None = all)
+JUDGE_MODEL = "qwen2.5:7b-instruct"     # grades answers; 14B is better but crowds a free T4 (OK on Kaggle 2xT4)
+CONVERSATIONS = 2                       # LoCoMo conversations (10 = full set)
+MAX_QUESTIONS = 50                      # questions per conversation (None = all)
+PARALLEL = 4                            # requests sent at once; Ollama batches them on the GPU
 REPO_URL = ""                           # git URL if the repo is pushed; otherwise upload the zip
 RUN = {
     "locomo_qa": True,                  # answers + token-F1 + judge grades
@@ -107,7 +108,8 @@ print("code ready at", CODE)
 subprocess.run("apt-get install -y -qq zstd pciutils > /dev/null 2>&1 || true", shell=True)
 if shutil.which("ollama") is None:
     subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
-env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": "2"}
+env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": str(PARALLEL),
+       "OLLAMA_CONTEXT_LENGTH": "4096"}  # controller-judge prompts exceed Ollama's small default context
 server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "w"), stderr=subprocess.STDOUT, env=env)
 for _ in range(120):
     try:
@@ -119,6 +121,9 @@ else:
     raise RuntimeError("ollama did not start; see " + str(WORK / "ollama.log"))
 for model in {ANSWER_MODEL, JUDGE_MODEL}:
     subprocess.run(["ollama", "pull", model], check=True)
+# The single most common cause of very slow runs: Ollama silently running on the CPU.
+print(subprocess.run("nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv", shell=True,
+                     capture_output=True, text=True).stdout or "NO GPU VISIBLE - switch the runtime to T4 GPU")
 print("ollama ready")
 """),
     code("""
@@ -126,11 +131,28 @@ print("ollama ready")
 os.environ["CEAI_LLM_BASE_URL"] = "http://127.0.0.1:11434/v1"
 os.environ["CEAI_LLM_MODEL"] = ANSWER_MODEL
 os.environ["CEAI_JUDGE_MODEL"] = JUDGE_MODEL
+os.environ["CEAI_LLM_CONCURRENCY"] = str(PARALLEL)
 sys.path[:0] = [str(CODE), str(CODE / "packages")]
+from concurrent.futures import ThreadPoolExecutor
 from integration.llm_client import get_llm
 from eval.judge import grade
-print("answer model:", get_llm()("Reply with exactly: OK", "ping"))
-print("judge check (expect CORRECT):", grade(get_llm(role="judge"), "When did she move?", "7 May 2023", "She moved on May 7, 2023."))
+answer, judge = get_llm(), get_llm(role="judge")
+print("answer model:", answer("Reply with exactly: OK", "ping"))
+print("judge check (expect CORRECT):", grade(judge, "When did she move?", "7 May 2023", "She moved on May 7, 2023."))
+print(subprocess.run("ollama ps", shell=True, capture_output=True, text=True).stdout)  # PROCESSOR column should say GPU
+
+# ---- timing test: estimate the whole run before committing hours to it ----------------------
+context = "[Memory context] " + ("Caroline said she went to a support group on 7 May 2023 and felt welcomed. " * 60)
+t = time.time()
+with ThreadPoolExecutor(PARALLEL) as pool:
+    list(pool.map(lambda i: answer("Answer with a short phrase.", f"{context} Question {i}: When did Caroline go to the group?"),
+                  range(2 * PARALLEL)))
+per_call = (time.time() - t) / (2 * PARALLEL)
+n_answer = CONVERSATIONS * (MAX_QUESTIONS or 200) * 0.8 * 4      # ~80% answerable, ~4 distinct contexts each
+estimate_h = (n_answer * per_call * 1.3 + 180 * per_call * 1.5) / 3600
+print(f"~{per_call:.1f} s per answer call (with {PARALLEL} in parallel) -> estimated run time ~{estimate_h:.1f} h")
+if per_call > 4:
+    print("SLOW: check the GPU line above. If 'ollama ps' says CPU, restart the runtime with a T4 GPU.")
 """),
     code("""
 def run(args, name):
