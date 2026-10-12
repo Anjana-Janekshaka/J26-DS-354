@@ -140,6 +140,8 @@ used for reporting:
 
 Held-out numbers: _to be filled from `results/test/summary.json` after running with the real models._
 `--offline` (hashing embedder, no NLI) only checks that the code runs; its numbers are not results.
+Controller results produced with NLI enabled before the 2026-10-12 probe fix (probes no longer mark
+contradiction flags as reported, `integration/pipeline.py`) should be re-run.
 
 ### Component 1 — Dynamic Sliding Window (40 topic-shift conversations, 360 probes)
 
