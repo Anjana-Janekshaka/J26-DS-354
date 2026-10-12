@@ -123,7 +123,8 @@ class MemoryPipeline:
             m.ingest(turn)
 
     # ------------------------------------------------------------------ escalations (Tier 2, next turn)
-    def _escalations(self, signal: TurnSignal, outputs: dict[str, StrategyModuleOutput]) -> list[EscalationEvent]:
+    def _escalations(self, signal: TurnSignal, outputs: dict[str, StrategyModuleOutput], commit: bool = True) -> list[EscalationEvent]:
+        """``commit=False`` (evaluation probes) builds the events without marking flags as reported."""
         events: list[EscalationEvent] = []
         summ = outputs.get("summarization")
         if summ is not None and summ.quality.loss_threshold_exceeded:  # type: ignore[union-attr]
@@ -143,7 +144,8 @@ class MemoryPipeline:
         if rag is not None:
             new = [f for f in rag.quality.contradiction_flags if (f.chunk_id, f.superseded_by) not in self._reported_flags]  # type: ignore[union-attr]
             if new:
-                self._reported_flags |= {(f.chunk_id, f.superseded_by) for f in new}
+                if commit:
+                    self._reported_flags |= {(f.chunk_id, f.superseded_by) for f in new}
                 events.append(
                     EscalationEvent(
                         event_id=uuid.uuid4().hex[:12],
@@ -184,7 +186,7 @@ class MemoryPipeline:
                     logged_at=utcnow(),
                 )
             )
-        events = self._escalations(signal, outputs)
+        events = self._escalations(signal, outputs, commit=remember)
         for ev in events:
             if remember:
                 self.controller.register_escalation(ev)
