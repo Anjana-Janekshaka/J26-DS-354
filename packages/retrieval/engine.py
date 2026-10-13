@@ -44,6 +44,11 @@ class RetrievalConfig(BaseModel):
     top_k: int = Field(default=24, ge=1)  # upper bound; the token budget is the binding limit
     min_score: float = 0.15
     check_contradictions: bool = True
+    # Read-path options (selected on the LoCoMo dev split; see CLAUDE.md 12.4):
+    compact_headers: bool = True  # "[turns: t0012]" instead of "[chunk turn:t0012 | turn | turns: t0012 | score 0.45]"
+    reranker: str | None = None  # cross-encoder model name; reranks the top ``rerank_candidates`` FAISS hits
+    rerank_candidates: int = Field(default=50, ge=1)
+    neighbors: int = Field(default=0, ge=0)  # adjacent turns added around each retrieved turn chunk
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     contradiction: ContradictionConfig = Field(default_factory=ContradictionConfig)
 
@@ -103,6 +108,13 @@ class RetrievalEngine:
         self._seq = 0
         self.boundary_log: list[tuple[str, BoundaryDecision]] = []
         self._latency_ema_ms = 1.0
+        self._turns: list[ConversationTurn] = []
+        self._pos: dict[str, int] = {}
+        self._reranker = None
+        if self.config.reranker:
+            from .rerank import CrossEncoderReranker
+
+            self._reranker = CrossEncoderReranker(self.config.reranker)
 
     # ------------------------------------------------------------------ helpers
     def resolve(self, chunk_id: str) -> str:
@@ -181,6 +193,8 @@ class RetrievalEngine:
         self._shift[signal.turn_id] = signal.shift_detected
 
     def ingest(self, turn: ConversationTurn) -> None:
+        self._pos[turn.turn_id] = len(self._turns)
+        self._turns.append(turn)
         vec = self.embedder.encode([turn.content])[0]
         tokens = count_tokens(turn.render())
         defines = bool(code_signatures(turn.content))
@@ -216,12 +230,29 @@ class RetrievalEngine:
                 out.append((self.chunks[cid], score))
         return out
 
-    @staticmethod
-    def _render(chunk: Chunk, score: float | None, note: str = "") -> str:
-        head = f"[chunk {chunk.chunk_id} | {chunk.granularity} | turns: {' '.join(chunk.turn_ids)}"
-        head += f" | score {score:.2f}" if score is not None else ""
-        head += f" | {note}]" if note else "]"
-        body = chunk.text
+    def _with_neighbors(self, chunk: Chunk, exclude: set[str] | frozenset[str] = frozenset()) -> list[ConversationTurn]:
+        """The chunk's turns plus ``neighbors`` adjacent turns on each side (dialogue answers often
+        sit in the reply right after the turn that matches the question). Neighbours already shown
+        in an earlier block (``exclude``) are left out; the chunk's own turns never are."""
+        n = self.config.neighbors
+        if n == 0 or chunk.granularity != "turn":
+            return list(chunk.turns)
+        i = self._pos.get(chunk.turns[0].turn_id)
+        if i is None:
+            return list(chunk.turns)
+        own = set(chunk.turn_ids)
+        return [t for t in self._turns[max(0, i - n) : i + n + 1] if t.turn_id in own or t.turn_id not in exclude]
+
+    def _render(self, chunk: Chunk, score: float | None, note: str = "", exclude: set[str] | frozenset[str] = frozenset()) -> str:
+        turns = self._with_neighbors(chunk, exclude)
+        ids = " ".join(t.turn_id for t in turns)
+        if self.config.compact_headers:
+            head = f"[turns: {ids}" + (f" | {note}]" if note else "]")
+        else:
+            head = f"[chunk {chunk.chunk_id} | {chunk.granularity} | turns: {ids}"
+            head += f" | score {score:.2f}" if score is not None else ""
+            head += f" | {note}]" if note else "]"
+        body = "\n".join(t.render() for t in turns) if len(turns) != len(chunk.turns) else chunk.text
         if chunk.superseded_by:
             body += (
                 f"\n[!] stale: superseded by {chunk.superseded_by} "
@@ -233,24 +264,33 @@ class RetrievalEngine:
         t0 = time.perf_counter()
         budget = signal.token_usage.budget
         top_k = self.config.top_k
-        results = self.search(query, top_k * 3)
+        if self._reranker is not None:
+            cands = [(c, sc) for c, sc in self.search(query, max(top_k * 3, self.config.rerank_candidates)) if sc >= self.config.min_score]
+            rel = self._reranker.score(query, [c.text for c, _ in cands])
+            results = sorted(((c, r) for (c, _), r in zip(cands, rel)), key=lambda x: -x[1])
+            floor = 0.0  # the bi-encoder floor was applied before reranking
+        else:
+            results = self.search(query, top_k * 3)
+            floor = self.config.min_score
         picked: list[tuple[Chunk, str]] = []
+        covered: set[str] = set()
         picked_ids: set[str] = set()
         used = 0
         sep = count_tokens(CONTEXT_BLOCK_SEPARATOR)
         for chunk, score in results:
             if len(picked) >= top_k:
                 break
-            if score < self.config.min_score:
+            if score < floor:
                 break
-            if chunk.chunk_id in picked_ids:
-                continue
-            block = self._render(chunk, score)
+            if chunk.chunk_id in picked_ids or set(chunk.turn_ids) <= covered:
+                continue  # already shown, e.g. as a neighbour of an earlier hit
+            block = self._render(chunk, score, exclude=covered)
             tok = count_tokens(block) + sep
             if used + tok > budget:
                 continue
             picked.append((chunk, block))
             picked_ids.add(chunk.chunk_id)
+            covered.update(t.turn_id for t in self._with_neighbors(chunk, covered))
             used += tok
             if chunk.superseded_by:
                 newer = self.chunks.get(self.resolve(chunk.superseded_by))
