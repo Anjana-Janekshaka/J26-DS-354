@@ -57,8 +57,14 @@ def make_nli(enabled: bool):
 
 
 def trace_conversation(conv: dict, budget: int, emb: Embedder, nli, keep_contexts: bool = True) -> dict:
+    # Same RAG read path as the LoCoMo harnesses: cross-encoder reranking (selected on LoCoMo dev);
+    # skipped with the offline hashing embedder, which is for code checks only.
+    from contracts.text import HashingEmbedder
+    from retrieval.rerank import DEFAULT_RERANKER
+
+    reranker = None if isinstance(getattr(emb, "inner", emb), HashingEmbedder) else DEFAULT_RERANKER
     pipe = MemoryPipeline(conv["id"], token_budget=budget, embedder=emb, nli=nli,
-                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None))
+                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None, reranker=reranker))
     probes_at = defaultdict(list)
     for p in conv["probes"]:
         probes_at[p["after_index"]].append(p)
@@ -107,11 +113,42 @@ def build_traces(convs: list[dict], budget: int, embedder: str, nli: bool, cache
                 return [json.loads(line) for line in f]
     warnings.filterwarnings("ignore")
     emb, scorer = make_embedder(embedder), make_nli(nli)
+    # Progress is appended per conversation to a ".partial" file, so an interrupted run (e.g. a
+    # notebook disconnect) resumes where it stopped instead of re-tracing everything.
+    partial = cache.with_name(cache.name + ".partial") if cache is not None else None
+    done: dict[str, dict] = {}
+    if partial is not None and partial.exists() and not rebuild:
+        with open(partial, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        if lines and json.loads(lines[0]) == header:
+            for line in lines[1:]:
+                try:
+                    t = json.loads(line)
+                except json.JSONDecodeError:
+                    break  # a line cut off by the interruption
+                done[t["conv"]] = t
+            if done:
+                print(f"  resuming: {len(done)}/{len(convs)} conversations already traced", flush=True)
+    if partial is not None:
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        with open(partial, "w", encoding="utf-8") as f:
+            f.write(json.dumps(header) + "\n")
+            for t in done.values():
+                f.write(json.dumps(t) + "\n")
     traces = []
     for k, conv in enumerate(convs, 1):
-        traces.append(trace_conversation(conv, budget, emb, scorer))
+        if conv["id"] in done:
+            traces.append(done[conv["id"]])
+            continue
+        t = trace_conversation(conv, budget, emb, scorer)
+        traces.append(t)
+        if partial is not None:
+            with open(partial, "a", encoding="utf-8") as f:
+                f.write(json.dumps(t) + "\n")
         if k % 20 == 0 or k == len(convs):
             print(f"  traced {k}/{len(convs)} conversations", flush=True)
+    if partial is not None:
+        partial.unlink(missing_ok=True)
     if cache is not None:
         cache.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(cache, "wt", encoding="utf-8") as f:

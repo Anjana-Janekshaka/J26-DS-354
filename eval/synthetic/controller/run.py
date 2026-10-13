@@ -50,7 +50,7 @@ JUDGE_SYSTEM = (
 # --------------------------------------------------------------------------- shared helpers
 def traces_for(split: str, args) -> list[dict]:
     convs = load_split(split)
-    tag = f"{split}_b{args.budget}_{args.embedder}_{'nli' if args.nli else 'nonli'}"
+    tag = f"{split}_b{args.budget}_{args.embedder}_{'nli' if args.nli else 'nonli'}" + ("" if args.embedder == "hashing" else "_rerank")
     version = "legacy" if split == "legacy" else GENERATOR_VERSION
     return build_traces(convs, args.budget, args.embedder, args.nli, Path(args.cache_dir) / f"{tag}.jsonl.gz",
                         rebuild=args.rebuild_traces, version=version)

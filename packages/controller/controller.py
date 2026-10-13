@@ -63,9 +63,9 @@ class RuleBasedController:
         )
 
     # ------------------------------------------------------------------ decision
-    def _rule(self, fv: ControllerFeatureVector) -> RuleHit:
+    def _rule(self, fv: ControllerFeatureVector, shift: bool = False) -> RuleHit:
         for rule in RULES:
-            hit = rule(fv, self.config)
+            hit = rule(fv, self.config, shift)
             if hit is not None:
                 return hit
         if fv.prior_strategy is not None:
@@ -85,7 +85,7 @@ class RuleBasedController:
                     self._override = None
 
         fv = self.feature_vector(signal)
-        hit = self._rule(fv)
+        hit = self._rule(fv, signal.shift_detected)
         strategy = hit.strategy
         parts = [f"[{hit.rule}] {hit.reason}"]
 
@@ -101,7 +101,7 @@ class RuleBasedController:
             )
             strategy = fv.prior_strategy
 
-        strategy, notes = apply_escalations(RuleHit(hit.rule, strategy, hit.reason, hit.hard), events)
+        strategy, notes = apply_escalations(RuleHit(hit.rule, strategy, hit.reason, hit.hard), events, self.config)
         parts += notes
 
         override_info = OverrideInfo(applied=False, by=None)

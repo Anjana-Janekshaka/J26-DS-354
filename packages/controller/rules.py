@@ -9,7 +9,7 @@ time (``time_since_last_switch``) to avoid flapping.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Literal
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,13 @@ class RuleConfig(BaseModel):
     low_pressure: float = Field(default=0.6, ge=0.0, le=1.0)  # whole history (nearly) fits
     high_pressure: float = Field(default=0.9, ge=0.0, le=1.0)
     min_dwell_turns: int = Field(default=2, ge=0)
+    # Strategy for long open-ended chat/exploration once the history no longer fits.
+    long_chat_strategy: Literal["summarization", "hybrid", "rag"] = "summarization"
+    # Where a summary-loss escalation (raised on the previous turn) sends a summarization choice.
+    loss_escalation_target: Literal["rag", "hybrid"] = "rag"
+    # Recall questions over budget: always RAG, always hybrid, or hybrid unless the conversation
+    # manager flagged a topic shift (a question about the current topic keeps the recent window).
+    qa_strategy: Literal["rag", "hybrid", "hybrid_unless_shift"] = "rag"
 
 
 @dataclass
@@ -30,10 +37,12 @@ class RuleHit:
     hard: bool
 
 
-Rule = Callable[[ControllerFeatureVector, RuleConfig], RuleHit | None]
+# Rules see the Tier 0/1 feature vector plus one more pre-decision Tier 0 signal from the
+# conversation manager's TurnSignal: whether this message was flagged as a topic shift.
+Rule = Callable[[ControllerFeatureVector, RuleConfig, bool], RuleHit | None]
 
 
-def _fits(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
+def _fits(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
     if fv.token_budget_pressure < cfg.low_pressure:
         return RuleHit(
             "history_fits",
@@ -44,13 +53,20 @@ def _fits(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
     return None
 
 
-def _qa(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
-    if fv.task_type == "qa":
-        return RuleHit("recall_question", "rag", "task_type=qa (recall of earlier facts) with history over budget -> RAG retrieves the specific turns", hard=True)
-    return None
+def _qa(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+    if fv.task_type != "qa":
+        return None
+    mode = cfg.qa_strategy
+    if mode == "hybrid_unless_shift":
+        mode = "rag" if shift else "hybrid"
+    if mode == "rag":
+        why = " (topic shift detected)" if cfg.qa_strategy == "hybrid_unless_shift" else ""
+        return RuleHit("recall_question", "rag", f"task_type=qa (recall of earlier facts){why} with history over budget -> RAG retrieves the specific turns", hard=True)
+    return RuleHit("recall_question", "hybrid",
+                   "task_type=qa on the current topic (no shift) with history over budget -> hybrid: recent window plus retrieved earlier turns", hard=True)
 
 
-def _build(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
+def _build(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
     if fv.task_type == "code_generation":
         return RuleHit(
             "build_request",
@@ -61,7 +77,7 @@ def _build(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
     return None
 
 
-def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
+def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
     if fv.task_type == "code_refactor":
         return RuleHit(
             "refactor_request",
@@ -72,18 +88,26 @@ def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
     return None
 
 
-def _debug(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
+def _debug(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
     if fv.task_type == "debugging":
         return RuleHit("debugging", "sliding_window", "task_type=debugging -> sliding window: latest edits and traces are local and recent", hard=False)
     return None
 
 
-def _long_open(fv: ControllerFeatureVector, cfg: RuleConfig) -> RuleHit | None:
+_LONG_CHAT_REASON = {
+    "summarization": "summarization keeps the gist of the long history",
+    "hybrid": "hybrid keeps the recent window and retrieves related earlier turns",
+    "rag": "RAG retrieves the earlier turns related to this message",
+}
+
+
+def _long_open(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
     if fv.task_type in ("chat", "exploration") and fv.token_budget_pressure >= cfg.low_pressure:
+        s = cfg.long_chat_strategy
         return RuleHit(
             "long_open_conversation",
-            "summarization",
-            f"task_type={fv.task_type} with token pressure {fv.token_budget_pressure:.2f} -> summarization keeps the gist of the long history",
+            s,
+            f"task_type={fv.task_type} with token pressure {fv.token_budget_pressure:.2f} -> {_LONG_CHAT_REASON[s]}",
             hard=False,
         )
     return None
@@ -93,17 +117,18 @@ RULES: list[Rule] = [_fits, _qa, _build, _refactor, _debug, _long_open]
 
 
 def apply_escalations(
-    hit: RuleHit, events: list[EscalationEvent]
+    hit: RuleHit, events: list[EscalationEvent], cfg: RuleConfig | None = None
 ) -> tuple[SelectedStrategy, list[str]]:
     """Fold escalations from the previous turn into this turn's choice (never the turn that raised them)."""
+    target = (cfg or RuleConfig()).loss_escalation_target
     strategy = hit.strategy
     notes: list[str] = []
     for ev in events:
         if ev.kind == "loss_threshold_exceeded" and strategy == "summarization":
-            strategy = "rag"
+            strategy = target
             notes.append(
                 f"escalation from {ev.source_turn_id}: summary loss {ev.detail.get('loss_score', '?')} > 0.15 "
-                f"(tier {ev.detail.get('tier_emitted', '?')}) -> switch summarization to RAG"
+                f"(tier {ev.detail.get('tier_emitted', '?')}) -> switch summarization to {'RAG' if target == 'rag' else 'hybrid'}"
             )
         elif ev.kind == "contradiction_flagged" and strategy == "sliding_window":
             strategy = "hybrid"
