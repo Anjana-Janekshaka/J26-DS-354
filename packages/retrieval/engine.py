@@ -48,6 +48,9 @@ class RetrievalConfig(BaseModel):
     compact_headers: bool = True  # "[turns: t0012]" instead of "[chunk turn:t0012 | turn | turns: t0012 | score 0.45]"
     reranker: str | None = None  # cross-encoder model name; reranks the top ``rerank_candidates`` FAISS hits
     rerank_candidates: int = Field(default=50, ge=1)
+    # The reranker is trained on web QA (MS MARCO) and ranks prose above source code, so code tasks
+    # (per the TurnSignal task type) keep the bi-encoder ranking. See CLAUDE.md section 12.
+    rerank_skip_task_types: tuple[str, ...] = ("code_generation", "code_refactor")
     neighbors: int = Field(default=0, ge=0)  # adjacent turns added around each retrieved turn chunk
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     contradiction: ContradictionConfig = Field(default_factory=ContradictionConfig)
@@ -264,7 +267,7 @@ class RetrievalEngine:
         t0 = time.perf_counter()
         budget = signal.token_usage.budget
         top_k = self.config.top_k
-        if self._reranker is not None:
+        if self._reranker is not None and signal.task_type not in self.config.rerank_skip_task_types:
             cands = [(c, sc) for c, sc in self.search(query, max(top_k * 3, self.config.rerank_candidates)) if sc >= self.config.min_score]
             rel = self._reranker.score(query, [c.text for c, _ in cands])
             results = sorted(((c, r) for (c, _), r in zip(cands, rel)), key=lambda x: -x[1])
