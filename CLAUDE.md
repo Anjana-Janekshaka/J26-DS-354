@@ -441,7 +441,7 @@ all four components' claims together — this is the slide judges/panel remember
 
 ---
 
-## 12. Build log & current status (updated 2026-10-12)
+## 12. Build log & current status (updated 2026-10-13)
 
 Sections 1–11 are the plan. This section records what was actually built, what the numbers are
 so far, and the decisions taken during the build that later work must respect. Name components
@@ -470,6 +470,30 @@ by role here and in code, never by person.
   - `eval/judge.py`: correct / partial / wrong answer judge (1 / 0.5 / 0).
   - `eval/human_agreement/`: blind labelling sheets plus judge-vs-human Cohen's kappa. A judge's
     numbers are citable only if kappa is at least 0.6.
+- **RAG read path** (`RetrievalConfig`):
+  - **Compact chunk headers** are the default: `[turns: t0012]`. The old headers spent about 20
+    tokens per chunk, close to half of a 1,024-token budget.
+  - **Optional cross-encoder reranker**: `reranker="cross-encoder/ms-marco-MiniLM-L-6-v2"`, in
+    `packages/retrieval/rerank.py`. It is on by default in every benchmark harness and the demo
+    (`--no-reranker` turns it off).
+    - It is **skipped for code tasks** (`rerank_skip_task_types`: `code_generation` and
+      `code_refactor`, read from the TurnSignal), which keep the bi-encoder ranking. See 12.3.
+  - **Optional neighbour turns** around each hit (`neighbors`), kept as an ablation only.
+- **More benchmarks and options:**
+  - `eval/locomo/stream.py`, **in-stream LoCoMo**: each question is asked either right after the
+    session holding its evidence ("fresh") or at the end ("late"), so the right strategy changes
+    during the conversation.
+  - `eval.locomo.run --split dev|test`: conversations 1, 3, 5, 7, 9 are dev, the rest test.
+  - The answer prompt now tells the model to resolve relative dates against the session date.
+- **Controller routing options** in `RuleConfig`: `long_chat_strategy`, `loss_escalation_target` and
+  `qa_strategy`. Rules also receive the TurnSignal's topic-shift flag, a Tier 0 signal, so this
+  doesn't break §5.
+- **Frozen configuration:** `eval/synthetic/controller/frozen_rule_config.json`, loaded by
+  `eval/frozen.py`. Every benchmark and the demo run with it. It is written by
+  `eval.synthetic.controller.tune_rules`, which tunes on train + val only, and recording resumes
+  after an interruption.
+- **The notebook also runs GPU-only jobs** (controller tuning, LoCoMo-Plus dev routing variants),
+  and installs Ollama only when an LLM job is selected.
 
 ### 12.2 Results so far
 
@@ -488,6 +512,17 @@ the development branch should be rerun before they go on slides.
 | RAG contradiction flags (184 pairs) | test P 0.82 / R 0.73 / F1 0.77 at threshold 0.95, chosen on dev |
 | RAG granularity (LoCoMo, equal 400-word budget) | recall: adaptive 0.428, segment 0.421, turn 0.381 |
 
+**Dev-split results, 2026-10-13.** These were used to choose settings; they are **not** test
+results.
+
+| Dev set | Result |
+|---|---|
+| LoCoMo dev (5 conversations, 999 questions), RAG read path | evidence hit, with adaptive equal to RAG: old headers **0.496** → compact headers 0.542 → **+ reranker 0.709** (answer in context 0.326 → 0.476; multi-hop 0.15 → 0.31). Adding one neighbour turn gave 0.735 but slightly *lower* answer-in-context and multi-hop, so it was not adopted |
+| In-stream LoCoMo dev (1,018 questions, reranker on) | evidence hit: window 0.449, summarization 0.168, RAG 0.744, **hybrid 0.758**, adaptive 0.746. Fresh: window 0.828, hybrid 0.848, RAG 0.793. Late: RAG 0.697 |
+| LoCoMo-Plus dev (201 items, 10 warm-up decision turns) | without reranker: RAG 0.164, hybrid 0.194, adaptive 0.169. With reranker: RAG 0.129, hybrid 0.164, adaptive 0.134 (current routing) or 0.164 (long chat / lossy summary → hybrid). The new `user_state` facts lifted summarization 0.090 → 0.109 |
+| Synthetic controller val (tuning grid, 1,512 configs) | best val evidence hit 0.992 with the current routing at `low_pressure` 0.9 and `min_dwell_turns` 3 (val macro-F1 0.327 vs 0.263 for the old defaults). Routing long chat to hybrid: 0.933 |
+| Coding demo with the frozen config | **1/2 with the reranker on every turn** (hybrid misses the duplicate-function trap), 2/2 without it, and **2/2 with the reranker skipped for code tasks** (the adopted setting) |
+
 ### 12.3 Findings that narrow the §6 claims
 
 Present these as they are; don't argue around them.
@@ -503,6 +538,15 @@ Present these as they are; don't argue around them.
     signature diff (`verifier="signature_diff"`).
   - **The NLI scores are made bidirectional** (minimum of both directions). That removed the
     one-directional false positives seen in the demo.
+- **The reranker is a trade-off, not a free gain.** It lifts LoCoMo dev RAG from 0.542 to 0.709, but
+  it hurts LoCoMo-Plus (0.164 → 0.129) and code retrieval. It was trained on web QA (MS MARCO), so it
+  ranks prose above code blocks. In the demo, hybrid's half-budget RAG slice then loses the existing
+  definition.
+- **Routing has little room on LoCoMo-style QA.** Hybrid and RAG retrieve nearly the same evidence,
+  so even perfect fresh/late routing would reach only about 0.769, against 0.758 for always-hybrid.
+  - The topic-shift flag barely separates fresh from late questions: it fires on 47% vs 62% of them.
+  - Similarity to the last turns separates them better (AUC 0.74), but gave only +0.004, so it was
+    not added.
 - **Judges:** a 7B judge is fine for grading answers. It is **not** usable for the controller's
   strategy oracle: it agreed with the objective oracle at only 0.33 (kappa 0.11). That half of the
   dual-source oracle needs a much stronger judge (70B class or Claude).
@@ -510,9 +554,18 @@ Present these as they are; don't argue around them.
 ### 12.4 Rules adopted during the build
 
 - **Dev/test discipline.**
+  - LoCoMo: conversations at even index (1, 3, 5, 7, 9) are dev, odd are test.
   - LoCoMo-Plus: even item ids are dev, odd are test.
-  - The synthetic sets are split at conversation level.
+  - The synthetic sets are split at conversation level (train / val / test in `splits.json`).
   - Tune only on dev, and report test once.
+  - The coding demo is a check, never a tuning set.
+- **Selection rule for controller routing, declared before the results:** the best average evidence
+  hit across the dev sets, equally weighted. The dev sets are synthetic val, LoCoMo-Plus dev and
+  in-stream LoCoMo dev, plus plain LoCoMo dev, which was added before deciding because it makes the
+  choice stricter.
+  - Result: keep the current routing (long chat → summarization, lossy summary → RAG,
+    questions → RAG) with `low_pressure` 0.9 and `min_dwell_turns` 3. That averages 0.645, against
+    0.638–0.640 for the alternatives.
 - **Non-committing probes.** Evaluation questions are probes (`user_turn(..., remember=False)`): they
   never change turn counts, controller history or escalations.
 - **The §5 rule is enforced structurally.** `RuleBasedController.decide()` receives only the
@@ -524,18 +577,26 @@ Present these as they are; don't argue around them.
 
 ### 12.5 Open work (in this order)
 
-1. **LoCoMo-Plus fixes.** Evaluate on dev, then report test once:
-   - the controller routing fix for statement-style chat turns,
-   - the summarizer's new `user_state` facts (first-person states, habits, goals, beliefs),
-   - warm-up decision turns (`--warmup-turns`). On dev alone this lifted adaptive from 0.090 to 0.169
-     but dropped short-range cues, so it isn't final.
-2. **Human agreement labelling** of the pilot judge: sheets are generated per annotator.
-3. **A stronger judge** for the controller's strategy oracle: a pay-per-token 70B model (about $1) or Claude.
-4. **External baselines** in the same harness: Mem0, LangChain summary-buffer memory, and full
+0. **Reranker scope: decided, validation pending.** The reranker runs on non-code turns only.
+   - The reason is principled, not fitted to the demo: a web-QA reranker is out of domain for
+     source code.
+   - On LoCoMo dev it changes nothing, because all of its questions are `qa` or `debugging`, so
+     0.709 stands.
+   - **Still to do before the test runs:** re-record the synthetic val traces (cache tag
+     `_rerank-noncode`) and confirm val evidence hit is not below the 0.992 measured with the
+     reranker on every turn.
+1. **LoCoMo-Plus.** The routing variants and `user_state` facts are evaluated on dev (12.2). With
+   the frozen routing, adaptive stays below always-hybrid there. Report that as it is when the
+   test split runs.
+2. **Test runs, once, with the frozen configuration:** LoCoMo test, in-stream LoCoMo test,
+   LoCoMo-Plus test and the synthetic controller test (`eval.synthetic.controller.run --split test`).
+3. **Human agreement labelling** of the pilot judge: sheets are generated per annotator.
+4. **A stronger judge** for the controller's strategy oracle: a pay-per-token 70B model (about $1) or Claude.
+5. **External baselines** in the same harness: Mem0, LangChain summary-buffer memory, and full
    context. Measure answer accuracy, write-time LLM calls and the coding traps.
-5. **An OpenAI-compatible proxy** so CEAI can sit in front of any chat app or agent, with the
+6. **An OpenAI-compatible proxy** so CEAI can sit in front of any chat app or agent, with the
    dashboard live during the presentation demo.
-6. **Final frozen run.** Rerun everything on the final code, with the random question sample, and
+7. **Final frozen run.** Rerun everything on the final code, with the random question sample, and
    regenerate the README tables from the `summary.json` files.
 
 ### 12.6 Branches

@@ -30,8 +30,8 @@ from pathlib import Path
 
 from contracts import ControllerDecision, OverrideInfo
 from contracts.text import CachingEmbedder
+from eval.frozen import frozen_controller
 from eval.metrics import evidence_hit, macro_f1, oracle_label
-from controller import RuleConfig
 from integration import MemoryPipeline, assemble_prompt
 from retrieval.rerank import DEFAULT_RERANKER
 from retrieval import RetrievalConfig, SentenceTransformerEmbedder
@@ -70,16 +70,16 @@ def schedule(conv, seed: int) -> dict[int, list[tuple[str, object]]]:
     return due
 
 
-def rule_config(args) -> RuleConfig | None:
+def make_controller(args):
     overrides = {k: v for k, v in (("long_chat_strategy", args.long_chat), ("loss_escalation_target", args.loss_target), ("qa_strategy", args.qa_strategy)) if v}
-    return RuleConfig(**overrides) if overrides else None
+    return frozen_controller(**overrides)
 
 
 def run_conversation(conv, args, emb) -> list[dict]:
     pipe = MemoryPipeline(f"stream-{conv.sample_id}", token_budget=args.budget, embedder=emb, nli=None,
                           retrieval_config=RetrievalConfig(check_contradictions=False, compact_headers=not args.full_headers,
                                                            reranker=args.reranker, neighbors=args.neighbors),
-                          rule_config=rule_config(args))
+                          controller=make_controller(args))
     due = schedule(conv, args.seed)
     text_of = {t.dia_id: t.text for t in conv.turns}
     by_session: dict[int, list] = defaultdict(list)

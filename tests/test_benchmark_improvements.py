@@ -83,3 +83,12 @@ def test_stream_schedule_places_questions_after_evidence_session():
     assert sum(len(v) for v in due.values()) == 40  # questions without evidence are skipped
     assert {p for _, p in positions} == {"fresh", "late"}
     assert all((s == 1) if p == "fresh" else (s == 3) for s, p in positions)
+
+
+def test_reranker_skipped_for_code_tasks(embedder):
+    r = engine(embedder)
+    r._reranker = FakeReranker("invoices")
+    prose = r.build_context(make_signal(budget=400, task_type="qa"), "greyhound Biscuit").context_text()
+    code = r.build_context(make_signal(budget=400, task_type="code_generation"), "greyhound Biscuit").context_text()
+    assert "invoices" in prose.split("\n\n---\n\n")[0]  # reranked
+    assert "invoices" not in code.split("\n\n---\n\n")[0]  # bi-encoder order kept for code tasks

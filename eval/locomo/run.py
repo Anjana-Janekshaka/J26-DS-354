@@ -35,6 +35,7 @@ from contracts import ControllerDecision, OverrideInfo
 from contracts.text import CachingEmbedder
 from eval.metrics import answer_in_context, evidence_hit, macro_f1, ndcg_at_k, oracle_label, token_f1
 from integration import MemoryPipeline, assemble_prompt
+from eval.frozen import frozen_controller
 from eval.judge import GRADES, grade
 from concurrent.futures import ThreadPoolExecutor
 
@@ -62,6 +63,7 @@ def forced(tid: str, s: str) -> ControllerDecision:
 def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict], dict]:
     t0 = time.time()
     pipe = MemoryPipeline(conv.sample_id, token_budget=args.budget, embedder=emb, nli=nli,
+                          controller=None if args.default_rules else frozen_controller(),
                           llm=llm if args.llm_summaries else None, summarize_with_llm=args.llm_summaries,
                           retrieval_config=RetrievalConfig(check_contradictions=nli is not None,
                                                            compact_headers=not args.full_headers,
@@ -208,6 +210,7 @@ def main() -> None:
     ap.add_argument("--no-reranker", dest="reranker", action="store_const", const=None, help="plain FAISS ranking (ablation)")
     ap.add_argument("--neighbors", type=int, default=0, help="adjacent turns added around each retrieved RAG turn")
     ap.add_argument("--full-headers", action="store_true", help="old verbose RAG chunk headers (ablation)")
+    ap.add_argument("--default-rules", action="store_true", help="RuleConfig() defaults instead of the frozen controller config")
     ap.add_argument("--word-budget", type=int, default=400, help="equal-cost budget (words) for the granularity comparison")
     ap.add_argument("--no-nli", action="store_true", help="skip the NLI contradiction stage (much faster on CPU)")
     ap.add_argument("--llm", action="store_true", help="also answer questions with the configured LLM and score token-F1")

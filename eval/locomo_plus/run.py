@@ -27,8 +27,8 @@ from pathlib import Path
 
 from contracts import ControllerDecision, OverrideInfo, TokenUsage, TurnSignal, utcnow
 from contracts.text import CachingEmbedder
+from eval.frozen import frozen_controller
 from eval.metrics import evidence_coverage, macro_f1, oracle_label
-from controller import RuleConfig
 from integration import MemoryPipeline, assemble_prompt
 from retrieval import RetrievalConfig, SentenceTransformerEmbedder
 from retrieval.rerank import DEFAULT_RERANKER
@@ -54,9 +54,10 @@ def bucket(distance: int) -> str:
     return "<50 turns" if distance < 50 else "50-200 turns" if distance <= 200 else ">200 turns"
 
 
-def run_item(item, budget: int, emb, warmup: int = 0, rule_config=None, reranker: str | None = DEFAULT_RERANKER) -> dict:
+def run_item(item, budget: int, emb, warmup: int = 0, overrides: dict | None = None, reranker: str | None = DEFAULT_RERANKER) -> dict:
     pipe = MemoryPipeline(f"plus-{item.item_id}", token_budget=budget, embedder=emb, nli=None,
-                          retrieval_config=RetrievalConfig(check_contradictions=False, reranker=reranker), rule_config=rule_config)
+                          retrieval_config=RetrievalConfig(check_contradictions=False, reranker=reranker),
+                          controller=frozen_controller(**(overrides or {})))
     naive = NaiveSummarizer(tail_keep=4)
     cue_index = None
     n = len(item.turns)
@@ -114,13 +115,12 @@ def main() -> None:
 
     items = split(load(args.limit), args.split)
     overrides = {k: v for k, v in (("long_chat_strategy", args.long_chat), ("loss_escalation_target", args.loss_target), ("qa_strategy", args.qa_strategy)) if v}
-    rule_config = RuleConfig(**overrides) if overrides else None
     emb = CachingEmbedder(SentenceTransformerEmbedder())
     rows = []
     t0 = time.time()
     with open(out / "items.jsonl", "w", encoding="utf-8") as f:
         for n, item in enumerate(items, 1):
-            row = run_item(item, args.budget, emb, args.warmup_turns, rule_config, args.reranker)
+            row = run_item(item, args.budget, emb, args.warmup_turns, overrides, args.reranker)
             rows.append(row)
             f.write(json.dumps(row) + "\n")
             if n % 25 == 0:
