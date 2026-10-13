@@ -28,8 +28,10 @@ from pathlib import Path
 from contracts import ControllerDecision, OverrideInfo, TokenUsage, TurnSignal, utcnow
 from contracts.text import CachingEmbedder
 from eval.metrics import evidence_coverage, macro_f1, oracle_label
+from controller import RuleConfig
 from integration import MemoryPipeline, assemble_prompt
 from retrieval import RetrievalConfig, SentenceTransformerEmbedder
+from retrieval.rerank import DEFAULT_RERANKER
 from summarization import NaiveSummarizer
 
 from .loader import load, split
@@ -52,9 +54,9 @@ def bucket(distance: int) -> str:
     return "<50 turns" if distance < 50 else "50-200 turns" if distance <= 200 else ">200 turns"
 
 
-def run_item(item, budget: int, emb, warmup: int = 0, rule_config=None) -> dict:
+def run_item(item, budget: int, emb, warmup: int = 0, rule_config=None, reranker: str | None = DEFAULT_RERANKER) -> dict:
     pipe = MemoryPipeline(f"plus-{item.item_id}", token_budget=budget, embedder=emb, nli=None,
-                          retrieval_config=RetrievalConfig(check_contradictions=False), rule_config=rule_config)
+                          retrieval_config=RetrievalConfig(check_contradictions=False, reranker=reranker), rule_config=rule_config)
     naive = NaiveSummarizer(tail_keep=4)
     cue_index = None
     n = len(item.turns)
@@ -78,6 +80,7 @@ def run_item(item, budget: int, emb, warmup: int = 0, rule_config=None) -> dict:
         "relation_type": item.relation_type,
         "distance": bucket(len(item.turns) - 1 - cue_index),
         "task_type": r.feature_vector.task_type,
+        "shift": r.signal.shift_detected,
         "adaptive_choice": r.decision.selected_strategy,
     }
     for s, p in ctx.items():
@@ -99,18 +102,25 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--split", choices=["dev", "test", "all"], default="all", help="even item ids = dev, odd = test")
     ap.add_argument("--warmup-turns", type=int, default=0, help="replay the last N history turns as decision turns")
+    ap.add_argument("--reranker", default=DEFAULT_RERANKER)
+    ap.add_argument("--no-reranker", dest="reranker", action="store_const", const=None)
+    ap.add_argument("--long-chat", choices=["summarization", "hybrid", "rag"], default=None, help="override RuleConfig.long_chat_strategy")
+    ap.add_argument("--loss-target", choices=["rag", "hybrid"], default=None, help="override RuleConfig.loss_escalation_target")
+    ap.add_argument("--qa-strategy", choices=["rag", "hybrid", "hybrid_unless_shift"], default=None, help="override RuleConfig.qa_strategy")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
     items = split(load(args.limit), args.split)
+    overrides = {k: v for k, v in (("long_chat_strategy", args.long_chat), ("loss_escalation_target", args.loss_target), ("qa_strategy", args.qa_strategy)) if v}
+    rule_config = RuleConfig(**overrides) if overrides else None
     emb = CachingEmbedder(SentenceTransformerEmbedder())
     rows = []
     t0 = time.time()
     with open(out / "items.jsonl", "w", encoding="utf-8") as f:
         for n, item in enumerate(items, 1):
-            row = run_item(item, args.budget, emb, args.warmup_turns)
+            row = run_item(item, args.budget, emb, args.warmup_turns, rule_config, args.reranker)
             rows.append(row)
             f.write(json.dumps(row) + "\n")
             if n % 25 == 0:
@@ -125,6 +135,8 @@ def main() -> None:
         "n_items": len(rows),
         "split": args.split,
         "warmup_turns": args.warmup_turns,
+        "reranker": args.reranker,
+        "rule_overrides": overrides,
         "budget_tokens": args.budget,
         "strategies": {s: {"cue_hit_rate": rate(rows, s), "cue_any_rate": rate(rows, s, "cue_any"),
                            "mean_coverage": statistics.mean(r[s]["coverage"] for r in rows),

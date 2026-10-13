@@ -39,6 +39,7 @@ from eval.judge import GRADES, grade
 from concurrent.futures import ThreadPoolExecutor
 
 from integration.llm_client import concurrency, describe, get_llm, stats as llm_stats
+from retrieval.rerank import DEFAULT_RERANKER
 from retrieval import CrossEncoderNLI, RetrievalConfig, RetrievalEngine, SentenceTransformerEmbedder
 
 from .loader import CATEGORY_NAMES, load
@@ -46,7 +47,11 @@ from .loader import CATEGORY_NAMES, load
 HERE = Path(__file__).parent
 STRATEGIES = ["sliding_window", "summarization", "rag", "hybrid"]
 PREFERENCE = {s: i for i, s in enumerate(STRATEGIES)}
-QA_SYSTEM = "Answer the question using only the memory context. Reply with a short phrase, no explanation."
+QA_SYSTEM = (
+    "Answer the question using only the memory context. Each memory line starts with the date of that "
+    "conversation session in [brackets]; resolve relative times ('yesterday', 'last week', 'next month') "
+    "against that date and answer with an absolute date. Reply with a short phrase, no explanation."
+)
 
 
 def forced(tid: str, s: str) -> ControllerDecision:
@@ -58,7 +63,9 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
     t0 = time.time()
     pipe = MemoryPipeline(conv.sample_id, token_budget=args.budget, embedder=emb, nli=nli,
                           llm=llm if args.llm_summaries else None, summarize_with_llm=args.llm_summaries,
-                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None))
+                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None,
+                                                           compact_headers=not args.full_headers,
+                                                           reranker=args.reranker, neighbors=args.neighbors))
     gran = {m: RetrievalEngine(emb, None, RetrievalConfig(mode=m, check_contradictions=False)) for m in ("turn", "segment", "adaptive")}
     dia_to_tid: dict[str, str] = {}
     text_of: dict[str, str] = {}
@@ -195,6 +202,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=1024)
     ap.add_argument("--conversations", type=int, default=10)
+    ap.add_argument("--split", choices=["dev", "test", "all"], default="all",
+                    help="dev = conversations 1,3,5,7,9 (even index), test = 2,4,6,8,10; tune on dev only")
+    ap.add_argument("--reranker", default=DEFAULT_RERANKER, help="cross-encoder that reranks RAG candidates (selected on the dev split)")
+    ap.add_argument("--no-reranker", dest="reranker", action="store_const", const=None, help="plain FAISS ranking (ablation)")
+    ap.add_argument("--neighbors", type=int, default=0, help="adjacent turns added around each retrieved RAG turn")
+    ap.add_argument("--full-headers", action="store_true", help="old verbose RAG chunk headers (ablation)")
     ap.add_argument("--word-budget", type=int, default=400, help="equal-cost budget (words) for the granularity comparison")
     ap.add_argument("--no-nli", action="store_true", help="skip the NLI contradiction stage (much faster on CPU)")
     ap.add_argument("--llm", action="store_true", help="also answer questions with the configured LLM and score token-F1")
@@ -208,6 +221,8 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     convs = load()[: args.conversations]
+    if args.split != "all":
+        convs = [c for i, c in enumerate(convs) if i % 2 == (0 if args.split == "dev" else 1)]
     emb = CachingEmbedder(SentenceTransformerEmbedder())
     nli = None if args.no_nli else CrossEncoderNLI()
     llm = get_llm(out / "llm_cache.jsonl") if (args.llm or args.llm_summaries) else None
@@ -227,7 +242,8 @@ def main() -> None:
             f.write("\n".join(json.dumps(r) for r in rows) + "\n")
 
     summary = aggregate(all_rows)
-    summary["config"] = {"budget": args.budget, "conversations": len(convs), "nli": nli is not None,
+    summary["config"] = {"budget": args.budget, "conversations": len(convs), "nli": nli is not None, "split": args.split,
+                         "rag": {"compact_headers": not args.full_headers, "reranker": args.reranker, "neighbors": args.neighbors},
                          "qa_llm": f"run with {describe(llm)}" if (llm is not None and args.llm) else "not run (pass --llm with an LLM configured)",
                          "summary_generator": f"llm ({describe(llm)})" if args.llm_summaries else "rule_based",
                          "answer_judge": describe(judge) if judge is not None else "not run",
