@@ -55,18 +55,23 @@ CONVERSATIONS = 2                       # LoCoMo conversations (10 = full set)
 MAX_QUESTIONS = 50                      # questions per conversation (None = all)
 PARALLEL = 4                            # requests sent at once; Ollama batches them on the GPU
 REPO_URL = ""                           # git URL if the repo is pushed; otherwise upload the zip
+QA_TEST_QUESTIONS = 60                  # random LoCoMo test questions per test conversation for answer accuracy
 RUN = {
-    # GPU jobs that need no LLM (embedder, reranker and NLI run on the GPU):
-    "controller_tuning": True,          # record train+val traces, tune the rule-based controller (resumable)
-    "locomo_plus_routing_dev": True,    # LoCoMo-Plus DEV split under the candidate routing settings
-    # LLM jobs (Ollama is installed and the model downloaded only if one of these is on):
-    "locomo_qa": False,                 # answers + token-F1 + judge grades
-    "locomo_llm_summaries": False,      # evidence metrics with LLM-written L1/L2/L3 (slower)
-    "controller_judge": False,          # LLM-judge oracle on the synthetic controller set
-    "locomo_plus": False,               # full LoCoMo-Plus (both splits) - final run only
-    "labelling_sheets": False,          # needs locomo_qa
+    # FINAL RUN (frozen configuration). The val check gates everything after it: if the frozen system
+    # scores below its own recorded val result, the notebook stops before touching any test split.
+    "val_check": True,                  # synthetic controller val with the final code (re-records traces)
+    "final_test": True,                 # every test split, once: LoCoMo, in-stream LoCoMo, LoCoMo-Plus, controller
+    "locomo_qa_test": True,             # answer accuracy (LLM + judge) on a random LoCoMo test sample
+    "labelling_sheets": True,           # blind sheets from the test answers, for the human-agreement check
+    # Development jobs (already done - leave off; tuning would overwrite the frozen config):
+    "controller_tuning": False,
+    "locomo_plus_routing_dev": False,
+    "locomo_qa": False,                 # pilot: first conversations, not the test split
+    "locomo_llm_summaries": False,
+    "controller_judge": False,          # 7B judge is not usable for strategy labels (CLAUDE.md 12.3)
+    "locomo_plus": False,
 }
-NEED_LLM = RUN["locomo_qa"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
+NEED_LLM = RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
 """),
     code("""
 import os, sys, glob, json, time, shutil, pathlib, subprocess, urllib.request
@@ -161,7 +166,8 @@ else:
         list(pool.map(lambda i: answer("Answer with a short phrase.", f"{context} Question {i}: When did Caroline go to the group?"),
                       range(2 * PARALLEL)))
     per_call = (time.time() - t) / (2 * PARALLEL)
-    n_answer = CONVERSATIONS * (MAX_QUESTIONS or 200) * 0.8 * 4      # ~80% answerable, ~4 distinct contexts each
+    n_q = 5 * QA_TEST_QUESTIONS if RUN["locomo_qa_test"] else CONVERSATIONS * (MAX_QUESTIONS or 200)
+    n_answer = n_q * 0.8 * 4      # ~80% answerable, ~4 distinct contexts each
     estimate_h = (n_answer * per_call * 1.3 + 180 * per_call * 1.5) / 3600
     print(f"~{per_call:.1f} s per answer call (with {PARALLEL} in parallel) -> estimated run time ~{estimate_h:.1f} h")
     if per_call > 4:
@@ -192,6 +198,37 @@ if RUN["locomo_plus"]:
     run(["eval.locomo_plus.run", "--out", str(WORK / "locomo_plus")], "locomo_plus")
 """),
     code("""
+# ---- FINAL RUN: val gate, then every test split exactly once ---------------------------------
+FINAL = WORK / "final"
+if RUN["val_check"]:
+    run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200",
+         "--cache-dir", str(WORK / "controller_traces"), "--out", str(FINAL / "controller")], "final_val_check")
+    got = json.load(open(FINAL / "controller" / "val" / "summary.json"))["evidence_hit_rate"]["adaptive"]["estimate"]
+    want = json.load(open(CODE / "eval/synthetic/controller/frozen_rule_config.json"))["selected"]["val"]["hit"]
+    print(f"VAL CHECK: adaptive evidence hit {got:.4f} (recorded when frozen: {want:.4f})")
+    if got < want - 1e-9:
+        raise RuntimeError("VAL CHECK FAILED - stop here and send the results folder; do not run the test splits")
+    print("VAL CHECK PASSED - running the test splits")
+
+def once(name, args):
+    # Each test split runs exactly once: a finished result is never recomputed.
+    if (FINAL / name / "summary.json").exists() or (FINAL / name / "test" / "summary.json").exists():
+        print("already done:", name)
+        return
+    run([*args, "--out", str(FINAL / name)], f"final_{name}")
+
+if RUN["final_test"]:
+    once("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (FINAL / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(FINAL / "controller")], "final_controller_test")
+if RUN["locomo_qa_test"]:
+    once("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                       "--max-questions", str(QA_TEST_QUESTIONS)])
+"""),
+    code("""
 # ---- GPU jobs without an LLM: controller tuning and LoCoMo-Plus dev routing -------------------
 if RUN["controller_tuning"]:
     # Traces are cached in Drive and saved after every conversation, so a disconnect resumes.
@@ -211,8 +248,9 @@ if RUN["locomo_plus_routing_dev"]:
     code("""
 # ---- blind labelling sheets for the human-vs-judge check -----------------------------------
 if RUN["labelling_sheets"]:
-    run(["eval.human_agreement.make_sheets", "--questions", str(WORK / "locomo_qa" / "questions.jsonl"),
-         "--out", str(WORK / "human_agreement")], "labelling_sheets")
+    qa_dir = WORK / "final" / "locomo_qa" if RUN["locomo_qa_test"] else WORK / "locomo_qa"
+    run(["eval.human_agreement.make_sheets", "--questions", str(qa_dir / "questions.jsonl"),
+         "--out", str(qa_dir.parent / "human_agreement")], "labelling_sheets")
     print("Send each annotator their annotator_N.csv + eval/human_agreement/LABELLING_GUIDE.md.")
     print("Keep key.json private. Score later with: python -m eval.human_agreement.score --sheets <folder>")
 """),
