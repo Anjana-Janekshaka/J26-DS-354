@@ -59,10 +59,13 @@ QA_TEST_QUESTIONS = 60                  # random LoCoMo test questions per test 
 RUN = {
     # FINAL RUN (frozen configuration). The val check gates everything after it: if the frozen system
     # scores below its own recorded val result, the notebook stops before touching any test split.
-    "val_check": True,                  # synthetic controller val with the final code (re-records traces)
-    "final_test": True,                 # every test split, once: LoCoMo, in-stream LoCoMo, LoCoMo-Plus, controller
-    "locomo_qa_test": True,             # answer accuracy (LLM + judge) on a random LoCoMo test sample
-    "labelling_sheets": True,           # blind sheets from the test answers, for the human-agreement check
+    # v2 retrieval options (hybrid BM25 + dense, MMR) on the LoCoMo DEV split only - never test:
+    "v2_dev_retrieval": True,
+    # FINAL RUN - already done on 2026-10-15 and frozen; leave off (results live in ceai_runs/final):
+    "val_check": False,                 # synthetic controller val with the final code (re-records traces)
+    "final_test": False,                # every test split, once: LoCoMo, in-stream LoCoMo, LoCoMo-Plus, controller
+    "locomo_qa_test": False,            # answer accuracy (LLM + judge) on a random LoCoMo test sample
+    "labelling_sheets": False,          # blind sheets from the test answers, for the human-agreement check
     # Development jobs (already done - leave off; tuning would overwrite the frozen config):
     "controller_tuning": False,
     "locomo_plus_routing_dev": False,
@@ -198,6 +201,18 @@ if RUN["locomo_plus"]:
     run(["eval.locomo_plus.run", "--out", str(WORK / "locomo_plus")], "locomo_plus")
 """),
     code("""
+# ---- v2 retrieval options on the LoCoMo DEV split (dev previews; the frozen test results are untouched)
+if RUN["v2_dev_retrieval"]:
+    V2 = WORK / "dev_v2"
+    for name, flags in {"V2_rerank_hybrid": ["--hybrid"],
+                        "V3_rerank_mmr07": ["--mmr", "0.7"],
+                        "V4_rerank_hybrid_mmr07": ["--hybrid", "--mmr", "0.7"],
+                        "D_frozen_reference": []}.items():
+        if (V2 / name / "summary.json").exists():
+            print("already done:", name)
+            continue
+        run(["eval.locomo.run", "--split", "dev", "--no-nli", *flags, "--out", str(V2 / name)], f"dev_v2_{name}")
+
 # ---- FINAL RUN: val gate, then every test split exactly once ---------------------------------
 FINAL = WORK / "final"
 if RUN["val_check"]:
