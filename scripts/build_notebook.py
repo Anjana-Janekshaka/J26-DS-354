@@ -260,8 +260,12 @@ if RUN["locomo_qa_test"]:
 # ---- external baselines on the LoCoMo test questions CEAI answered (resumes after a disconnect) ---
 if RUN["baselines"]:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
-    ceai_q = WORK / "final" / "locomo_qa" / "questions.jsonl"
+    # CEAI's frozen test answers ship in the code zip; the Drive copy is only a fallback.
+    ceai_q = CODE / "results" / "final" / "locomo_qa_test_questions.jsonl"
+    if not ceai_q.exists():
+        ceai_q = WORK / "final" / "locomo_qa" / "questions.jsonl"
     assert ceai_q.exists(), f"missing {ceai_q}: CEAI's frozen test answers are needed for the paired comparison"
+    print("CEAI frozen answers:", ceai_q)
     run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,full_context,summary_buffer,mem0",
          "--out", str(WORK / "baselines")], "baselines")
 
