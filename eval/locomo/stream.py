@@ -30,7 +30,7 @@ from pathlib import Path
 
 from contracts import ControllerDecision, OverrideInfo
 from contracts.text import CachingEmbedder
-from eval.frozen import frozen_controller
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from eval.metrics import evidence_hit, macro_f1, oracle_label
 from integration import MemoryPipeline, assemble_prompt
 from retrieval.rerank import DEFAULT_RERANKER
@@ -77,8 +77,8 @@ def make_controller(args):
 
 def run_conversation(conv, args, emb) -> list[dict]:
     pipe = MemoryPipeline(f"stream-{conv.sample_id}", token_budget=args.budget, embedder=emb, nli=None,
-                          retrieval_config=RetrievalConfig(check_contradictions=False, compact_headers=not args.full_headers,
-                                                           reranker=args.reranker, neighbors=args.neighbors),
+                          retrieval_config=RetrievalConfig(**system_retrieval(check_contradictions=False, compact_headers=not args.full_headers,
+                                                                              reranker=args.reranker, neighbors=args.neighbors)),
                           controller=make_controller(args))
     due = schedule(conv, args.seed)
     text_of = {t.dia_id: t.text for t in conv.turns}
@@ -172,7 +172,7 @@ def main() -> None:
             print(f"{conv.sample_id}: {len(rs)} questions, {time.time() - t0:.0f}s", flush=True)
 
     summary = summarize(rows)
-    summary["config"] = {k: v for k, v in vars(args).items() if k != "out"}
+    summary["config"] = {"system": system_name(), **{k: v for k, v in vars(args).items() if k != "out"}}
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     names = STRATEGIES + ["adaptive"]

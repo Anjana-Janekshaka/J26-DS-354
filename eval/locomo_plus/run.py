@@ -27,7 +27,7 @@ from pathlib import Path
 
 from contracts import ControllerDecision, OverrideInfo, TokenUsage, TurnSignal, utcnow
 from contracts.text import CachingEmbedder
-from eval.frozen import frozen_controller
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from eval.metrics import evidence_coverage, macro_f1, oracle_label
 from integration import MemoryPipeline, assemble_prompt
 from retrieval import RetrievalConfig, SentenceTransformerEmbedder
@@ -56,7 +56,7 @@ def bucket(distance: int) -> str:
 
 def run_item(item, budget: int, emb, warmup: int = 0, overrides: dict | None = None, reranker: str | None = DEFAULT_RERANKER) -> dict:
     pipe = MemoryPipeline(f"plus-{item.item_id}", token_budget=budget, embedder=emb, nli=None,
-                          retrieval_config=RetrievalConfig(check_contradictions=False, reranker=reranker),
+                          retrieval_config=RetrievalConfig(**system_retrieval(check_contradictions=False, reranker=reranker)),
                           controller=frozen_controller(**(overrides or {})))
     naive = NaiveSummarizer(tail_keep=4)
     cue_index = None
@@ -133,6 +133,7 @@ def main() -> None:
 
     summary: dict = {
         "n_items": len(rows),
+        "system": system_name(),
         "split": args.split,
         "warmup_turns": args.warmup_turns,
         "reranker": args.reranker,

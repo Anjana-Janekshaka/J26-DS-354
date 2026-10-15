@@ -9,6 +9,7 @@ see CLAUDE.md section 12. Test splits are only ever run with this configuration.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from controller import RuleBasedController, RuleConfig
@@ -26,6 +27,25 @@ def frozen_rule_config(**overrides) -> tuple[RuleConfig, str]:
     if overrides:
         cfg = cfg.model_copy(update=overrides)
     return cfg, default
+
+
+# System variants. "frozen" is the configuration all 2026-10-15 test results were produced with.
+# "v2_hybrid" adds hybrid BM25 + dense retrieval (selected on LoCoMo dev only; pre-registered in
+# docs/v2_hybrid_preregistration.md before any test split was run with it).
+SYSTEMS: dict[str, dict] = {"frozen": {}, "v2_hybrid": {"hybrid": True}}
+
+
+def system_name() -> str:
+    """The system variant from ``CEAI_SYSTEM`` (default ``frozen``)."""
+    name = os.environ.get("CEAI_SYSTEM", "frozen")
+    if name not in SYSTEMS:
+        raise ValueError(f"CEAI_SYSTEM={name!r}; expected one of {sorted(SYSTEMS)}")
+    return name
+
+
+def system_retrieval(**kwargs) -> dict:
+    """RetrievalConfig keyword arguments with the selected system variant applied on top."""
+    return {**kwargs, **SYSTEMS[system_name()]}
 
 
 def frozen_controller(**overrides) -> RuleBasedController:

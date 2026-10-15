@@ -21,7 +21,7 @@ from contracts import ControllerDecision, OverrideInfo, count_tokens
 from contracts.text import BLOCK_TURNS, CONTEXT_BLOCK_SEPARATOR
 from dashboard import render_static
 from decision_logger import DecisionLogger
-from eval.frozen import frozen_controller
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from integration import MemoryPipeline, assemble_prompt
 from retrieval import RetrievalConfig
 from retrieval.rerank import DEFAULT_RERANKER
@@ -63,7 +63,7 @@ def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFA
         shutil.rmtree(out)
     # The frozen system configuration: tuned controller rules + reranked RAG (CLAUDE.md section 12).
     pipe = MemoryPipeline("coding-session-demo", token_budget=budget, log_dir=out, controller=frozen_controller(),
-                          retrieval_config=RetrievalConfig(reranker=reranker))
+                          retrieval_config=RetrievalConfig(**system_retrieval(reranker=reranker)))
     fixed6 = RecencyOnlyWindow(k=12)
     ex_of_turn: dict[str, int] = {}
     traps_by_ex = {t.exchange: t for t in TRAPS}
@@ -118,6 +118,7 @@ def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFA
     render_static(logger.records(), logger.escalation_events(), out / "dashboard.html")
     pipe.close()
     summary = {
+        "system": system_name(),
         "budget_tokens": budget,
         "final_history_tokens": pipe.manager.tokens_used,
         "results": results,

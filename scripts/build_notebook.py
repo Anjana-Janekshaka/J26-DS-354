@@ -59,8 +59,10 @@ QA_TEST_QUESTIONS = 60                  # random LoCoMo test questions per test 
 RUN = {
     # FINAL RUN (frozen configuration). The val check gates everything after it: if the frozen system
     # scores below its own recorded val result, the notebook stops before touching any test split.
-    # v2 retrieval options (hybrid BM25 + dense, MMR) on the LoCoMo DEV split only - never test:
-    "v2_dev_retrieval": True,
+    # v2 hybrid, PRE-REGISTERED (docs/v2_hybrid_preregistration.md): dev/val gates, then each test split once
+    "v2_preregistered": True,
+    # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
+    "v2_dev_retrieval": False,
     # FINAL RUN - already done on 2026-10-15 and frozen; leave off (results live in ceai_runs/final):
     "val_check": False,                 # synthetic controller val with the final code (re-records traces)
     "final_test": False,                # every test split, once: LoCoMo, in-stream LoCoMo, LoCoMo-Plus, controller
@@ -74,7 +76,7 @@ RUN = {
     "controller_judge": False,          # 7B judge is not usable for strategy labels (CLAUDE.md 12.3)
     "locomo_plus": False,
 }
-NEED_LLM = RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
+NEED_LLM = RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"] or RUN["v2_preregistered"]
 """),
     code("""
 import os, sys, glob, json, time, shutil, pathlib, subprocess, urllib.request
@@ -98,27 +100,20 @@ print("results directory:", WORK)
     code("""
 # ---- get the code ---------------------------------------------------------------------------
 CODE = pathlib.Path("/tmp/ceai-memory-middleware")
-# Always start from a fresh copy: a code folder left over from an earlier session would silently run old code.
-os.chdir("/tmp")
-shutil.rmtree(CODE, ignore_errors=True)
-if REPO_URL:
-    subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
-else:
-    # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
-    # /kaggle/input is read-only, so copy to /tmp before the editable install.
-    dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
-    zips = (glob.glob("/kaggle/input/**/ceai-memory-middleware*.zip", recursive=True)
-            + glob.glob("/content/ceai-memory-middleware*.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware*.zip"))
-    if dirs:
-        shutil.copytree(dirs[0], CODE)
-    elif zips:
-        newest = max(zips, key=os.path.getmtime)  # re-uploads can leave older copies next to the new one
-        print("using", newest, "of", len(zips), "zip(s) found")
-        shutil.unpack_archive(newest, "/tmp")
+if not CODE.exists():
+    if REPO_URL:
+        subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
     else:
-        raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
-info = CODE / "BUILD_INFO.txt"
-print("CODE VERSION:", info.read_text().strip() if info.exists() else "unknown (zip built before build stamps)")
+        # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
+        # /kaggle/input is read-only, so copy to /tmp before the editable install.
+        dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
+        zips = glob.glob("/kaggle/input/**/ceai-memory-middleware.zip", recursive=True) + glob.glob("/content/ceai-memory-middleware.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware.zip")
+        if dirs:
+            shutil.copytree(dirs[0], CODE)
+        elif zips:
+            shutil.unpack_archive(zips[0], "/tmp")
+        else:
+            raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
 os.chdir(CODE)
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
 print("code ready at", CODE)
@@ -249,6 +244,56 @@ if RUN["final_test"]:
 if RUN["locomo_qa_test"]:
     once("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
                        "--max-questions", str(QA_TEST_QUESTIONS)])
+
+# ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
+if RUN["v2_preregistered"]:
+    V2W = WORK / "v2_hybrid"
+    G = V2W / "gates"
+
+    def as_system(name):
+        os.environ["CEAI_SYSTEM"] = name
+
+    # Frozen references for the paired gates (frozen val reuses the final run when present).
+    as_system("frozen")
+    frozen_val = FINAL / "controller" / "val" if (WORK / "final" / "controller" / "val" / "probes.jsonl").exists() else G / "frozen_val" / "val"
+    if not (frozen_val / "probes.jsonl").exists():
+        run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(G / "frozen_val")], "v2_gate_frozen_val")
+    if not (G / "plus_frozen" / "summary.json").exists():
+        run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--out", str(G / "plus_frozen")], "v2_gate_plus_frozen")
+    # v2 on the same dev/val items.
+    as_system("v2_hybrid")
+    if not (G / "v2_val" / "val" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(G / "v2_val")], "v2_gate_v2_val")
+    if not (G / "plus_v2" / "summary.json").exists():
+        run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--out", str(G / "plus_v2")], "v2_gate_plus_v2")
+    gate = subprocess.run([sys.executable, "-m", "eval.v2_gate", "--frozen-val", str(frozen_val), "--v2-val", str(G / "v2_val" / "val"),
+                           "--frozen-plus", str(G / "plus_frozen"), "--v2-plus", str(G / "plus_v2"), "--out", str(G / "gates.json")],
+                          cwd=CODE, capture_output=True, text=True)
+    print(gate.stdout)
+    if gate.returncode != 0:
+        as_system("frozen")
+        raise RuntimeError("v2 GATE FAILED - stop here and send the results folder; the v2 test splits must not be run")
+
+    # Each test split exactly once (finished results are never recomputed).
+    def once_v2(name, args):
+        if (V2W / "final" / name / "summary.json").exists() or (V2W / "final" / name / "test" / "summary.json").exists():
+            print("already done:", name)
+            return
+        run([*args, "--out", str(V2W / "final" / name)], f"v2_final_{name}")
+
+    once_v2("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once_v2("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once_v2("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (V2W / "final" / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(V2W / "final" / "controller")], "v2_final_controller_test")
+    once_v2("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                          "--max-questions", str(QA_TEST_QUESTIONS)])
+    as_system("frozen")
+    print("v2 pre-registered runs complete:", V2W)
+
 """),
     code("""
 # ---- GPU jobs without an LLM: controller tuning and LoCoMo-Plus dev routing -------------------

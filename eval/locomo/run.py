@@ -35,7 +35,7 @@ from contracts import ControllerDecision, OverrideInfo
 from contracts.text import CachingEmbedder
 from eval.metrics import answer_in_context, evidence_hit, macro_f1, ndcg_at_k, oracle_label, token_f1
 from integration import MemoryPipeline, assemble_prompt
-from eval.frozen import frozen_controller
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from eval.judge import GRADES, grade
 from concurrent.futures import ThreadPoolExecutor
 
@@ -65,10 +65,9 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
     pipe = MemoryPipeline(conv.sample_id, token_budget=args.budget, embedder=emb, nli=nli,
                           controller=None if args.default_rules else frozen_controller(),
                           llm=llm if args.llm_summaries else None, summarize_with_llm=args.llm_summaries,
-                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None,
-                                                           compact_headers=not args.full_headers,
-                                                           reranker=args.reranker, neighbors=args.neighbors,
-                                                           hybrid=args.hybrid, mmr_lambda=args.mmr))
+                          retrieval_config=RetrievalConfig(**system_retrieval(
+                              check_contradictions=nli is not None, compact_headers=not args.full_headers,
+                              reranker=args.reranker, neighbors=args.neighbors, hybrid=args.hybrid, mmr_lambda=args.mmr)))
     gran = {m: RetrievalEngine(emb, None, RetrievalConfig(mode=m, check_contradictions=False)) for m in ("turn", "segment", "adaptive")}
     dia_to_tid: dict[str, str] = {}
     text_of: dict[str, str] = {}
@@ -248,7 +247,7 @@ def main() -> None:
             f.write("\n".join(json.dumps(r) for r in rows) + "\n")
 
     summary = aggregate(all_rows)
-    summary["config"] = {"budget": args.budget, "conversations": len(convs), "nli": nli is not None, "split": args.split,
+    summary["config"] = {"system": system_name(), "budget": args.budget, "conversations": len(convs), "nli": nli is not None, "split": args.split,
                          "rag": {"compact_headers": not args.full_headers, "reranker": args.reranker, "neighbors": args.neighbors,
                                  "hybrid": args.hybrid, "mmr_lambda": args.mmr},
                          "qa_llm": f"run with {describe(llm)}" if (llm is not None and args.llm) else "not run (pass --llm with an LLM configured)",
