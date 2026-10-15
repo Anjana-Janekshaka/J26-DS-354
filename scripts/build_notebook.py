@@ -100,20 +100,27 @@ print("results directory:", WORK)
     code("""
 # ---- get the code ---------------------------------------------------------------------------
 CODE = pathlib.Path("/tmp/ceai-memory-middleware")
-if not CODE.exists():
-    if REPO_URL:
-        subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
+# Always start from a fresh copy: a code folder left over from an earlier session would silently run old code.
+os.chdir("/tmp")
+shutil.rmtree(CODE, ignore_errors=True)
+if REPO_URL:
+    subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
+else:
+    # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
+    # /kaggle/input is read-only, so copy to /tmp before the editable install.
+    dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
+    zips = (glob.glob("/kaggle/input/**/ceai-memory-middleware*.zip", recursive=True)
+            + glob.glob("/content/ceai-memory-middleware*.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware*.zip"))
+    if dirs:
+        shutil.copytree(dirs[0], CODE)
+    elif zips:
+        newest = max(zips, key=os.path.getmtime)  # re-uploads can leave older copies next to the new one
+        print("using", newest, "of", len(zips), "zip(s) found")
+        shutil.unpack_archive(newest, "/tmp")
     else:
-        # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
-        # /kaggle/input is read-only, so copy to /tmp before the editable install.
-        dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
-        zips = glob.glob("/kaggle/input/**/ceai-memory-middleware.zip", recursive=True) + glob.glob("/content/ceai-memory-middleware.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware.zip")
-        if dirs:
-            shutil.copytree(dirs[0], CODE)
-        elif zips:
-            shutil.unpack_archive(zips[0], "/tmp")
-        else:
-            raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
+        raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
+info = CODE / "BUILD_INFO.txt"
+print("CODE VERSION:", info.read_text().strip() if info.exists() else "unknown (zip built before build stamps)")
 os.chdir(CODE)
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
 print("code ready at", CODE)
