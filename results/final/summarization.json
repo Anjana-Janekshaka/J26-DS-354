@@ -1,0 +1,114 @@
+{
+  "n_traces": 30,
+  "results": {
+    "structured+merge@250": {
+      "loss_score": 0.6407366666666666,
+      "symbol_retention_rate": 0.08666666666666667,
+      "current_fact_recall": 0.3,
+      "stale_leak_rate": 0.0,
+      "tiers": {
+        "L1": 0,
+        "L2": 0,
+        "L3": 30
+      },
+      "mean_tokens": 246.26666666666668
+    },
+    "structured_no_merge@250": {
+      "loss_score": 0.62369,
+      "symbol_retention_rate": 0.04666666666666667,
+      "current_fact_recall": 0.2333333333333333,
+      "stale_leak_rate": 0.20833333333333334,
+      "tiers": {
+        "L1": 0,
+        "L2": 0,
+        "L3": 30
+      },
+      "mean_tokens": 247.6
+    },
+    "naive@250": {
+      "loss_score": 0.85185,
+      "symbol_retention_rate": 0.0,
+      "current_fact_recall": 0.13333333333333333,
+      "stale_leak_rate": 0.0,
+      "tiers": {
+        "L1": 30,
+        "L2": 0,
+        "L3": 0
+      },
+      "mean_tokens": 230.03333333333333
+    },
+    "structured+merge@500": {
+      "loss_score": 0.27285,
+      "symbol_retention_rate": 0.4266666666666667,
+      "current_fact_recall": 0.6428571428571428,
+      "stale_leak_rate": 0.0,
+      "tiers": {
+        "L1": 0,
+        "L2": 28,
+        "L3": 2
+      },
+      "mean_tokens": 491.9
+    },
+    "structured_no_merge@500": {
+      "loss_score": 0.24362,
+      "symbol_retention_rate": 0.4666666666666667,
+      "current_fact_recall": 0.6095238095238095,
+      "stale_leak_rate": 0.35833333333333334,
+      "tiers": {
+        "L1": 0,
+        "L2": 28,
+        "L3": 2
+      },
+      "mean_tokens": 490.46666666666664
+    },
+    "naive@500": {
+      "loss_score": 0.5905333333333334,
+      "symbol_retention_rate": 0.0,
+      "current_fact_recall": 0.30476190476190473,
+      "stale_leak_rate": 0.041666666666666664,
+      "tiers": {
+        "L1": 30,
+        "L2": 0,
+        "L3": 0
+      },
+      "mean_tokens": 461.53333333333336
+    },
+    "structured+merge@1000": {
+      "loss_score": 0.06344,
+      "symbol_retention_rate": 0.9,
+      "current_fact_recall": 1.0,
+      "stale_leak_rate": 0.0,
+      "tiers": {
+        "L1": 15,
+        "L2": 15,
+        "L3": 0
+      },
+      "mean_tokens": 933.8
+    },
+    "structured_no_merge@1000": {
+      "loss_score": 0.0020833333333333333,
+      "symbol_retention_rate": 1.0,
+      "current_fact_recall": 1.0,
+      "stale_leak_rate": 0.75,
+      "tiers": {
+        "L1": 16,
+        "L2": 14,
+        "L3": 0
+      },
+      "mean_tokens": 934.2
+    },
+    "naive@1000": {
+      "loss_score": 0.37419,
+      "symbol_retention_rate": 0.0,
+      "current_fact_recall": 0.42857142857142855,
+      "stale_leak_rate": 0.5,
+      "tiers": {
+        "L1": 30,
+        "L2": 0,
+        "L3": 0
+      },
+      "mean_tokens": 691.1666666666666
+    }
+  },
+  "loss_monitor_spearman_deletion_vs_loss": 0.9134734645775967
+}

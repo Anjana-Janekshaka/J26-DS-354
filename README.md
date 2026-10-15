@@ -81,11 +81,24 @@ Hard rule enforced by `tests/test_import_boundaries.py`: a package under `packag
 `contracts` and itself. Leakage-freedom of the controller is structural: `RuleBasedController.decide`
 receives only the `TurnSignal` (`tests/test_controller.py::test_decide_signature_has_no_access_to_module_outputs`).
 
-## Results (2026-10-06, CPU, no LLM credentials)
+## Final results (2026-10-15): see [`results/RESULTS.md`](results/RESULTS.md)
 
-All numbers below are reproducible with the commands above; each is read from the matching
-`results/summary.json`. No LLM was called anywhere: the LLM-backed paths (LLM tier generator,
-LLM-judge oracle, LoCoMo QA token-F1) are implemented and report themselves as **not run**.
+The configuration was frozen on dev data, then each test split was run once. The sheet is
+generated from `results/final/*.json` by `python scripts/build_results.py --colab <results folder>`.
+
+| headline (test split) | result |
+|---|---|
+| Controller, mixed-workload switch set | adaptive **0.986** evidence hit vs best single strategy 0.874 (**+0.112**, 95% CI [+0.093, +0.129]); vs always-hybrid **+0.060** with fewer tokens |
+| Coding demo | adaptive **2/2** traps caught vs fixed window **0/2** |
+| LoCoMo (966 questions) | adaptive ties the best strategy (RAG): 0.654 vs 0.656. The RAG read path went from 0.391 to **0.655** on the same conversations |
+| Summarization | stale-fact leakage **0.00** vs 0.50 naive; signature retention 0.90 vs 0 |
+| Contradiction flags | precision 0.82, recall 0.73 |
+| Sliding window | 59 wins / 0 losses vs recency-only |
+
+## Earlier results (2026-10-06, CPU, no LLM credentials; development history)
+
+These were the first numbers, from before the RAG read-path changes and the frozen controller
+configuration. They are kept for history; the results above supersede them.
 
 ### Integration — coding-session demo (`python -m demo.coding_session.run_demo`, budget 700 tokens)
 
