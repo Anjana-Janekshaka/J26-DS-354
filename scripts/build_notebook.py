@@ -60,7 +60,9 @@ RUN = {
     # FINAL RUN (frozen configuration). The val check gates everything after it: if the frozen system
     # scores below its own recorded val result, the notebook stops before touching any test split.
     # v2 hybrid, PRE-REGISTERED (docs/v2_hybrid_preregistration.md): dev/val gates, then each test split once
-    "v2_preregistered": True,
+    # External baselines under identical conditions (docs/baselines_protocol.md):
+    "baselines": True,
+    "v2_preregistered": False,          # done 2026-10-15: gate G3 failed, so no v2 test runs (must stay off)
     # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
     "v2_dev_retrieval": False,
     # FINAL RUN - already done on 2026-10-15 and frozen; leave off (results live in ceai_runs/final):
@@ -76,7 +78,10 @@ RUN = {
     "controller_judge": False,          # 7B judge is not usable for strategy labels (CLAUDE.md 12.3)
     "locomo_plus": False,
 }
-NEED_LLM = RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"] or RUN["v2_preregistered"]
+NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
+            or RUN["v2_preregistered"] or RUN["baselines"])
+if RUN["baselines"]:
+    PARALLEL = 2  # full-context prompts need a 32k context; two slots fit a T4
 """),
     code("""
 import os, sys, glob, json, time, shutil, pathlib, subprocess, urllib.request
@@ -136,7 +141,7 @@ else:
     if shutil.which("ollama") is None:
         subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
     env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": str(PARALLEL),
-           "OLLAMA_CONTEXT_LENGTH": "4096"}  # controller-judge prompts exceed Ollama's small default context
+           "OLLAMA_CONTEXT_LENGTH": "32768" if RUN["baselines"] else "4096"}  # controller-judge prompts exceed Ollama's small default context
     server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "w"), stderr=subprocess.STDOUT, env=env)
     for _ in range(120):
         try:
@@ -251,6 +256,14 @@ if RUN["final_test"]:
 if RUN["locomo_qa_test"]:
     once("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
                        "--max-questions", str(QA_TEST_QUESTIONS)])
+
+# ---- external baselines on the LoCoMo test questions CEAI answered (resumes after a disconnect) ---
+if RUN["baselines"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    ceai_q = WORK / "final" / "locomo_qa" / "questions.jsonl"
+    assert ceai_q.exists(), f"missing {ceai_q}: CEAI's frozen test answers are needed for the paired comparison"
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,full_context,summary_buffer,mem0",
+         "--out", str(WORK / "baselines")], "baselines")
 
 # ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
 if RUN["v2_preregistered"]:
