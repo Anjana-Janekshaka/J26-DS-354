@@ -78,7 +78,7 @@ computed on our own data (§3).
 |---|---|---|
 | Pareto (cost vs accuracy) evaluation of the controller | MoMA, Mem0 | Done, from frozen test results |
 | Staleness leak and false-supersession metrics | MemStrata | Done (§3) |
-| Hybrid BM25 + dense retrieval (RRF) | DPR, Zep | **Helps on dev:** +0.052 [+0.018, +0.088] RAG evidence hit over the frozen system (0.709 → 0.762). v2 candidate; off in the frozen system |
+| Hybrid BM25 + dense retrieval (RRF) | DPR, Zep | **Mixed on dev:** +0.052 [+0.018, +0.088] on LoCoMo dev, but **−0.040 [−0.070, −0.015] on LoCoMo-Plus dev**. Failed its pre-registered gate, so it was not test-run; off |
 | MMR redundancy-aware selection | xMemory, Zep | **No effect on dev:** +0.002 [−0.008, +0.009]. Dropped |
 | Read-time entropy granularity router | MemGAS | v2 |
 | Trained adapter reranker instead of MS MARCO | RMM | v2 |

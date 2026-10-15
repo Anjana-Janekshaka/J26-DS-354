@@ -23,8 +23,8 @@ the same items) lies entirely below zero. Checked by `eval/v2_gate.py`.
 | Gate | Data | Status |
 |---|---|---|
 | G1 | Coding demo: adaptive must catch both traps | **Passed** on 2026-10-16: 2/2 (frozen also 2/2) |
-| G2 | Synthetic controller **val** split, adaptive evidence hit | Run on Colab before the tests |
-| G3 | LoCoMo-Plus **dev** split (10 warm-up turns), adaptive cue hit | Run on Colab before the tests |
+| G2 | Synthetic controller **val** split, adaptive evidence hit | **Passed** (2026-10-15, Colab): 0.9917 → 1.0000, +0.0083 [+0.0000, +0.0250] |
+| G3 | LoCoMo-Plus **dev** split (10 warm-up turns), adaptive cue hit | **FAILED** (2026-10-15, Colab): 0.1343 → 0.0945, −0.0398 [−0.0697, −0.0149] |
 
 **If any gate fails, no v2 test split is run.** v2 is then reported as dev-only.
 
@@ -50,3 +50,21 @@ comparison is paired:
   configuration.
 - No change of any kind is made to v2 after seeing its test results. Any later change would be a
   v3 and would need fresh held-out data.
+
+## Outcome (2026-10-15)
+
+**Gate G3 failed, so no v2 test split was run.** The notebook stopped before any test data was
+used, as pre-registered. v2 hybrid is reported as **dev-only**:
+
+- **LoCoMo dev (explicit fact recall):** RAG evidence hit +0.052 [+0.018, +0.088].
+- **LoCoMo-Plus dev (implicit cues):** adaptive cue hit −0.040 [−0.070, −0.015].
+
+**Likely cause:** LoCoMo-Plus triggers deliberately share few words with the earlier cue, so the
+BM25 ranking promotes turns that share surface words over the semantically related cue.
+
+**Conclusion:** lexical retrieval is not a free gain. It helps explicit recall and hurts
+implicit-cue recall. The frozen system remains the only configuration with test results.
+
+Any follow-up (for example, using hybrid only for explicit `qa` turns) would be a new
+configuration, designed with this dev evidence. It would need its own pre-registration and gates
+before any test run.
