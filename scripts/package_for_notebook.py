@@ -15,6 +15,8 @@ SKIP_SUFFIXES = {".pyc", ".egg-info"}
 
 def include(path: Path) -> bool:
     rel = path.relative_to(ROOT)
+    if rel.parts[:2] == ("results", "final"):  # the frozen test outputs the notebook compares against
+        return path.suffix not in SKIP_SUFFIXES
     if any(part in SKIP_DIRS or part.endswith(".egg-info") for part in rel.parts):
         return False
     return path.suffix not in SKIP_SUFFIXES
