@@ -34,6 +34,8 @@ from pathlib import Path
 from controller import RuleBasedController, RuleConfig
 from eval.metrics import cluster_bootstrap_ci, macro_f1
 
+from eval.frozen import system_name
+
 from .generate import GENERATOR_VERSION, load_split
 from .trace import SINGLES, STRATEGIES, build_traces, replay
 
@@ -50,7 +52,7 @@ JUDGE_SYSTEM = (
 # --------------------------------------------------------------------------- shared helpers
 def traces_for(split: str, args) -> list[dict]:
     convs = load_split(split)
-    tag = f"{split}_b{args.budget}_{args.embedder}_{'nli' if args.nli else 'nonli'}" + ("" if args.embedder == "hashing" else "_rerank-noncode")
+    tag = f"{split}_b{args.budget}_{args.embedder}_{'nli' if args.nli else 'nonli'}" + ("" if args.embedder == "hashing" else "_rerank-noncode") + ("" if system_name() == "frozen" else f"_{system_name()}")
     version = "legacy" if split == "legacy" else GENERATOR_VERSION
     return build_traces(convs, args.budget, args.embedder, args.nli, Path(args.cache_dir) / f"{tag}.jsonl.gz",
                         rebuild=args.rebuild_traces, version=version)
@@ -219,6 +221,7 @@ def main() -> None:
 
     summary = summarize(rows, majority, args.n_boot)
     summary.update({
+        "system": system_name(),
         "split": args.split,
         "budget_tokens": args.budget,
         "embedder": args.embedder,

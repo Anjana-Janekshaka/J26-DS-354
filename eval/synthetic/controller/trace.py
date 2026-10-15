@@ -60,11 +60,12 @@ def trace_conversation(conv: dict, budget: int, emb: Embedder, nli, keep_context
     # Same RAG read path as the LoCoMo harnesses: cross-encoder reranking (selected on LoCoMo dev);
     # skipped with the offline hashing embedder, which is for code checks only.
     from contracts.text import HashingEmbedder
+    from eval.frozen import system_retrieval
     from retrieval.rerank import DEFAULT_RERANKER
 
     reranker = None if isinstance(getattr(emb, "inner", emb), HashingEmbedder) else DEFAULT_RERANKER
     pipe = MemoryPipeline(conv["id"], token_budget=budget, embedder=emb, nli=nli,
-                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None, reranker=reranker))
+                          retrieval_config=RetrievalConfig(**system_retrieval(check_contradictions=nli is not None, reranker=reranker)))
     probes_at = defaultdict(list)
     for p in conv["probes"]:
         probes_at[p["after_index"]].append(p)
