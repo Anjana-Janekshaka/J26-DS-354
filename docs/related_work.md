@@ -78,8 +78,8 @@ computed on our own data (§3).
 |---|---|---|
 | Pareto (cost vs accuracy) evaluation of the controller | MoMA, Mem0 | Done, from frozen test results |
 | Staleness leak and false-supersession metrics | MemStrata | Done (§3) |
-| Hybrid BM25 + dense retrieval (RRF) | DPR, Zep | Implemented as an option (off in the frozen system); dev-only evaluation |
-| MMR redundancy-aware selection | xMemory, Zep | Implemented as an option (off in the frozen system); dev-only evaluation |
+| Hybrid BM25 + dense retrieval (RRF) | DPR, Zep | **Helps on dev:** +0.052 [+0.018, +0.088] RAG evidence hit over the frozen system (0.709 → 0.762). v2 candidate; off in the frozen system |
+| MMR redundancy-aware selection | xMemory, Zep | **No effect on dev:** +0.002 [−0.008, +0.009]. Dropped |
 | Read-time entropy granularity router | MemGAS | v2 |
 | Trained adapter reranker instead of MS MARCO | RMM | v2 |
 | Sub-goal retrieval for multi-hop / implicit cues | GOAL-MEM | v2 (needs an LLM) |
@@ -87,3 +87,28 @@ computed on our own data (§3).
 | Probe-QA summary verification and repair | MemMA | v2 (§6.3 stretch) |
 | L1 facts as retrievable units | LoCoMo (observations) | v2 |
 | Arousal / emotion feature in importance | LUFY | v2 |
+
+## 5. Dev results for the paper-derived retrieval options (LoCoMo dev split, 2026-10-16)
+
+LoCoMo dev split: 5 conversations, 1,020 questions, budget 1,024 tokens. RAG evidence hit, with
+paired differences against the frozen configuration (95% bootstrap intervals over conversations).
+The frozen reference was re-run on Colab and reproduced the local value exactly (0.709).
+**These are dev results only; the frozen test results in `results/RESULTS.md` are unchanged.**
+
+| Configuration | Evidence hit | Answer in context | Multi-hop | Temporal | Single-hop | vs frozen |
+|---|---|---|---|---|---|---|
+| Embedding only | 0.542 | 0.355 | 0.19 | 0.54 | 0.66 | −0.167 [−0.210, −0.115] |
+| + hybrid BM25 | 0.612 | 0.390 | 0.18 | 0.66 | 0.73 | −0.097 [−0.117, −0.080] |
+| + hybrid + MMR | 0.615 | 0.393 | 0.18 | 0.68 | 0.73 | −0.094 [−0.115, −0.075] |
+| **Frozen: reranker** | **0.709** | 0.476 | 0.31 | 0.74 | 0.83 | — |
+| **Reranker + hybrid BM25** | **0.762** | 0.490 | 0.32 | 0.84 | 0.89 | **+0.052 [+0.018, +0.088]** |
+| Reranker + MMR | 0.711 | 0.475 | 0.31 | 0.75 | 0.84 | +0.002 [−0.008, +0.009] |
+| Reranker + hybrid + MMR | 0.760 | 0.486 | 0.30 | 0.84 | 0.89 | +0.050 [+0.011, +0.090] |
+
+- **Hybrid lexical + dense retrieval helps**, with or without the reranker. The gain is in temporal
+  and single-hop questions, where exact names, dates and numbers matter. Multi-hop does not improve
+  (0.31 → 0.32); that is what GOAL-MEM's sub-goal retrieval targets.
+- **MMR does not help** here: after reranking, near-duplicate chunks were not what pushed evidence
+  out of the budget.
+- Before adopting hybrid in a frozen v2 configuration, it should also be checked on synthetic
+  controller val and the coding demo (code-task turns skip the reranker but would use hybrid).
