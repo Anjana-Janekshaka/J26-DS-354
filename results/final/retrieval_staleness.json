@@ -1,0 +1,42 @@
+{
+  "split": "test",
+  "threshold": 0.95,
+  "n_contradictions": 51,
+  "n_compatible": 35,
+  "stale_fact_leak_rate": 0.27450980392156865,
+  "false_supersession_rate": 0.22857142857142856,
+  "leak_rate_by_verifier": {
+    "nli / prefilter": {
+      "n": 49,
+      "leak_rate": 0.2857142857142857
+    },
+    "structural (signature diff)": {
+      "n": 2,
+      "leak_rate": 0.0
+    }
+  },
+  "cosine_auroc_contradiction_vs_compatible": 0.6969187675070028,
+  "nli_auroc_contradiction_vs_compatible": 0.6980392156862745,
+  "mean_cosine": {
+    "contradiction": 0.6390395088523042,
+    "compatible": 0.4705618692295892
+  },
+  "flagger_comparison_test": {
+    "embedding similarity only": {
+      "threshold_selected_on_dev": 0.263,
+      "precision": 0.6375,
+      "recall": 1.0,
+      "f1": 0.7786259541984732,
+      "leak_rate": 0.0,
+      "false_supersession_rate": 0.8285714285714286
+    },
+    "NLI stage (ours)": {
+      "threshold_selected_on_dev": 0.714,
+      "precision": 0.8222222222222222,
+      "recall": 0.7254901960784313,
+      "f1": 0.7708333333333334,
+      "leak_rate": 0.27450980392156865,
+      "false_supersession_rate": 0.22857142857142856
+    }
+  }
+}

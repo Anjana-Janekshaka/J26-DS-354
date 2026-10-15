@@ -67,7 +67,8 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
                           llm=llm if args.llm_summaries else None, summarize_with_llm=args.llm_summaries,
                           retrieval_config=RetrievalConfig(check_contradictions=nli is not None,
                                                            compact_headers=not args.full_headers,
-                                                           reranker=args.reranker, neighbors=args.neighbors))
+                                                           reranker=args.reranker, neighbors=args.neighbors,
+                                                           hybrid=args.hybrid, mmr_lambda=args.mmr))
     gran = {m: RetrievalEngine(emb, None, RetrievalConfig(mode=m, check_contradictions=False)) for m in ("turn", "segment", "adaptive")}
     dia_to_tid: dict[str, str] = {}
     text_of: dict[str, str] = {}
@@ -209,6 +210,8 @@ def main() -> None:
     ap.add_argument("--reranker", default=DEFAULT_RERANKER, help="cross-encoder that reranks RAG candidates (selected on the dev split)")
     ap.add_argument("--no-reranker", dest="reranker", action="store_const", const=None, help="plain FAISS ranking (ablation)")
     ap.add_argument("--neighbors", type=int, default=0, help="adjacent turns added around each retrieved RAG turn")
+    ap.add_argument("--hybrid", action="store_true", help="v2: fuse dense + BM25 rankings (RRF)")
+    ap.add_argument("--mmr", type=float, default=None, help="v2: MMR lambda for redundancy-aware ordering")
     ap.add_argument("--full-headers", action="store_true", help="old verbose RAG chunk headers (ablation)")
     ap.add_argument("--default-rules", action="store_true", help="RuleConfig() defaults instead of the frozen controller config")
     ap.add_argument("--word-budget", type=int, default=400, help="equal-cost budget (words) for the granularity comparison")
@@ -246,7 +249,8 @@ def main() -> None:
 
     summary = aggregate(all_rows)
     summary["config"] = {"budget": args.budget, "conversations": len(convs), "nli": nli is not None, "split": args.split,
-                         "rag": {"compact_headers": not args.full_headers, "reranker": args.reranker, "neighbors": args.neighbors},
+                         "rag": {"compact_headers": not args.full_headers, "reranker": args.reranker, "neighbors": args.neighbors,
+                                 "hybrid": args.hybrid, "mmr_lambda": args.mmr},
                          "qa_llm": f"run with {describe(llm)}" if (llm is not None and args.llm) else "not run (pass --llm with an LLM configured)",
                          "summary_generator": f"llm ({describe(llm)})" if args.llm_summaries else "rule_based",
                          "answer_judge": describe(judge) if judge is not None else "not run",

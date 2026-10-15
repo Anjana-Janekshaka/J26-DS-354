@@ -339,6 +339,20 @@ segment-level baselines; contradiction-flag precision/recall on the synthetic co
 (calibrated, not just accuracy — per MemStrata's own finding that unvalidated similarity/LLM-judge
 methods leak stale facts).
 
+### 6.5 Literature update and narrowed claims (2026-10-15; supersedes 6.1–6.4 where they differ)
+
+These claims were re-checked against the team's 22-paper reading set and the frozen test results.
+The paper-by-paper table, MemStrata's staleness metrics on our data and the derived improvements are
+in `docs/related_work.md`. **Present these lines, not the older wording.**
+
+| Component | Claim to present | Closest systems and the difference | Number |
+|---|---|---|---|
+| **Controller (headline)** | **Per-turn switching between three memory paradigms (sliding window, hierarchical summarization, RAG), with a logged, explainable, overridable decision and no LLM in the decision path** | FluxMem / MemCon (6.1); **MemGAS** and **RMM** adapt *within* retrieval; **Self-RAG** decides retrieve-or-not; **MemGPT** lets the LLM page memory (opaque, costly); **MoMA** routes models, not memory | Mixed workloads: **+0.112** over the best single strategy and **+0.060** over always-hybrid with fewer tokens (Pareto: `results/figures/pareto_controller.png`); LoCoMo: ties the best strategy; decision latency about 0.1 ms |
+| Sliding window | Unchanged (6.2): an evaluation claim, not a mechanism claim | **Generative Agents** (recency + importance + relevance: cite as the origin), AFM, LUFY (learned weights), MemoryBank (forgetting curve) | 59 wins / 0 losses vs recency-only; the ablation selects the weights |
+| Summarization | Unchanged: the live loss score used as a control signal (6.3) | ProMem (post-hoc only); the keyed merge sits next to **MemStrata** (deterministic keys), **Mem0** (LLM UPDATE) and **Zep** (LLM invalidation) | Stale-fact leakage 0.00 vs 0.50; signature retention 0.90 vs 0 |
+| RAG claim 1 (granularity) | **Withdrawn as a performance claim.** It did not beat fixed segments on test (recall at 400 words: 0.355 vs 0.376). Kept as a design element | **MemGAS** (read-time entropy router), **SeCom** (segments plus denoising), LycheeMemory V2 | — |
+| RAG claim 2 (staleness) | **Extraction-free, LLM-free staleness flagging on raw conversation chunks: an exact structural check (code signature) where a key exists, calibrated NLI where none does** | **MemStrata** needs clean (subject, relation, object) triples and reports that NLI/LLM judges leak; **Zep** needs LLM-extracted edges and an LLM verifier; CLEAR / TSM (6.4) | P 0.82 / R 0.73. At equal F1, NLI cuts wrongly retired current facts from **0.83** (similarity only) to **0.23**. **Stale-fact leak 0.27: state it plainly** |
+
 ---
 
 ## 7. What "80% done" means, concretely, per component (Progress Presentation 1 scope)

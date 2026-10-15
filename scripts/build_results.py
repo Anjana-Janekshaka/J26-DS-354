@@ -122,6 +122,8 @@ def main() -> None:
         md.append("")
         for k, v in s.get("differences", {}).items():
             md.append(f"- {k}: **{v['estimate']:+.3f}** [{v['ci_low']:+.3f}, {v['ci_high']:+.3f}]")
+        if (out / "figures" / "pareto_controller.png").exists():
+            md += ["", "![cost vs evidence hit](figures/pareto_controller.png)"]
         sel = s["selection"]
         md += [f"- strategy-selection macro-F1: {sel['adaptive_macro_f1']['estimate']:.3f} "
                f"[{sel['adaptive_macro_f1']['ci_low']:.3f}, {sel['adaptive_macro_f1']['ci_high']:.3f}] "
@@ -143,7 +145,9 @@ def main() -> None:
                       f"{f(loc['strategies'][st].get('answer_in_context'))} |")
         md += ["", f"- adaptive − best single fixed ({loc['best_fixed_baseline']}): {ci(loc_rows, delta('hit', 'adaptive', loc['best_fixed_baseline']), 'conv')}",
                f"- adaptive − always hybrid: {ci(loc_rows, delta('hit', 'adaptive', 'hybrid'), 'conv')}"]
-        before = [r for r in rows(ROOT / a.before) if r["conv"] in test_conv_ids()]
+        if (out / "figures" / "pareto_locomo.png").exists():
+            md += ["", "![cost vs evidence hit, LoCoMo](figures/pareto_locomo.png)", ""]
+        before =[r for r in rows(ROOT / a.before) if r["conv"] in test_conv_ids()]
         if before:
             b = sum(r["rag"]["hit"] for r in before) / len(before)
             md.append(f"- **RAG read path, before → after on the same test conversations:** {b:.3f} → "
@@ -225,6 +229,16 @@ def main() -> None:
                   f"prefilter recall {v['prefilter_recall_of_positives']:.2f}; NLI calibration Brier {v['nli_calibration']['brier']:.3f}, ECE {v['nli_calibration']['ece_10bin']:.3f}.")
     else:
         md.append("pending")
+    st = load(local / "retrieval" / "staleness.json")
+    if st:
+        used["retrieval_staleness"] = local / "retrieval" / "staleness.json"
+        fc = st["flagger_comparison_test"]
+        md += ["", "Staleness metrics in MemStrata's form (same frozen scores, threshold per flagger chosen on dev):", "",
+               "| flagger | precision | recall | stale-fact leak | current facts wrongly retired |", "|---|---|---|---|---|"]
+        for name, v in fc.items():
+            md.append(f"| {name} | {v['precision']:.2f} | {v['recall']:.2f} | {v['leak_rate']:.2f} | {v['false_supersession_rate']:.2f} |")
+        md.append(f"\nRanking quality (AUROC, contradiction vs compatible): cosine {st['cosine_auroc_contradiction_vs_compatible']:.2f}, "
+                  f"NLI {st['nli_auroc_contradiction_vs_compatible']:.2f}.")
     md += ["", "## Component 1: dynamic sliding window (40 topic-shift conversations, 360 probes)", ""]
     md += ["| budget | DSW recall | recency-only | fixed-token window | DSW vs recency win / tie / loss | equal-weights rank in ablation |", "|---|---|---|---|---|---|"]
     for name, b in (("sliding_window_b100", 100), ("sliding_window", 220)):

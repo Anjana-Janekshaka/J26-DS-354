@@ -34,6 +34,7 @@ from contracts.text import CONTEXT_BLOCK_SEPARATOR, Embedder, code_signatures
 from .chunking import BoundaryConfig, BoundaryDecision, Mode, decide_boundary
 from .contradiction import ContradictionChecker, ContradictionConfig
 from .index import VectorIndex
+from .lexical import BM25Index, reciprocal_rank_fusion
 from .nli import NLIScorer
 
 
@@ -52,6 +53,10 @@ class RetrievalConfig(BaseModel):
     # (per the TurnSignal task type) keep the bi-encoder ranking. See CLAUDE.md section 12.
     rerank_skip_task_types: tuple[str, ...] = ("code_generation", "code_refactor")
     neighbors: int = Field(default=0, ge=0)  # adjacent turns added around each retrieved turn chunk
+    # v2 options, evaluated on dev only after the 2026-10-15 test run (off in the frozen system):
+    hybrid: bool = False  # fuse dense and BM25 rankings with reciprocal rank fusion
+    rrf_k: int = Field(default=60, ge=1)
+    mmr_lambda: float | None = Field(default=None, ge=0.0, le=1.0)  # redundancy-aware order (1 = pure relevance)
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     contradiction: ContradictionConfig = Field(default_factory=ContradictionConfig)
 
@@ -111,6 +116,7 @@ class RetrievalEngine:
         self._seq = 0
         self.boundary_log: list[tuple[str, BoundaryDecision]] = []
         self._latency_ema_ms = 1.0
+        self._lexical = BM25Index() if self.config.hybrid else None
         self._turns: list[ConversationTurn] = []
         self._pos: dict[str, int] = {}
         self._reranker = None
@@ -141,11 +147,15 @@ class RetrievalEngine:
         self._by_faiss[self._next_faiss] = cid
         self._next_faiss += 1
         self.chunks[cid] = chunk
+        if self._lexical is not None:
+            self._lexical.add(cid, "\n".join(t.content for t in turns))
         return chunk
 
     def _deactivate(self, chunk: Chunk) -> None:
         chunk.active = False
         self.index.remove([chunk.faiss_id])
+        if self._lexical is not None:
+            self._lexical.remove(chunk.chunk_id)
 
     def _flag(self, older_id: str, newer_id: str, confidence: float, verifier: str, evidence: tuple[str, str]) -> None:
         older = self.chunks[self.resolve(older_id)]
@@ -233,6 +243,36 @@ class RetrievalEngine:
                 out.append((self.chunks[cid], score))
         return out
 
+    def _candidates(self, query: str, k: int) -> list[tuple[Chunk, float]]:
+        """Dense top-k, or (``hybrid``) dense and BM25 rankings fused by reciprocal rank fusion.
+        The dense similarity floor still applies to dense-only hits; a chunk that matches the query's
+        exact terms (BM25 > 0) is kept even when its embedding similarity is low."""
+        dense = [(c, sc) for c, sc in self.search(query, k) if sc >= self.config.min_score]
+        if self._lexical is None:
+            return dense
+        lex = [(cid, sc) for cid, sc in self._lexical.search(query, k) if cid in self.chunks and self.chunks[cid].active]
+        fused = reciprocal_rank_fusion([[c.chunk_id for c, _ in dense], [cid for cid, _ in lex]], self.config.rrf_k)
+        # Same candidate count as dense-only, so the reranker's cost does not grow with fusion.
+        return [(self.chunks[cid], sc) for cid, sc in sorted(fused.items(), key=lambda x: -x[1])][:k]
+
+    def _mmr(self, results: list[tuple[Chunk, float]], lam: float, pool: int = 60) -> list[tuple[Chunk, float]]:
+        """Maximal marginal relevance over the top ``pool`` results: prefer relevant chunks that are not
+        near-duplicates of chunks already chosen (agent memory is full of near-repeats)."""
+        head, tail = results[:pool], results[pool:]
+        if len(head) < 2:
+            return results
+        n = len(head)
+        rel = [1.0 - i / n for i in range(n)]  # rank-based relevance, comparable across score scales
+        vecs = np.stack([c.vec for c, _ in head])
+        sims = vecs @ vecs.T
+        chosen: list[int] = []
+        left = list(range(n))
+        while left:
+            best = max(left, key=lambda i: lam * rel[i] - (1 - lam) * (max(sims[i, j] for j in chosen) if chosen else 0.0))
+            chosen.append(best)
+            left.remove(best)
+        return [head[i] for i in chosen] + tail
+
     def _with_neighbors(self, chunk: Chunk, exclude: set[str] | frozenset[str] = frozenset()) -> list[ConversationTurn]:
         """The chunk's turns plus ``neighbors`` adjacent turns on each side (dialogue answers often
         sit in the reply right after the turn that matches the question). Neighbours already shown
@@ -268,13 +308,18 @@ class RetrievalEngine:
         budget = signal.token_usage.budget
         top_k = self.config.top_k
         if self._reranker is not None and signal.task_type not in self.config.rerank_skip_task_types:
-            cands = [(c, sc) for c, sc in self.search(query, max(top_k * 3, self.config.rerank_candidates)) if sc >= self.config.min_score]
+            cands = self._candidates(query, max(top_k * 3, self.config.rerank_candidates))
             rel = self._reranker.score(query, [c.text for c, _ in cands])
             results = sorted(((c, r) for (c, _), r in zip(cands, rel)), key=lambda x: -x[1])
             floor = 0.0  # the bi-encoder floor was applied before reranking
+        elif self._lexical is not None:
+            results = self._candidates(query, max(top_k * 3, self.config.rerank_candidates))
+            floor = float("-inf")  # fused scores are rank-based; the dense floor was applied above
         else:
             results = self.search(query, top_k * 3)
             floor = self.config.min_score
+        if self.config.mmr_lambda is not None:
+            results = self._mmr(results, self.config.mmr_lambda)
         picked: list[tuple[Chunk, str]] = []
         covered: set[str] = set()
         picked_ids: set[str] = set()
