@@ -1,4 +1,4 @@
-# Pre-registration: v2 hybrid retrieval (written 2026-10-16, before any test split was run with it)
+# Pre-registration: v2 hybrid retrieval (written 2026-10-15, before any test split was run with it)
 
 This file was committed **before** any test split was run with the v2 configuration. The commit
 hash and date are in git history; the test runs come after it.
@@ -22,7 +22,7 @@ the same items) lies entirely below zero. Checked by `eval/v2_gate.py`.
 
 | Gate | Data | Status |
 |---|---|---|
-| G1 | Coding demo: adaptive must catch both traps | **Passed** on 2026-10-16: 2/2 (frozen also 2/2) |
+| G1 | Coding demo: adaptive must catch both traps | **Passed** on 2026-10-15: 2/2 (frozen also 2/2) |
 | G2 | Synthetic controller **val** split, adaptive evidence hit | **Passed** (2026-10-15, Colab): 0.9917 → 1.0000, +0.0083 [+0.0000, +0.0250] |
 | G3 | LoCoMo-Plus **dev** split (10 warm-up turns), adaptive cue hit | **FAILED** (2026-10-15, Colab): 0.1343 → 0.0945, −0.0398 [−0.0697, −0.0149] |
 

@@ -88,7 +88,7 @@ computed on our own data (§3).
 | L1 facts as retrievable units | LoCoMo (observations) | v2 |
 | Arousal / emotion feature in importance | LUFY | v2 |
 
-## 5. Dev results for the paper-derived retrieval options (LoCoMo dev split, 2026-10-16)
+## 5. Dev results for the paper-derived retrieval options (LoCoMo dev split, 2026-10-15)
 
 LoCoMo dev split: 5 conversations, 1,020 questions, budget 1,024 tokens. RAG evidence hit, with
 paired differences against the frozen configuration (95% bootstrap intervals over conversations).

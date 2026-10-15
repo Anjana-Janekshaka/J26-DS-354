@@ -553,7 +553,7 @@ results.
 | Synthetic controller val (tuning grid, 1,512 configs) | best val evidence hit 0.992 with the current routing at `low_pressure` 0.9 and `min_dwell_turns` 3 (val macro-F1 0.327 vs 0.263 for the old defaults). Routing long chat to hybrid: 0.933 |
 | Coding demo with the frozen config | **1/2 with the reranker on every turn** (hybrid misses the duplicate-function trap), 2/2 without it, and **2/2 with the reranker skipped for code tasks** (the adopted setting) |
 
-**Dev results for paper-derived options, 2026-10-16** (LoCoMo dev; details in
+**Dev results for paper-derived options, 2026-10-15** (LoCoMo dev; details in
 `docs/related_work.md` §5). These are not test results, and the frozen system is unchanged.
 
 | Option (off in the frozen system) | Result |
