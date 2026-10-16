@@ -56,3 +56,23 @@ questions; full context uses its 60-question subset.
 output limit this harness set (`max_tokens`). The memories from those sessions were lost, which
 handicaps Mem0. A corrected Mem0 run with `max_tokens` 8,000 is the fair comparison. Until it
 exists, the Mem0 row must carry this caveat.
+
+## Amendment: corrected Mem0 run (declared 2026-10-16, before running)
+
+**Why:** in run 1, 8.8% of Mem0's extraction calls were cut off by this harness's own output limit,
+which handicapped the baseline. The correction can only help Mem0, so it makes the comparison
+stricter for CEAI.
+
+**Change:**
+- Mem0's `max_tokens` (Ollama `num_predict`) is raised from 1,500 to **8,000**.
+- The Ollama server runs with a **16,384-token context** and one parallel slot, so the extraction
+  prompt plus up to 8,000 output tokens fit.
+
+**Unchanged:** everything else, including the questions, the answering model, the judge, the
+1,024-token budget, the two speaker scopes and per-session `add()`.
+
+**Reporting:** results go to `results/final/baselines_mem0_fixed/` and are reported **next to**
+run 1, whatever the result. Run 1 is kept as it is.
+
+- The corrected run **replaces run 1's Mem0 row** as the headline comparison.
+- If extraction failures remain, their count is reported.
