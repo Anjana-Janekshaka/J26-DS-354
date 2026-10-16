@@ -30,9 +30,9 @@ reranker, budgets and the code-task reranker gate are as frozen.
 | Gate | Data | Pass rule | Status |
 |---|---|---|---|
 | G1 | Coding demo | adaptive catches both traps | **Passed** 2026-10-16: 2/2 |
-| G2 | Synthetic controller val, adaptive evidence hit | not significantly worse than frozen (paired 95% CI not entirely below 0) | to run |
-| G3 | LoCoMo-Plus dev (10 warm-up turns), adaptive cue hit | not significantly worse than frozen | to run |
-| G4 | **LoCoMo dev answer accuracy** (60 random questions per dev conversation, seed 0, Qwen2.5-7B answering and judging), adaptive judge score | **v3 − frozen point estimate > 0** | to run |
+| G2 | Synthetic controller val, adaptive evidence hit | not significantly worse than frozen (paired 95% CI not entirely below 0) | **Passed** (2026-10-16): 0.9917 → 1.0000, +0.0083 [+0.0000, +0.0250] |
+| G3 | LoCoMo-Plus dev (10 warm-up turns), adaptive cue hit | not significantly worse than frozen | **FAILED** (2026-10-16): 0.1343 → 0.0199, −0.1144 [−0.1592, −0.0746] |
+| G4 | **LoCoMo dev answer accuracy** (60 random questions per dev conversation, seed 0, Qwen2.5-7B answering and judging), adaptive judge score | **v3 − frozen point estimate > 0** | Passed by the rule (2026-10-16): 0.5175 → 0.5240, +0.0066 [−0.0582, +0.0690], **within noise** |
 
 **If any gate fails, no v3 test split is run**, and v3 is reported as dev-only.
 
@@ -55,3 +55,21 @@ reranker, budgets and the code-task reranker gate are as frozen.
   turn's wording reaches the context. A short observation can hold the answer while covering less
   of the turn's wording, so evidence hit may understate B. Answer accuracy (G4, test run 1) is the
   deciding metric.
+
+## Outcome (2026-10-16)
+
+**Gate G3 failed, so no v3 test split was run.** The notebook stopped before any test data was
+used. v3 is reported as **dev-only**.
+
+- **LoCoMo-Plus dev: adaptive cue hit 0.134 → 0.020.**
+  - Likely cause: change B. Many short single-turn observations fill the budget, so the second line
+    of a two-line cue (which a two-turn segment used to bring in) rarely fits any more.
+  - Part of this is the evidence-metric caveat declared above, but the gate was declared on this
+    metric.
+- **LoCoMo dev answer accuracy: +0.007, interval −0.058 to +0.069.** The dev evidence gain from
+  hybrid retrieval did not turn into better answers.
+
+**Conclusion:** neither change improves accuracy enough to justify a test run, and observations
+hurt implicit-cue recall. Three retrieval variants (v2 hybrid, MMR, v3) have now been evaluated
+under the same discipline, and none beat the frozen system. **The frozen system remains the system
+of record.**

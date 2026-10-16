@@ -561,6 +561,7 @@ results.
 |---|---|
 | Hybrid BM25 + dense retrieval (RRF) on top of the reranker | LoCoMo dev: RAG evidence hit 0.709 → **0.762**, **+0.052 [+0.018, +0.088]** (temporal 0.74 → 0.84, single-hop 0.83 → 0.89, multi-hop unchanged). But **LoCoMo-Plus dev: −0.040 [−0.070, −0.015]**. It **failed its pre-registered gate**, so no test run was made; dev-only (`docs/v2_hybrid_preregistration.md`) |
 | MMR ordering | +0.002 [−0.008, +0.009]: no effect, dropped |
+| v3 = hybrid for `qa` turns + summarizer facts as RAG observations (`docs/v3_preregistration.md`) | **Failed gate G3**: LoCoMo-Plus dev 0.134 → 0.020. LoCoMo dev answer accuracy only +0.007 [−0.058, +0.069]. No test run; dev-only |
 
 ### 12.3 Findings that narrow the §6 claims
 
