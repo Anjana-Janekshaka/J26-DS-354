@@ -80,8 +80,7 @@ RUN = {
 }
 NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
             or RUN["v2_preregistered"] or RUN["baselines"])
-if RUN["baselines"]:
-    PARALLEL = 2  # full-context prompts need a 32k context; two slots fit a T4
+
 """),
     code("""
 import os, sys, glob, json, time, shutil, pathlib, subprocess, urllib.request
@@ -140,17 +139,30 @@ else:
     subprocess.run("apt-get install -y -qq zstd pciutils > /dev/null 2>&1 || true", shell=True)
     if shutil.which("ollama") is None:
         subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
-    env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": str(PARALLEL),
-           "OLLAMA_CONTEXT_LENGTH": "32768" if RUN["baselines"] else "4096"}  # controller-judge prompts exceed Ollama's small default context
-    server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "w"), stderr=subprocess.STDOUT, env=env)
-    for _ in range(120):
-        try:
-            urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2)
-            break
-        except Exception:
-            time.sleep(1)
-    else:
+    server = None
+
+    def start_ollama(context=4096, parallel=PARALLEL):
+        # (Re)start the Ollama server. A large context with several slots can push the model partly onto
+        # the CPU on a T4 and stall every request, so long-context jobs restart it with one slot.
+        global server
+        if server is not None:
+            server.terminate()
+            server.wait(timeout=60)
+        subprocess.run("pkill -f 'ollama serve' || true", shell=True)
+        time.sleep(3)
+        env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": str(parallel),
+               "OLLAMA_CONTEXT_LENGTH": str(context)}  # controller-judge prompts exceed Ollama's small default context
+        server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "a"), stderr=subprocess.STDOUT, env=env)
+        for _ in range(120):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2)
+                print(f"ollama running: context {context}, parallel {parallel}")
+                return
+            except Exception:
+                time.sleep(1)
         raise RuntimeError("ollama did not start; see " + str(WORK / "ollama.log"))
+
+    start_ollama()
     for model in {ANSWER_MODEL, JUDGE_MODEL}:
         subprocess.run(["ollama", "pull", model], check=True)
     # The single most common cause of very slow runs: Ollama silently running on the CPU.
@@ -266,8 +278,16 @@ if RUN["baselines"]:
         ceai_q = WORK / "final" / "locomo_qa" / "questions.jsonl"
     assert ceai_q.exists(), f"missing {ceai_q}: CEAI's frozen test answers are needed for the paired comparison"
     print("CEAI frozen answers:", ceai_q)
-    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,full_context,summary_buffer,mem0",
-         "--out", str(WORK / "baselines")], "baselines")
+    # Phase 1: memory baselines at the normal server settings.
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,summary_buffer,mem0",
+         "--out", str(WORK / "baselines")], "baselines_phase1")
+    # Phase 2: the full-context ceiling alone, with a 32k context, one slot and a long request timeout.
+    start_ollama(context=32768, parallel=1)
+    os.environ["CEAI_LLM_TIMEOUT"], os.environ["CEAI_LLM_CONCURRENCY"] = "1200", "1"
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,summary_buffer,mem0,full_context",
+         "--out", str(WORK / "baselines")], "baselines_phase2")
+    os.environ["CEAI_LLM_TIMEOUT"], os.environ["CEAI_LLM_CONCURRENCY"] = "300", str(PARALLEL)
+    start_ollama()
 
 # ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
 if RUN["v2_preregistered"]:

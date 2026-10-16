@@ -75,7 +75,8 @@ def main() -> None:
     judge = get_llm(out / "judge_cache.jsonl", role="judge")
     if llm is None or judge is None:
         raise SystemExit("configure an LLM: CEAI_LLM_BASE_URL + CEAI_LLM_MODEL (see notebooks/free_gpu_eval.ipynb)")
-    summarizer = CachedLLM(OpenAICompatibleLLM(os.environ["CEAI_LLM_BASE_URL"], os.environ["CEAI_LLM_MODEL"], max_tokens=400),
+    summarizer = CachedLLM(OpenAICompatibleLLM(os.environ["CEAI_LLM_BASE_URL"], os.environ["CEAI_LLM_MODEL"], max_tokens=400,
+                                               timeout_s=float(os.environ.get("CEAI_LLM_TIMEOUT", "300"))),
                            out / "summary_cache.jsonl")
     emb = CachingEmbedder(SentenceTransformerEmbedder())
 
@@ -120,8 +121,14 @@ def main() -> None:
                         "answer": pred, "judge_grade": g, "judge_score": GRADES.get(g) if g else None,
                         "qa_f1": token_f1(pred, str(q.answer)), "context_tokens": count_tokens(ctx), "read_ms": read_ms}
 
-            with ThreadPoolExecutor(1 if name == "mem0" else concurrency()) as pool:
-                results = list(pool.map(answer, sys_qs))
+            try:
+                with ThreadPoolExecutor(1 if name == "mem0" else concurrency()) as pool:
+                    results = list(pool.map(answer, sys_qs))
+            except Exception as e:  # noqa: BLE001 - e.g. the LLM server timing out; recorded, run continues
+                with open(cost_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"conv": conv.sample_id, "system": name, "error": f"{type(e).__name__}: {e}"}) + "\n")
+                print(f"{conv.sample_id} {name}: FAILED while answering - {type(e).__name__}: {e}", flush=True)
+                continue
             with open(rows_path, "a", encoding="utf-8") as f:
                 for r in results:
                     f.write(json.dumps(r) + "\n")
