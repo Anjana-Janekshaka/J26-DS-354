@@ -1,0 +1,5 @@
+{"conv": "conv-30", "system": "mem0", "write_llm_calls": 38, "ingest_seconds": 687.969092130661, "turns": 369, "add_failures": 0}
+{"conv": "conv-42", "system": "mem0", "write_llm_calls": 58, "ingest_seconds": 843.6691973209381, "turns": 629, "add_failures": 0}
+{"conv": "conv-44", "system": "mem0", "write_llm_calls": 56, "ingest_seconds": 1293.0006697177887, "turns": 675, "add_failures": 0}
+{"conv": "conv-48", "system": "mem0", "write_llm_calls": 60, "ingest_seconds": 1059.6350338459015, "turns": 681, "add_failures": 0}
+{"conv": "conv-50", "system": "mem0", "write_llm_calls": 60, "ingest_seconds": 974.7612028121948, "turns": 568, "add_failures": 0}

@@ -1,0 +1,34 @@
+{
+  "answer_model": "openai-compatible/qwen2.5:7b-instruct",
+  "judge_model": "openai-compatible/qwen2.5:7b-instruct",
+  "protocol": "docs/baselines_protocol.md",
+  "systems": {
+    "mem0": {
+      "judge_score": {
+        "estimate": 0.4673913043478261,
+        "ci_low": 0.4177777777777778,
+        "ci_high": 0.5043290043290043,
+        "n": 230
+      },
+      "token_f1": 0.277851661926514,
+      "mean_context_tokens": 1009.0043478260869,
+      "mean_read_ms": 66.96949302608928,
+      "ceai_judge_score_same_questions": 0.5065217391304347,
+      "ceai_minus_system": {
+        "estimate": 0.0391304347826087,
+        "ci_low": -0.06046511627906977,
+        "ci_high": 0.12658227848101267
+      },
+      "write_llm_calls_per_conversation": 54.4,
+      "ingest_seconds_per_conversation": 971.8070391654968,
+      "add_failures": 0,
+      "n_questions": 230
+    }
+  },
+  "ceai_frozen": {
+    "judge_score": 0.5065502183406113,
+    "token_f1": 0.40591639673238916,
+    "write_llm_calls_per_conversation": 0,
+    "n_questions": 229
+  }
+}

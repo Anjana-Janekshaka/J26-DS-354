@@ -76,3 +76,28 @@ run 1, whatever the result. Run 1 is kept as it is.
 
 - The corrected run **replaces run 1's Mem0 row** as the headline comparison.
 - If extraction failures remain, their count is reported.
+
+## Outcome, corrected Mem0 run (2026-10-16): the headline comparison
+
+Mem0's extraction failures dropped from 24 to 1 of 272. Results are in
+`results/final/baselines_mem0_fixed/`.
+
+Paired on the same 230 questions (full context: 60), as CEAI − system with 95% bootstrap
+intervals over conversations:
+
+| System | Judge score | CEAI − system (judge) | Token-F1 | CEAI − system (token-F1) | Write-time LLM calls / conversation |
+|---|---|---|---|---|---|
+| **CEAI (frozen)** | **0.507** | — | **0.406** | — | **0** |
+| **Mem0 (corrected)** | 0.467 [0.418, 0.504] | +0.039 [−0.060, +0.127] **(not significant)** | 0.278 | **+0.129 [+0.038, +0.210]** | 54 (about 15–20 min per conversation) |
+| Fixed-chunk RAG | 0.433 | **+0.074 [+0.017, +0.132]** | 0.343 | **+0.064 [+0.026, +0.103]** | 0 |
+| Summary buffer | 0.096 | **+0.411 [+0.310, +0.494]** | 0.066 | **+0.340 [+0.240, +0.422]** | 69 |
+| Full context (60 questions) | 0.417 | −0.067 [−0.183, +0.050] (not significant) | 0.195 | **+0.182 [+0.064, +0.299]** | 0 (about 24k tokens per question) |
+
+**How to state it:**
+- CEAI is significantly better than fixed-chunk RAG and the summary buffer on both metrics.
+- **Against Mem0, the judged accuracy is not significantly different.** CEAI's exact-answer
+  token-F1 is significantly higher, and CEAI makes **no LLM calls to store memory** (Mem0: about 54
+  calls per conversation).
+- Against full context, the judged accuracy is not significantly different on its subset, while CEAI
+  uses about 24× fewer context tokens.
+- Judge scores are citable only after the human-agreement check.

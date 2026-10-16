@@ -526,6 +526,7 @@ configuration, with each test split run once. The full sheet with 95% intervals 
 | LoCoMo-Plus test (200 items) | cue hit: adaptive 0.140 = RAG = hybrid; the naive summary is best at 0.185 |
 | RAG granularity, LoCoMo test at an equal 400-word budget | recall: segment 0.376, **adaptive 0.355**, turn 0.328. The earlier "adaptive best" (12.2, older table) **did not hold on test** |
 | Coding demo | adaptive 2/2, fixed 6-exchange window 0/2 |
+| **External baselines** (same 230 LoCoMo test questions, same model, judge and budget; `docs/baselines_protocol.md`) | CEAI judge 0.507 / token-F1 0.406. **Mem0 (corrected): 0.467 / 0.278**: judge difference +0.039 [−0.060, +0.127] *not significant*, token-F1 **+0.129 [+0.038, +0.210]**; Mem0 makes about 54 LLM calls per conversation to store memory, CEAI 0. Fixed-chunk RAG: CEAI **+0.074** judge / **+0.064** F1. Summary buffer: **+0.411** / **+0.340**. Full context (60 questions): judge −0.067 n.s., F1 **+0.182**. Run 1 under-counted Mem0 (output cut off); the corrected run is the headline |
 | Component evaluations on final code | summarization stale-fact leakage 0.00 vs 0.50 naive, signature retention 0.90 vs 0; contradiction flags P 0.82 / R 0.73 / F1 0.77; sliding window 59 wins / 0 losses vs recency at budget 100 |
 
 **Earlier results (development history, superseded by the table above):**
@@ -629,8 +630,7 @@ Present these as they are; don't argue around them.
 2. **Demo package** for the presentation: the coding session on the live dashboard, plus a static
    fallback.
 3. **A stronger judge** for the controller's strategy oracle: a pay-per-token 70B model (about $1) or Claude.
-4. **External baselines** in the same harness: Mem0, LangChain summary-buffer memory, and full
-   context. Measure answer accuracy, write-time LLM calls and the coding traps.
+4. **External baselines: done 2026-10-16** (12.2). Still open: the coding traps on Mem0, and LangMem / A-Mem.
 5. **An OpenAI-compatible proxy** so CEAI can sit in front of any chat app or agent, with the
    dashboard live during the presentation demo.
 6. **Larger answer-accuracy sample** with a stronger model, for the final report (not needed for
