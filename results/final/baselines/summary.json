@@ -1,0 +1,97 @@
+{
+  "answer_model": "openai-compatible/qwen2.5:7b-instruct",
+  "judge_model": "openai-compatible/qwen2.5:7b-instruct",
+  "protocol": "docs/baselines_protocol.md",
+  "systems": {
+    "fixed_chunk_rag": {
+      "judge_score": {
+        "estimate": 0.4326086956521739,
+        "ci_low": 0.3812785388127854,
+        "ci_high": 0.483402489626556,
+        "n": 230
+      },
+      "token_f1": 0.3426254092412761,
+      "mean_context_tokens": 969.1608695652174,
+      "mean_read_ms": 30.588111021738175,
+      "ceai_judge_score_same_questions": 0.5065217391304347,
+      "ceai_minus_system": {
+        "estimate": 0.07391304347826087,
+        "ci_low": 0.017241379310344827,
+        "ci_high": 0.13191489361702127
+      },
+      "write_llm_calls_per_conversation": 0,
+      "ingest_seconds_per_conversation": 1.0081928253173829,
+      "add_failures": 0,
+      "n_questions": 230
+    },
+    "summary_buffer": {
+      "judge_score": {
+        "estimate": 0.09565217391304348,
+        "ci_low": 0.05133928571428571,
+        "ci_high": 0.14042553191489363,
+        "n": 230
+      },
+      "token_f1": 0.06597974982195831,
+      "mean_context_tokens": 557.6260869565217,
+      "mean_read_ms": 0.04787949134246763,
+      "ceai_judge_score_same_questions": 0.5065217391304347,
+      "ceai_minus_system": {
+        "estimate": 0.4108695652173913,
+        "ci_low": 0.31004366812227074,
+        "ci_high": 0.49375
+      },
+      "write_llm_calls_per_conversation": 68.6,
+      "ingest_seconds_per_conversation": 704.3972605705261,
+      "add_failures": 0,
+      "n_questions": 230
+    },
+    "mem0": {
+      "judge_score": {
+        "estimate": 0.3760869565217391,
+        "ci_low": 0.34232365145228216,
+        "ci_high": 0.40375586854460094,
+        "n": 230
+      },
+      "token_f1": 0.1906313864233655,
+      "mean_context_tokens": 957.9782608695652,
+      "mean_read_ms": 59.93245299127723,
+      "ceai_judge_score_same_questions": 0.5065217391304347,
+      "ceai_minus_system": {
+        "estimate": 0.13043478260869565,
+        "ci_low": 0.03636363636363636,
+        "ci_high": 0.21666666666666667
+      },
+      "write_llm_calls_per_conversation": 54.4,
+      "ingest_seconds_per_conversation": 878.4805303096771,
+      "add_failures": 0,
+      "n_questions": 230
+    },
+    "full_context": {
+      "judge_score": {
+        "estimate": 0.4166666666666667,
+        "ci_low": 0.31666666666666665,
+        "ci_high": 0.5166666666666667,
+        "n": 60
+      },
+      "token_f1": 0.19549211611456965,
+      "mean_context_tokens": 23834.6,
+      "mean_read_ms": 0.0018318333180407838,
+      "ceai_judge_score_same_questions": 0.35,
+      "ceai_minus_system": {
+        "estimate": -0.06666666666666667,
+        "ci_low": -0.18333333333333332,
+        "ci_high": 0.05
+      },
+      "write_llm_calls_per_conversation": 0,
+      "ingest_seconds_per_conversation": 0.0,
+      "add_failures": 0,
+      "n_questions": 60
+    }
+  },
+  "ceai_frozen": {
+    "judge_score": 0.5065502183406113,
+    "token_f1": 0.40591639673238916,
+    "write_llm_calls_per_conversation": 0,
+    "n_questions": 229
+  }
+}

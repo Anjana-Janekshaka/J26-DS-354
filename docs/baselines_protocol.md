@@ -38,3 +38,21 @@ identical conditions**. It does not compare against numbers copied from other pa
   this is 0 LLM calls: its summarizer is rule-based and its NLI check is not an LLM.
 - **Every result is reported whatever its sign.** If a system fails to run (for example a Mem0
   JSON-mode failure with a 7B model), that is reported as a failure, not dropped.
+
+## Outcome, run 1 (2026-10-16, Colab T4)
+
+Results are in `results/final/baselines/` (summary, per-question rows, write costs). There are 230
+questions; full context uses its 60-question subset.
+
+| System | Judge score [95% CI] | CEAI − system [95% CI] | Token-F1 | Write-time LLM calls / conversation |
+|---|---|---|---|---|
+| **CEAI (frozen)** | **0.507** | — | 0.406 | **0** |
+| Fixed-chunk RAG | 0.433 [0.381, 0.483] | **+0.074 [+0.017, +0.132]** | 0.343 | 0 |
+| Mem0 (`mem0ai` 2.2.1) | 0.376 [0.342, 0.404] | **+0.130 [+0.036, +0.217]** | 0.191 | 54 (about 15 min per conversation) |
+| Summary buffer | 0.096 [0.051, 0.140] | **+0.411 [+0.310, +0.494]** | 0.066 | 69 (about 12 min per conversation) |
+| Full context (60 questions) | 0.417 | −0.067 [−0.183, +0.050] (not significant) | 0.195 | 0, but about 24k tokens per question |
+
+**Caveat for Mem0:** 24 of its 272 extraction calls (8.8%) produced JSON cut off at the 1,500-token
+output limit this harness set (`max_tokens`). The memories from those sessions were lost, which
+handicaps Mem0. A corrected Mem0 run with `max_tokens` 8,000 is the fair comparison. Until it
+exists, the Mem0 row must carry this caveat.
