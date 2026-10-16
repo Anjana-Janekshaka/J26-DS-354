@@ -170,7 +170,7 @@ class Mem0Baseline(MemoryBaseline):
 
         d = tempfile.mkdtemp(prefix=f"mem0-{conv_id}-")
         self.mem = Memory.from_config({
-            "llm": {"provider": "ollama", "config": {"model": model, "ollama_base_url": base_url, "temperature": 0.0, "max_tokens": 1500}},
+            "llm": {"provider": "ollama", "config": {"model": model, "ollama_base_url": base_url, "temperature": 0.0, "max_tokens": int(os.environ.get("CEAI_MEM0_MAX_TOKENS", "1500"))}},
             "embedder": {"provider": "huggingface", "config": {"model": embed_model, "embedding_dims": 384}},
             "vector_store": {"provider": "faiss", "config": {"collection_name": "mem", "path": os.path.join(d, "faiss"), "embedding_model_dims": 384}},
             "history_db_path": os.path.join(d, "history.db"),

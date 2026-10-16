@@ -61,7 +61,8 @@ RUN = {
     # scores below its own recorded val result, the notebook stops before touching any test split.
     # v2 hybrid, PRE-REGISTERED (docs/v2_hybrid_preregistration.md): dev/val gates, then each test split once
     # External baselines under identical conditions (docs/baselines_protocol.md):
-    "baselines": True,
+    "baselines": False,                 # run 1 done 2026-10-16 (results/final/baselines)
+    "mem0_fixed": True,                 # corrected Mem0 run (protocol amendment): max_tokens 8000, 16k context
     "v2_preregistered": False,          # done 2026-10-15: gate G3 failed, so no v2 test runs (must stay off)
     # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
     "v2_dev_retrieval": False,
@@ -79,7 +80,7 @@ RUN = {
     "locomo_plus": False,
 }
 NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
-            or RUN["v2_preregistered"] or RUN["baselines"])
+            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"])
 
 """),
     code("""
@@ -287,6 +288,17 @@ if RUN["baselines"]:
     run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,summary_buffer,mem0,full_context",
          "--out", str(WORK / "baselines")], "baselines_phase2")
     os.environ["CEAI_LLM_TIMEOUT"], os.environ["CEAI_LLM_CONCURRENCY"] = "300", str(PARALLEL)
+    start_ollama()
+
+# ---- corrected Mem0 run (docs/baselines_protocol.md, amendment) ----------------------------------
+if RUN["mem0_fixed"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    ceai_q = CODE / "results" / "final" / "locomo_qa_test_questions.jsonl"
+    start_ollama(context=16384, parallel=1)
+    os.environ["CEAI_MEM0_MAX_TOKENS"], os.environ["CEAI_LLM_TIMEOUT"] = "8000", "1200"
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "mem0",
+         "--out", str(WORK / "baselines_mem0_fixed")], "baselines_mem0_fixed")
+    os.environ["CEAI_LLM_TIMEOUT"] = "300"
     start_ollama()
 
 # ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
