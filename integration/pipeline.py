@@ -121,6 +121,24 @@ class MemoryPipeline:
     def _ingest(self, turn: ConversationTurn) -> None:
         for m in self.modules.values():
             m.ingest(turn)
+        self._feed_observations(turn)
+
+    _OBSERVATION_KINDS = ("statement", "user_state", "constraint", "decision")
+
+    def _feed_observations(self, turn: ConversationTurn) -> None:
+        """v3 option: pass the summarizer's verbatim fact sentences for this turn to RAG as short
+        retrievable observations. Integration wires the two packages; neither imports the other."""
+        rag = self.modules.get("rag")
+        if rag is None or not getattr(getattr(rag, "config", None), "observations", False):
+            return
+        from summarization.extract import extract_facts
+
+        seq = getattr(self, "_obs_seq", [0])
+        self._obs_seq = seq
+        facts, _ = extract_facts(turn, seq)
+        for f in facts:
+            if f.kind in self._OBSERVATION_KINDS and len(f.value.split()) >= 4:
+                rag.add_observation(f.value, turn)
 
     # ------------------------------------------------------------------ escalations (Tier 2, next turn)
     def _escalations(self, signal: TurnSignal, outputs: dict[str, StrategyModuleOutput], commit: bool = True) -> list[EscalationEvent]:

@@ -38,6 +38,8 @@ def main() -> None:
     ap.add_argument("--frozen-plus", required=True)
     ap.add_argument("--v2-plus", required=True)
     ap.add_argument("--demo", default=None, help="v2 demo results.json (optional; the demo gate can be checked locally)")
+    ap.add_argument("--frozen-qa", default=None, help="frozen LoCoMo dev answer-accuracy run dir (v3 gate G4)")
+    ap.add_argument("--v2-qa", default=None, help="candidate LoCoMo dev answer-accuracy run dir (v3 gate G4)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
 
@@ -47,6 +49,15 @@ def main() -> None:
         "G3 LoCoMo-Plus dev (adaptive cue hit)": paired(
             _rows(Path(a.frozen_plus) / "items.jsonl"), _rows(Path(a.v2_plus) / "items.jsonl"), lambda r: r["adaptive"]["cue_hit"], "item"),
     }
+    if a.frozen_qa and a.v2_qa:
+        def qa_rows(d):
+            return [r for r in _rows(Path(d) / "questions.jsonl") if "question" in r and r["adaptive"].get("judge_score") is not None]
+        f, v = qa_rows(a.frozen_qa), qa_rows(a.v2_qa)
+        key = {(r["conv"], r["question"]): r for r in v}
+        f = [r for r in f if (r["conv"], r["question"]) in key]
+        g = paired(f, [key[(r["conv"], r["question"])] for r in f], lambda r: r["adaptive"]["judge_score"], "conv")
+        g["pass"] = g["diff"] > 0  # pre-registered rule for G4: point estimate above zero
+        gates["G4 LoCoMo dev answer accuracy (adaptive judge score; rule: improvement > 0)"] = g
     if a.demo:
         d = json.loads(Path(a.demo).read_text(encoding="utf-8"))
         caught = [v["caught"] for v in d["results"]["adaptive"].values()]

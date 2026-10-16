@@ -62,7 +62,9 @@ RUN = {
     # v2 hybrid, PRE-REGISTERED (docs/v2_hybrid_preregistration.md): dev/val gates, then each test split once
     # External baselines under identical conditions (docs/baselines_protocol.md):
     "baselines": False,                 # run 1 done 2026-10-16 (results/final/baselines)
-    "mem0_fixed": True,                 # corrected Mem0 run (protocol amendment): max_tokens 8000, 16k context
+    "mem0_fixed": False,                # done 2026-10-16 (results/final/baselines_mem0_fixed)
+    # v3, PRE-REGISTERED (docs/v3_preregistration.md): gates G2-G4 on dev/val, then each test split once
+    "v3_preregistered": True,                 # corrected Mem0 run (protocol amendment): max_tokens 8000, 16k context
     "v2_preregistered": False,          # done 2026-10-15: gate G3 failed, so no v2 test runs (must stay off)
     # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
     "v2_dev_retrieval": False,
@@ -80,7 +82,7 @@ RUN = {
     "locomo_plus": False,
 }
 NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
-            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"])
+            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"] or RUN["v3_preregistered"])
 
 """),
     code("""
@@ -300,6 +302,59 @@ if RUN["mem0_fixed"]:
          "--out", str(WORK / "baselines_mem0_fixed")], "baselines_mem0_fixed")
     os.environ["CEAI_LLM_TIMEOUT"] = "300"
     start_ollama()
+
+# ---- v3, pre-registered: gates G2-G4 on dev/val, then every test split exactly once -------------
+if RUN["v3_preregistered"]:
+    V3W = WORK / "v3"
+    G3D = V3W / "gates"
+    V3 = "v3_qa_hybrid_obs"
+
+    def as_system3(name):
+        os.environ["CEAI_SYSTEM"] = name
+
+    def gate_run(args, out, name):
+        if not ((out / "summary.json").exists() or (out / "val" / "summary.json").exists()):
+            run([*args, "--out", str(out)], name)
+
+    # Frozen references on the same dev/val items.
+    as_system3("frozen")
+    gate_run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces")],
+             G3D / "frozen_val", "v3_gate_frozen_val")
+    gate_run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10"], G3D / "plus_frozen", "v3_gate_plus_frozen")
+    gate_run(["eval.locomo.run", "--split", "dev", "--no-nli", "--llm", "--judge-answers", "--max-questions", "60"],
+             G3D / "qa_frozen", "v3_gate_qa_frozen")
+    # v3 on the same items.
+    as_system3(V3)
+    gate_run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces")],
+             G3D / "v3_val", "v3_gate_v3_val")
+    gate_run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10"], G3D / "plus_v3", "v3_gate_plus_v3")
+    gate_run(["eval.locomo.run", "--split", "dev", "--no-nli", "--llm", "--judge-answers", "--max-questions", "60"],
+             G3D / "qa_v3", "v3_gate_qa_v3")
+    gate = subprocess.run([sys.executable, "-m", "eval.v2_gate", "--frozen-val", str(G3D / "frozen_val" / "val"),
+                           "--v2-val", str(G3D / "v3_val" / "val"), "--frozen-plus", str(G3D / "plus_frozen"),
+                           "--v2-plus", str(G3D / "plus_v3"), "--frozen-qa", str(G3D / "qa_frozen"), "--v2-qa", str(G3D / "qa_v3"),
+                           "--out", str(G3D / "gates.json")], cwd=CODE, capture_output=True, text=True)
+    print(gate.stdout)
+    if gate.returncode != 0:
+        as_system3("frozen")
+        raise RuntimeError("v3 GATE FAILED - stop here and send the results folder; the v3 test splits must not be run")
+
+    def once_v3(name, args):
+        if (V3W / "final" / name / "summary.json").exists() or (V3W / "final" / name / "test" / "summary.json").exists():
+            print("already done:", name)
+            return
+        run([*args, "--out", str(V3W / "final" / name)], f"v3_final_{name}")
+
+    once_v3("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                          "--max-questions", str(QA_TEST_QUESTIONS)])
+    once_v3("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once_v3("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once_v3("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (V3W / "final" / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(V3W / "final" / "controller")], "v3_final_controller_test")
+    as_system3("frozen")
+    print("v3 pre-registered runs complete:", V3W)
 
 # ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
 if RUN["v2_preregistered"]:

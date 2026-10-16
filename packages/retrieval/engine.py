@@ -56,6 +56,9 @@ class RetrievalConfig(BaseModel):
     # v2 options, evaluated on dev only after the 2026-10-15 test run (off in the frozen system):
     hybrid: bool = False  # fuse dense and BM25 rankings with reciprocal rank fusion
     rrf_k: int = Field(default=60, ge=1)
+    # v3 options (pre-registered in docs/v3_preregistration.md; off in the frozen system):
+    hybrid_task_types: tuple[str, ...] | None = None  # apply hybrid only to these TurnSignal task types
+    observations: bool = False  # index short fact sentences ("observations") next to the turn chunks
     mmr_lambda: float | None = Field(default=None, ge=0.0, le=1.0)  # redundancy-aware order (1 = pure relevance)
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     contradiction: ContradictionConfig = Field(default_factory=ContradictionConfig)
@@ -116,7 +119,8 @@ class RetrievalEngine:
         self._seq = 0
         self.boundary_log: list[tuple[str, BoundaryDecision]] = []
         self._latency_ema_ms = 1.0
-        self._lexical = BM25Index() if self.config.hybrid else None
+        self._lexical = BM25Index() if (self.config.hybrid or self.config.hybrid_task_types) else None
+        self._obs_count: dict[str, int] = {}
         self._turns: list[ConversationTurn] = []
         self._pos: dict[str, int] = {}
         self._reranker = None
@@ -243,12 +247,30 @@ class RetrievalEngine:
                 out.append((self.chunks[cid], score))
         return out
 
-    def _candidates(self, query: str, k: int) -> list[tuple[Chunk, float]]:
+    def add_observation(self, text: str, turn: ConversationTurn) -> None:
+        """Index one fact sentence from ``turn`` as its own short retrievable unit (rendered with the
+        turn's date and speaker; ``turn_ids`` point at the source turn). Observations are never
+        staleness-checked and never merged into segments."""
+        n = self._obs_count.get(turn.turn_id, 0)
+        self._obs_count[turn.turn_id] = n + 1
+        rendered = turn.model_copy(update={"content": text}).render()
+        vec = self.embedder.encode([text])[0]
+        self._seq += 1
+        cid = f"obs:{turn.turn_id}:{n}"
+        chunk = Chunk(cid, "observation", [turn], rendered, vec, self._next_faiss, self._seq, {}, False)
+        self.index.add([self._next_faiss], vec.reshape(1, -1))
+        self._by_faiss[self._next_faiss] = cid
+        self._next_faiss += 1
+        self.chunks[cid] = chunk
+        if self._lexical is not None:
+            self._lexical.add(cid, text)
+
+    def _candidates(self, query: str, k: int, use_lexical: bool = True) -> list[tuple[Chunk, float]]:
         """Dense top-k, or (``hybrid``) dense and BM25 rankings fused by reciprocal rank fusion.
         The dense similarity floor still applies to dense-only hits; a chunk that matches the query's
         exact terms (BM25 > 0) is kept even when its embedding similarity is low."""
         dense = [(c, sc) for c, sc in self.search(query, k) if sc >= self.config.min_score]
-        if self._lexical is None:
+        if self._lexical is None or not use_lexical:
             return dense
         lex = [(cid, sc) for cid, sc in self._lexical.search(query, k) if cid in self.chunks and self.chunks[cid].active]
         fused = reciprocal_rank_fusion([[c.chunk_id for c, _ in dense], [cid for cid, _ in lex]], self.config.rrf_k)
@@ -307,13 +329,14 @@ class RetrievalEngine:
         t0 = time.perf_counter()
         budget = signal.token_usage.budget
         top_k = self.config.top_k
+        use_lex = self._lexical is not None and (self.config.hybrid_task_types is None or signal.task_type in self.config.hybrid_task_types)
         if self._reranker is not None and signal.task_type not in self.config.rerank_skip_task_types:
-            cands = self._candidates(query, max(top_k * 3, self.config.rerank_candidates))
+            cands = self._candidates(query, max(top_k * 3, self.config.rerank_candidates), use_lex)
             rel = self._reranker.score(query, [c.text for c, _ in cands])
             results = sorted(((c, r) for (c, _), r in zip(cands, rel)), key=lambda x: -x[1])
             floor = 0.0  # the bi-encoder floor was applied before reranking
-        elif self._lexical is not None:
-            results = self._candidates(query, max(top_k * 3, self.config.rerank_candidates))
+        elif use_lex:
+            results = self._candidates(query, max(top_k * 3, self.config.rerank_candidates), True)
             floor = float("-inf")  # fused scores are rank-based; the dense floor was applied above
         else:
             results = self.search(query, top_k * 3)

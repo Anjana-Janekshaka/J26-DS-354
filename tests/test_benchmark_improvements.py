@@ -134,3 +134,37 @@ def test_mmr_keeps_all_candidates_and_demotes_duplicates(embedder):
     assert {c.chunk_id for c, _ in reordered} == {c.chunk_id for c, _ in results}
     top2 = [c.text for c, _ in reordered[:2]]
     assert not (("greyhound" in top2[0]) and ("greyhound" in top2[1]))  # the near-duplicate is not second
+
+
+def test_hybrid_only_for_listed_task_types(embedder):
+    r = RetrievalEngine(embedder, None, RetrievalConfig(mode="turn", check_contradictions=False, hybrid_task_types=("qa",)))
+    for t in turns(HISTORY + ["Added format_due_date(dt, tz) to app/services/tasks.py."]):
+        r.ingest(t)
+    calls = []
+    real = r._candidates
+    r._candidates = lambda q, k, use_lexical=True: (calls.append(use_lexical), real(q, k, use_lexical))[1]
+    r.build_context(make_signal(budget=200, task_type="qa"), "format_due_date")
+    r.build_context(make_signal(budget=200, task_type="chat"), "format_due_date")
+    assert calls == [True]  # qa uses the fused path; chat keeps the plain dense search
+
+
+def test_observations_link_to_source_turn_and_dedupe(embedder):
+    from integration import MemoryPipeline
+
+    p = MemoryPipeline("t", 300, embedder=embedder,
+                       retrieval_config=RetrievalConfig(check_contradictions=False, observations=True, min_score=0.0))
+    for t in HISTORY:
+        p.add_turn("user", t, metadata={"date": "8 May 2023"})
+    rag = p.modules["rag"]
+    obs = [c for c in rag.chunks.values() if c.granularity == "observation"]
+    assert obs and all(len(c.turns) == 1 and c.text.startswith("[8 May 2023] user:") for c in obs)
+    ctx = rag.build_context(make_signal(budget=400, task_type="qa"), "greyhound Biscuit").context_text()
+    blocks = ctx.split("\n\n---\n\n")
+    ids = [b.splitlines()[0] for b in blocks]
+    assert len(ids) == len(set(ids))  # a turn is never shown twice (as observation and as turn chunk)
+
+
+def test_frozen_system_has_no_v3_options():
+    from eval.frozen import SYSTEMS
+
+    assert SYSTEMS["frozen"] == {} and SYSTEMS["v3_qa_hybrid_obs"] == {"hybrid_task_types": ("qa",), "observations": True}

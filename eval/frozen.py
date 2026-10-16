@@ -32,7 +32,12 @@ def frozen_rule_config(**overrides) -> tuple[RuleConfig, str]:
 # System variants. "frozen" is the configuration all 2026-10-15 test results were produced with.
 # "v2_hybrid" adds hybrid BM25 + dense retrieval (selected on LoCoMo dev only; pre-registered in
 # docs/v2_hybrid_preregistration.md before any test split was run with it).
-SYSTEMS: dict[str, dict] = {"frozen": {}, "v2_hybrid": {"hybrid": True}}
+SYSTEMS: dict[str, dict] = {
+    "frozen": {},
+    "v2_hybrid": {"hybrid": True},
+    # v3 (docs/v3_preregistration.md): hybrid only for question turns + summarizer facts as RAG observations
+    "v3_qa_hybrid_obs": {"hybrid_task_types": ("qa",), "observations": True},
+}
 
 
 def system_name() -> str:
