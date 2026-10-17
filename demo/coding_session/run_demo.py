@@ -58,20 +58,24 @@ def _find_turn(context: str, needle: str, ex_of_turn: dict[str, int]) -> str:
     return "summary/window"
 
 
-def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFAULT_RERANKER) -> dict:
+def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFAULT_RERANKER,
+        exchanges: list[tuple[str, str]] = EXCHANGES, traps: list[Trap] = TRAPS,
+        conversation_id: str = "coding-session-demo") -> dict:
     if out.exists():
         shutil.rmtree(out)
     # The frozen system configuration: tuned controller rules + reranked RAG (CLAUDE.md section 12).
-    pipe = MemoryPipeline("coding-session-demo", token_budget=budget, log_dir=out, controller=frozen_controller(),
+    pipe = MemoryPipeline(conversation_id, token_budget=budget, log_dir=out, controller=frozen_controller(),
                           retrieval_config=RetrievalConfig(**system_retrieval(reranker=reranker)))
     fixed6 = RecencyOnlyWindow(k=12)
     ex_of_turn: dict[str, int] = {}
-    traps_by_ex = {t.exchange: t for t in TRAPS}
+    traps_by_ex: dict[int, list[Trap]] = {}
+    for t in traps:
+        traps_by_ex.setdefault(t.exchange, []).append(t)
     strategies = ["fixed_6_exchange_window", "sliding_window", "summarization", "rag", "hybrid", "adaptive"]
     results: dict[str, dict[str, dict]] = {s: {} for s in strategies}
     timeline: list[dict] = []
 
-    for ex, (user_msg, reply) in enumerate(EXCHANGES, start=1):
+    for ex, (user_msg, reply) in enumerate(exchanges, start=1):
         res = pipe.user_turn(user_msg)
         ex_of_turn[res.turn.turn_id] = ex
         d = res.decision
@@ -86,8 +90,7 @@ def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFA
                 "escalations": [e.kind for e in res.escalations],
             }
         )
-        if ex in traps_by_ex:
-            trap = traps_by_ex[ex]
+        for trap in traps_by_ex.get(ex, []):
             sig = res.signal
             for s in strategies:
                 if s == "adaptive":
