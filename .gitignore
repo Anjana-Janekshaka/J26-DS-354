@@ -7,3 +7,5 @@ runs/
 dist/
 eval/**/results*/*.jsonl
 eval/**/results*/traces/
+
+eval/beam/data/
