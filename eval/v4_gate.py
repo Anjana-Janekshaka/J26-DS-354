@@ -72,8 +72,9 @@ def main() -> None:
 
     # G2
     for system in ("frozen", "v4"):
-        job(["eval.synthetic.controller.run", "--split", "val"], out / f"{system}_val", system, "probes.jsonl")
-    g = paired(_rows(out / "frozen_val/probes.jsonl"), _rows(out / "v4_val/probes.jsonl"), lambda r: r["adaptive_hit"], "conv")
+        # The controller harness writes into a <out>/<split>/ subfolder.
+        job(["eval.synthetic.controller.run", "--split", "val"], out / f"{system}_val", system, "val/probes.jsonl")
+    g = paired(_rows(out / "frozen_val/val/probes.jsonl"), _rows(out / "v4_val/val/probes.jsonl"), lambda r: r["adaptive_hit"], "conv")
     gates["G2 synthetic controller val (evidence hit)"] = g
     if not report("G2 synthetic controller val (evidence hit)", g):
         finish(False)
