@@ -44,7 +44,10 @@ SYSTEMS: dict[str, dict] = {
     # Plus the dev-tuned chunking weights (eval.locomo.chunking_search; joined after beating fixed segments on test).
     "v4": {"boundary": BoundaryConfig(bias=-4.556022, w_semantic=4.408378, w_length=0.354663, w_turns=2.261815, max_segment_tokens=150, max_segment_turns=3),
            "contradiction": ContradictionConfig(ensemble=(-3.020881, 1.329963, 1.243888, 0.441096, 2.506616), ensemble_threshold=0.4666)},
+    # v4b (amendment in docs/v4_preregistration.md): v4 without the sliding-window weights, which failed gate G2.
+    "v4b": {},
 }
+SYSTEMS["v4b"] = dict(SYSTEMS["v4"])
 
 # Sliding-window weights per system ("relevance,freshness,importance,state"); the v4 weights were
 # chosen on the dev half of the topic-shift workloads (eval.synthetic.sliding_window.select_weights).

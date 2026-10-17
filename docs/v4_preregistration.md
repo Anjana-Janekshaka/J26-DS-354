@@ -137,10 +137,34 @@ only if its test result also beats fixed segments; §4 never joins. Before any v
 | §3 Dev-tuned chunking | **Passed.** Dev recall at 400 words: best of 61 configurations 0.516; fixed segment 0.463; hand-set 0.498 | Recall at 400 words: **dev-tuned 0.399** vs segment 0.376, hand-set 0.355, turn 0.328 (the last three reproduce the recorded test numbers). **Joins v4** |
 | §4 Learned controller | **Failed.** Val evidence hit: LR 0.933, RF 0.917, GBDT 0.917 vs rules 0.992 (gate needs at least 0.982). Macro-F1 is higher (0.40–0.45 vs 0.33): imitating the cheapest correct strategy costs hits when the model is wrong | Not run. The rules stay; the model-based variant is implemented and reported as dev-only |
 | §5 Length test | (no gate) | See below once run |
-| §6 System gates | Running with v4 = §1 + §2 + §3 | — |
+| §6 System gates (v4 = §1 + §2 + §3) | G1 **passed** (original 2/2, held-out 16/26 = frozen). **G2 failed:** synthetic val 0.992 → **0.800**, −0.192 [−0.242, −0.133] | Not run. **v4 is dev-only** |
 
 - **Caveat on §1:** the synthetic workload rewards relevance heavily (recall 1.000), and freshness 0
   may hurt real conversations. That is exactly what gates G1–G4 check.
 - **Note on §3:** the chunking result is a single test run on 5 conversations. It reverses the
   earlier "withdrawn" status of granularity only as an engineering result (dev-tuned boundary
   weights beat fixed segments at equal cost). It is not a learned-model claim.
+
+### Why v4 failed G2 (diagnosis on val, 2026-10-17)
+
+- **The sliding-window weights are the cause.**
+  - Early recall falls from 1.00 to 0.30, and debug follow-up from 1.00 to 0.55. Every other probe
+    kind is unchanged.
+  - These probes come while the whole history still fits, so the controller picks the window as
+    lossless.
+  - With freshness weight 0, the window now drops older turns whose relevance-plus-importance score
+    falls below the inclusion threshold, even though they fit.
+- **The weights won on the sliding-window workloads**, where the budget always binds, but they break
+  the system's "window is lossless when history fits" assumption.
+- **Lesson:** a component optimum does not transfer to the system. This is what the system gates
+  are for.
+
+### Amendment: v4b (pre-registered 2026-10-17, after the G2 failure above, before any v4b run)
+
+- **v4b = the frozen system + §2 (staleness ensemble) + §3 (dev-tuned chunking).** It does not
+  include §1.
+- **Disclosure:** v4b was defined after seeing v4 fail G2, and §1 was removed because of that
+  failure. No other change.
+- **Gates:** the same G1–G4 as §6, against the same frozen reference runs.
+- **If all gates pass:** each test split runs once, as in §6.
+- **If a gate fails:** v4b is dev-only too.

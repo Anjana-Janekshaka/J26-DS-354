@@ -50,8 +50,10 @@ def report(name: str, g: dict) -> bool:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "runs/v4_gates"))
+    ap.add_argument("--system", default="v4", help="candidate system (v4 or v4b)")
     a = ap.parse_args()
     out = Path(a.out)
+    c = a.system
     gates: dict[str, dict] = {}
 
     def finish(ok: bool) -> None:
@@ -60,38 +62,38 @@ def main() -> None:
         sys.exit(0 if ok else 1)
 
     # G1
-    job(["demo.coding_session.run_scenarios"], out / "v4_scenarios", "v4", "summary.json")
+    job(["demo.coding_session.run_scenarios"], out / f"{c}_scenarios", c, "summary.json")
     f = json.loads((ROOT / "results/final/demo_scenarios/summary.json").read_text(encoding="utf-8"))
-    v = json.loads((out / "v4_scenarios/summary.json").read_text(encoding="utf-8"))
+    v = json.loads((out / f"{c}_scenarios/summary.json").read_text(encoding="utf-8"))
     g1 = {"original": v["original"]["adaptive"], "held_out_frozen": f["held_out"]["adaptive"]["caught"],
-          "held_out_v4": v["held_out"]["adaptive"]["caught"], "of": v["held_out"]["adaptive"]["of"]}
-    g1["pass"] = g1["original"]["caught"] == g1["original"]["of"] and g1["held_out_v4"] >= g1["held_out_frozen"]
+          "held_out_candidate": v["held_out"]["adaptive"]["caught"], "of": v["held_out"]["adaptive"]["of"]}
+    g1["pass"] = g1["original"]["caught"] == g1["original"]["of"] and g1["held_out_candidate"] >= g1["held_out_frozen"]
     gates["G1 coding demo + held-out scenarios"] = g1
     if not report("G1 coding demo + held-out scenarios", g1):
         finish(False)
 
     # G2
-    for system in ("frozen", "v4"):
+    for system in ("frozen", c):
         # The controller harness writes into a <out>/<split>/ subfolder.
         job(["eval.synthetic.controller.run", "--split", "val"], out / f"{system}_val", system, "val/probes.jsonl")
-    g = paired(_rows(out / "frozen_val/val/probes.jsonl"), _rows(out / "v4_val/val/probes.jsonl"), lambda r: r["adaptive_hit"], "conv")
+    g = paired(_rows(out / "frozen_val/val/probes.jsonl"), _rows(out / f"{c}_val/val/probes.jsonl"), lambda r: r["adaptive_hit"], "conv")
     gates["G2 synthetic controller val (evidence hit)"] = g
     if not report("G2 synthetic controller val (evidence hit)", g):
         finish(False)
 
     # G3
-    for system in ("frozen", "v4"):
+    for system in ("frozen", c):
         job(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10"], out / f"{system}_plus", system, "items.jsonl")
-    g = paired(_rows(out / "frozen_plus/items.jsonl"), _rows(out / "v4_plus/items.jsonl"), lambda r: r["adaptive"]["cue_hit"], "item")
+    g = paired(_rows(out / "frozen_plus/items.jsonl"), _rows(out / f"{c}_plus/items.jsonl"), lambda r: r["adaptive"]["cue_hit"], "item")
     gates["G3 LoCoMo-Plus dev (adaptive cue hit)"] = g
     if not report("G3 LoCoMo-Plus dev (adaptive cue hit)", g):
         finish(False)
 
     # G4
-    for system in ("frozen", "v4"):
+    for system in ("frozen", c):
         job(["eval.locomo.run", "--split", "dev", "--no-nli"], out / f"{system}_locomo", system, "summary.json")
     rows = lambda s: [r for r in _rows(out / f"{s}_locomo/questions.jsonl") if r.get("n_evidence")]  # noqa: E731
-    g = paired(rows("frozen"), rows("v4"), lambda r: r["adaptive"]["hit"], "conv")
+    g = paired(rows("frozen"), rows(c), lambda r: r["adaptive"]["hit"], "conv")
     gates["G4 LoCoMo dev (adaptive evidence hit)"] = g
     finish(report("G4 LoCoMo dev (adaptive evidence hit)", g))
 
