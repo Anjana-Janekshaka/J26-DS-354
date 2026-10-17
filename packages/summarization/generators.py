@@ -127,3 +127,34 @@ class LLMGenerator:
             rec = self.fallback.l3(record_id, l2s, attributes)
             rec.generator = "rule_based_fallback"
             return rec
+
+
+class AssistedGenerator:
+    """``llm_policy="assisted"``: L1 stays rule-based (exact facts, keyed merge, code signatures), and
+    only the L2 intent and L3 persona tiers are written by the LLM. ``llm_calls`` counts the calls so
+    every result can state what the assisted mode cost (docs/llm_policy_preregistration.md)."""
+
+    name = "assisted"
+
+    def __init__(self, llm: LLMCallable):
+        self.llm_calls = 0
+
+        def counted(system: str, user: str) -> str:
+            self.llm_calls += 1
+            return llm(system, user)
+
+        self.rules = RuleBasedGenerator()
+        self.model = LLMGenerator(counted)
+
+    @property
+    def failures(self) -> int:
+        return self.model.failures
+
+    def l1(self, record_id, turns, fact_seq):
+        return self.rules.l1(record_id, turns, fact_seq)
+
+    def l2(self, record_id, l1s):
+        return self.model.l2(record_id, l1s)
+
+    def l3(self, record_id, l2s, attributes):
+        return self.model.l3(record_id, l2s, attributes)

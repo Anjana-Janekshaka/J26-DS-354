@@ -1,7 +1,7 @@
 """Component 2: Hierarchical Summarization (structured L1/L2/L3, contradiction merge, live loss score)."""
 
 from .engine import HierarchicalSummarizer, SummarizationConfig
-from .generators import LLMGenerator, RuleBasedGenerator, TierGenerator
+from .generators import AssistedGenerator, LLMGenerator, RuleBasedGenerator, TierGenerator
 from .loss import LossWorker, anchor_loss, anchors, current_signatures, symbol_retention_rate
 from .merge import SummaryState
 from .naive import NaiveSummarizer
@@ -16,6 +16,7 @@ __all__ = [
     "L1Record",
     "L2Record",
     "L3Record",
+    "AssistedGenerator",
     "LLMGenerator",
     "LossWorker",
     "NaiveSummarizer",
