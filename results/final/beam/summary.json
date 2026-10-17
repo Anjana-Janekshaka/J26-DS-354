@@ -1,0 +1,170 @@
+{
+  "n_questions": 400,
+  "system": "frozen",
+  "evidence_hit": {
+    "n": 355,
+    "per_strategy": {
+      "sliding_window": 0.08732394366197183,
+      "summarization": 0.022535211267605635,
+      "rag": 0.4450704225352113,
+      "hybrid": 0.38873239436619716,
+      "adaptive": 0.3464788732394366
+    },
+    "best_single": "rag",
+    "adaptive_minus_rag": {
+      "estimate": -0.09859154929577464,
+      "ci_low": -0.1352112676056338,
+      "ci_high": -0.06497175141242938,
+      "n_groups": 20
+    },
+    "adaptive_minus_hybrid": {
+      "estimate": -0.04225352112676056,
+      "ci_low": -0.08707865168539326,
+      "ci_high": -0.0028169014084507044,
+      "n_groups": 20
+    },
+    "by_category": {
+      "contradiction_resolution": {
+        "sliding_window": 0.025,
+        "summarization": 0,
+        "rag": 0.6,
+        "hybrid": 0.575,
+        "adaptive": 0.6,
+        "n": 40
+      },
+      "event_ordering": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0.025,
+        "hybrid": 0.025,
+        "adaptive": 0,
+        "n": 40
+      },
+      "information_extraction": {
+        "sliding_window": 0.075,
+        "summarization": 0,
+        "rag": 0.55,
+        "hybrid": 0.45,
+        "adaptive": 0.55,
+        "n": 40
+      },
+      "instruction_following": {
+        "sliding_window": 0.35,
+        "summarization": 0.1,
+        "rag": 0.375,
+        "hybrid": 0.375,
+        "adaptive": 0.225,
+        "n": 40
+      },
+      "knowledge_update": {
+        "sliding_window": 0.125,
+        "summarization": 0.025,
+        "rag": 0.825,
+        "hybrid": 0.65,
+        "adaptive": 0.525,
+        "n": 40
+      },
+      "multi_session_reasoning": {
+        "sliding_window": 0.025,
+        "summarization": 0,
+        "rag": 0.275,
+        "hybrid": 0.15,
+        "adaptive": 0.225,
+        "n": 40
+      },
+      "preference_following": {
+        "sliding_window": 0.07692307692307693,
+        "summarization": 0.07692307692307693,
+        "rag": 0.5897435897435898,
+        "hybrid": 0.48717948717948717,
+        "adaptive": 0.23076923076923078,
+        "n": 39
+      },
+      "summarization": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0,
+        "hybrid": 0,
+        "adaptive": 0,
+        "n": 36
+      },
+      "temporal_reasoning": {
+        "sliding_window": 0.1,
+        "summarization": 0,
+        "rag": 0.725,
+        "hybrid": 0.75,
+        "adaptive": 0.725,
+        "n": 40
+      }
+    }
+  },
+  "answer_in_context": {
+    "n": 117,
+    "per_strategy": {
+      "sliding_window": 0.11965811965811966,
+      "summarization": 0.02564102564102564,
+      "rag": 0.3504273504273504,
+      "hybrid": 0.3076923076923077,
+      "adaptive": 0.24786324786324787
+    },
+    "best_single": "rag",
+    "adaptive_minus_rag": {
+      "estimate": -0.10256410256410256,
+      "ci_low": -0.16129032258064516,
+      "ci_high": -0.05357142857142857,
+      "n_groups": 20
+    },
+    "adaptive_minus_hybrid": {
+      "estimate": -0.05982905982905983,
+      "ci_low": -0.11764705882352941,
+      "ci_high": 0.0,
+      "n_groups": 20
+    },
+    "by_category": {
+      "information_extraction": {
+        "sliding_window": 0.043478260869565216,
+        "summarization": 0,
+        "rag": 0.21739130434782608,
+        "hybrid": 0.21739130434782608,
+        "adaptive": 0.21739130434782608,
+        "n": 23
+      },
+      "knowledge_update": {
+        "sliding_window": 0.275,
+        "summarization": 0.075,
+        "rag": 0.775,
+        "hybrid": 0.725,
+        "adaptive": 0.525,
+        "n": 40
+      },
+      "multi_session_reasoning": {
+        "sliding_window": 0.07692307692307693,
+        "summarization": 0,
+        "rag": 0.19230769230769232,
+        "hybrid": 0.07692307692307693,
+        "adaptive": 0.11538461538461539,
+        "n": 26
+      },
+      "temporal_reasoning": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0,
+        "hybrid": 0,
+        "adaptive": 0,
+        "n": 28
+      }
+    }
+  },
+  "controller_choices": {
+    "rag": 255,
+    "summarization": 142,
+    "sliding_window": 3
+  },
+  "task_types": {
+    "qa": 255,
+    "exploration": 57,
+    "chat": 85,
+    "debugging": 3
+  },
+  "budget_tokens": 1024
+}

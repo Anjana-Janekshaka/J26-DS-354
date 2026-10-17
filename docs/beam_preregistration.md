@@ -49,6 +49,29 @@ built by others. Its long conversations mix coding projects and general topics, 
   tests whether the frozen system generalises to someone else's conversations without loss. It does
   not test switching inside a conversation.
 
-## Outcome
+## Outcome (run once, 2026-10-17; `results/final/beam/summary.json`)
 
-To be filled in after the run.
+**A negative result: adaptive is significantly below always-RAG on BEAM.**
+
+| Metric | Window | Summarization | RAG | Hybrid | **Adaptive** | Adaptive − RAG | Adaptive − hybrid |
+|---|---|---|---|---|---|---|---|
+| Evidence hit (355 questions) | 0.087 | 0.023 | **0.445** | 0.389 | 0.346 | **−0.099 [−0.135, −0.065]** | −0.042 [−0.087, −0.003] |
+| Answer in context (117) | 0.120 | 0.026 | **0.350** | 0.308 | 0.248 | **−0.103 [−0.161, −0.054]** | −0.060 [−0.118, +0.000] |
+
+**Why (diagnosed after the run, not tuned):**
+
+- The task classifier marks 255 of the 400 probes as `qa`. Adaptive routes those to RAG and equals it.
+- The other 142 are phrased as requests or statements ("Can you list the order in which I…",
+  "Could you show me how to…"). They are classified as `chat` or `exploration`, and the
+  long-conversation rule sends them to **summarization**.
+  - On those probes adaptive's evidence hit is **0.03**, against 0.28 for RAG.
+- This is the same failure mode as LoCoMo-Plus (statement-style triggers routed to summarization).
+  It is now confirmed on an independent dataset.
+
+**What it means for the claims:**
+
+- "No regret when one strategy is right" holds only when the task classifier recognises a recall
+  request. On someone else's phrasing it does not hold for about a third of the probes.
+- The fix candidate is a routing change: recall-style requests over budget go to RAG or hybrid,
+  whatever the phrasing. That would be new work, pre-registered and chosen on dev sets, and BEAM
+  stays untouched as a test.
