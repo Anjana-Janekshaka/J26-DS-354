@@ -193,3 +193,29 @@ only if its test result also beats fixed segments; §4 never joins. Before any v
 - **Honest summary:** *"adaptive does not degrade as conversations grow, while the window does; the
   gain over the best fixed strategy is present from moderate length on."* This is not "the gain
   grows without bound".
+
+### v4b gate outcome (2026-10-18): all gates passed (`runs/v4b_gates/gates.json`)
+
+| Gate | Frozen | v4b | Difference |
+|---|---|---|---|
+| G1 coding demo + held-out scenarios | original 2/2; held-out 16/26 | original 2/2; held-out **17/26** | +1 trap |
+| G2 synthetic controller val | 0.992 | 0.992 | 0.000 |
+| G3 LoCoMo-Plus dev (cue hit) | 0.134 | **0.264** | **+0.129 [+0.075, +0.189]** |
+| G4 LoCoMo dev (evidence hit) | 0.709 | **0.785** | **+0.076 [+0.059, +0.095]** |
+
+The frozen reference values reproduce the recorded dev numbers (0.709, 0.134, 0.992).
+
+### Amendment before the v4b test runs (2026-10-18)
+
+- **The test runs are those in §6:** synthetic controller test, LoCoMo test, in-stream LoCoMo test
+  and LoCoMo-Plus test. Each runs **once**, with `python -m eval.v4_test`.
+- **Added before running: BEAM 100K** (`docs/beam_preregistration.md`), the independent benchmark.
+  - It was run once with the frozen system on 2026-10-17. It has never been used for tuning or for
+    any v4/v4b decision.
+- **Reporting:** v4b − frozen with paired 95% CIs against the frozen system's recorded test outputs,
+  whatever the sign.
+- **If v4b is better on test:** it can be presented as "v4b, pre-registered, improves on the frozen
+  system".
+  - The frozen numbers stay reported next to it.
+  - Answer accuracy (LLM judge) was **not** re-run for v4b. Its answer-accuracy numbers remain the
+    frozen system's.
