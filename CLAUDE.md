@@ -1,7 +1,7 @@
 # CEAI — Adaptive Memory Middleware — Build Guide
 
-**Status (2026-10-17): built, frozen and evaluated. A new session should read §12.0 first, then §6.5
-for the current claims.** **Read this whole file before writing any code.** This is the single source of truth for what to
+**Status (2026-10-17): built, frozen and evaluated; the v4 improvement round is in progress (§12.11).
+A new session should read §12.0 first, then §12.11, then §6.5 for the current claims.** **Read this whole file before writing any code.** This is the single source of truth for what to
 build, where it lives, what makes each piece novel, and how each piece proves itself. It supersedes
 any conflicting detail in the four individual proposal PDFs for interfaces, ownership, and build
 order — those stay the source for literature review and write-up language only.
@@ -503,9 +503,11 @@ what was built and measured, and the decisions later work must respect. **In a n
 ### 12.0 Snapshot: read this first
 
 - **State:**
-  - All of §3 is built, integrated and tested (85 fast tests). The system configuration is
+  - All of §3 is built, integrated and tested (89 fast tests). The system configuration is
     **frozen**, and every test split was run **once**.
-  - Progress Presentation 1 is on **Monday 2026-10-19**.
+  - Progress Presentation 1 **moved to Wednesday 2026-10-21**. The extra days are used for the
+    roadmap items as a pre-registered **v4 round (§12.11)**; the frozen system stays the system of
+    record until v4 passes all its gates.
 - **Headline results** (test splits, frozen system; 95% bootstrap intervals over conversations):
   - **Controller, on mixed-workload conversations:** evidence hit **0.986** vs best single strategy
     0.874 (**+0.112 [+0.093, +0.129]**), and **+0.060** vs always-hybrid while using fewer tokens.
@@ -525,8 +527,9 @@ what was built and measured, and the decisions later work must respect. **In a n
     - Sliding window: **59 wins / 0 losses** vs recency-only.
 - **Tried and not adopted** (all pre-registered or dev-only, honest negatives): v2 hybrid retrieval,
   MMR, v3 (hybrid for question turns + observations). See 12.4.
-- **Left before Monday:** the demo package (12.8 item 1), the teammates' labelling sheets, and a
-  merge into `development`.
+- **Left before Wednesday:** finish the v4 round (§12.11: gates, length test, BEAM, two Colab jobs),
+  write the slide text from the final numbers, the teammates' labelling sheets, and a merge into
+  `development`. The demo package is **done** (`demo/coding_session/present.py`, `docs/DEMO_GUIDE.md`).
 - **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
   `docs/zero_cost_improvement_roadmap.md`.
 - **Non-negotiable rules** (12.7):
@@ -704,10 +707,8 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
 
 ### 12.8 Open work
 
-1. **Demo package for Monday (not started):**
-   - One command runs the coding session and opens the live dashboard (`dashboard.server`).
-   - A static HTML fallback.
-   - A one-page run guide.
+1. **Demo package: done 2026-10-17** (`python -m demo.coding_session.present`, static fallback,
+   `docs/DEMO_GUIDE.md`). Still to write:
    - Slide text: four component slides per §11, the integration (CAUGHT/MISSED) slide, the Pareto
      and baselines slides, and Q&A answers.
 2. **Human-agreement labelling:**
@@ -718,10 +719,11 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
    - Four annotators, about 20 minutes each.
    - Score with `python -m eval.human_agreement.score --sheets <folder>`.
 3. **Merge into `development`:** fast-forward after the latest commits on `retrieval-augmented`.
-4. **After Monday (v2 of the project):**
-   - A stronger answering model and judge for every system.
-   - The LR/RF/GBDT controller trained on decision logs.
-   - Coding traps run on Mem0.
+4. **Later (after the v4 round):**
+   - A stronger answering model and judge for every system (needs a free Groq/OpenRouter key from
+     the user, set as an environment variable, never pasted in chat).
+   - A fix for the held-out demo misses (renamed-to-new-name functions, changed constants,
+     non-Python signatures), developed on new dev scenarios and checked on a fresh held-out batch.
    - LangMem / A-Mem baselines.
    - A controller rule for "recent cue → keep the window" (on LoCoMo-Plus, cues fewer than 50 turns
      back are lost to RAG routing).
@@ -733,6 +735,10 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
   `pytest -m "not models"`.
 - **Demo:** `python -m demo.coding_session.run_demo` (frozen system, about 2 minutes on CPU).
   Live dashboard: `python -m dashboard.server --log-dir runs/demo`.
+  **Presentation:** `python -m demo.coding_session.present` (see `docs/DEMO_GUIDE.md`).
+  Held-out sessions: `python -m demo.coding_session.run_scenarios`.
+- **v4:** `CEAI_SYSTEM=v4` on any harness; system gates `python -m eval.v4_gate` (resumes).
+  `CEAI_LLM_POLICY=assisted` turns on LLM-written L2/L3 summaries (needs an LLM).
 - **Results sheet:** `python scripts/build_results.py --colab <unzipped Colab results folder>`.
   Charts: `python scripts/plot_pareto.py`.
 - **Anything needing an LLM or a GPU:**
@@ -746,3 +752,36 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
 - Component branches: `retrieval-augmented` (where this work happens), `summarization`,
   `sliding-window-conversation-manager` and `runtime-controller`.
 - Component work merges into `development`, normally by pull request.
+
+### 12.11 The v4 round (2026-10-17, in progress)
+
+The presentation moved to Wednesday, so the roadmap (`docs/zero_cost_improvement_roadmap.md`) is
+being worked through now under the §12.7 rules. Plan and outcomes: `docs/v4_preregistration.md`;
+code map: `docs/SYSTEM_OVERVIEW.md` §12. **Until every gate below passes, every number in §12.2
+stays the headline and the frozen system is unchanged.**
+
+**Done (each pre-registered, test run once):**
+
+| Item | Result | Status |
+|---|---|---|
+| 12 held-out coding sessions, 26 traps (`docs/demo_scenarios_preregistration.md`) | Adaptive **16/26**, fixed window **3/26**, always-hybrid 18/26; every duplicate-function trap caught (7/7) | Report as is. Do **not** claim "beats every fixed strategy" here |
+| Sliding-window weights chosen on a dev half (relevance 0.5, importance 0.5) | Test recall **1.000** vs equal weights 0.706 vs recency 0.556 | In v4. Resolves the §6.6 inconsistency if v4 passes |
+| Staleness ensemble (NLI both directions + similarity + change cue) | Test P **1.00** / R 0.69 / F1 0.81 (was 0.82 / 0.73 / 0.77); wrongly retired facts **0%** (was 23%); leak 0.31 (was 0.27) | In v4 |
+| Dev-tuned chunk-boundary weights | Test recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355) | In v4. Granularity returns as an engineering result, not a learned-model claim |
+| Learned controller (LR/RF/GBDT, `packages/controller/model_based.py`) | Val hit 0.93 vs rules 0.99: **gate failed** | Not run on test; rules stay |
+| `llm_policy` toggle (`strict` default / `assisted` = LLM writes L2/L3 only) | Implemented; the controller sees identical inputs in both modes, and differences come only via logged next-turn loss escalations | Evaluation is a Colab job |
+| Live presenter mode + demo guide | 2/2 vs 0/2 live, with override and audience questions | Done |
+
+**Running or waiting:**
+
+| Item | Where | Notes |
+|---|---|---|
+| v4 system gates G1–G4 (`eval/v4_gate.py`) | laptop | **G1 passed** (2/2, 16/26 = frozen). G2 synthetic val, G3 LoCoMo-Plus dev, G4 LoCoMo dev pending. All pass → v4 test run once and v4 becomes the system of record; any failure → v4 stays dev-only |
+| Length test (`eval/synthetic/controller/length.py`) | laptop | Does the adaptive advantage grow with conversation length? New family-C conversations, frozen system |
+| BEAM (`eval/beam/`, `docs/beam_preregistration.md`) | laptop | Independent benchmark (other authors), never tuned on; frozen system |
+| Mem0 on the coding traps (`docs/mem0_coding_preregistration.md`) | Colab `mem0_coding_traps` | Is a real competitor also caught out by the traps? |
+| `llm_policy` strict vs assisted (`docs/llm_policy_preregistration.md`) | Colab `llm_policy_dev` | 20 LoCoMo-Plus dev items (amended from 60 before running, for runtime): a pilot |
+| Stronger model and judge (roadmap 1.1/1.2) | later | Needs the user's free API key |
+
+When results arrive: record them in the relevant pre-registration file and here, regenerate
+`results/RESULTS.md`, then write the slide text.
