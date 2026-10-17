@@ -1,6 +1,7 @@
 # CEAI — Adaptive Memory Middleware — Build Guide
 
-**Read this whole file before writing any code.** This is the single source of truth for what to
+**Status (2026-10-17): built, frozen and evaluated. A new session should read §12.0 first, then §6.5
+for the current claims.** **Read this whole file before writing any code.** This is the single source of truth for what to
 build, where it lives, what makes each piece novel, and how each piece proves itself. It supersedes
 any conflicting detail in the four individual proposal PDFs for interfaces, ownership, and build
 order — those stay the source for literature review and write-up language only.
@@ -455,191 +456,251 @@ all four components' claims together — this is the slide judges/panel remember
 
 ---
 
-## 12. Build log & current status (updated 2026-10-15)
+## 12. Build log and current status (as of 2026-10-17)
 
-Sections 1–11 are the plan. This section records what was actually built, what the numbers are
-so far, and the decisions taken during the build that later work must respect. Name components
-by role here and in code, never by person.
+Sections 1–11 are the original plan; §6.5 holds the claims as they now stand. This section records
+what was built and measured, and the decisions later work must respect. **In a new session, read
+12.0 first.** Name components by role in code and docs, never by person.
+
+### 12.0 Snapshot: read this first
+
+- **State:**
+  - All of §3 is built, integrated and tested (85 fast tests). The system configuration is
+    **frozen**, and every test split was run **once**.
+  - Progress Presentation 1 is on **Monday 2026-10-19**.
+- **Headline results** (test splits, frozen system; 95% bootstrap intervals over conversations):
+  - **Controller, on mixed-workload conversations:** evidence hit **0.986** vs best single strategy
+    0.874 (**+0.112 [+0.093, +0.129]**), and **+0.060** vs always-hybrid while using fewer tokens.
+  - **Coding demo:** adaptive catches **2/2** traps; a fixed 6-exchange window catches **0/2**.
+  - **LoCoMo:** adaptive **ties** the best fixed strategy (RAG). The RAG read path itself improved
+    **0.391 → 0.655** evidence hit on the same test conversations.
+  - **External baselines** (same 230 LoCoMo test questions, same model, judge and budget):
+    - **vs Mem0 (corrected run):** judged accuracy not significantly different (CEAI 0.507 vs
+      0.467), token-F1 **+0.129** (significant).
+    - **Write cost:** CEAI makes **0 LLM calls to store memory**; Mem0 makes about 54 per
+      conversation.
+    - **vs fixed-chunk RAG and a LangChain-style summary buffer:** CEAI significantly better on
+      both metrics.
+  - **Components:**
+    - Summarization: stale-fact leakage **0.00 vs 0.50** naive.
+    - RAG staleness flags: precision **0.82**.
+    - Sliding window: **59 wins / 0 losses** vs recency-only.
+- **Tried and not adopted** (all pre-registered or dev-only, honest negatives): v2 hybrid retrieval,
+  MMR, v3 (hybrid for question turns + observations). See 12.4.
+- **Left before Monday:** the demo package (12.8 item 1), the teammates' labelling sheets, and a
+  merge into `development`.
+- **Non-negotiable rules** (12.7):
+  - Never tune on test; pre-register any new candidate and gate it on dev/val.
+  - Commits are authored by the student only, with no AI attribution.
+  - No personal names in code.
 
 ### 12.1 What exists
 
-- **Every package in §3 is implemented** and wired end to end in `integration/`: contracts, conversation
+- **Packages** (all of §3), wired end to end in `integration/pipeline.py`: contracts, conversation
   manager, sliding window, summarization, retrieval, rule-based controller, decision logger and
-  dashboard (live server + static export).
+  dashboard (live server and static export).
   - The P2 items are explicit `TODO: v2` stubs: the LR/RF/GBDT controller, loss Method 2 and the
     summary repair loop.
-  - Run `pytest -m "not models"` for the fast suite.
-- **`demo/coding_session/` was rebuilt from the §9 description.** The original `ceai-demo/` scaffold
-  was not available.
-- **Evaluation harnesses** (each writes `results/summary.json`):
-  - `eval/locomo` (primary)
-  - `eval/locomo_plus` (supplementary; deterministic "did the cue reach the context")
-  - `eval/synthetic/{sliding_window,summarization,retrieval,controller}`
-- **Free-LLM workflow**, used for answer accuracy, LLM-written summaries and judges:
-  - `integration/llm_client.py`: adapter for OpenAI-compatible endpoints (Ollama, vLLM, LM Studio,
-    Groq, OpenRouter, DeepInfra), with a disk cache so interrupted runs resume.
-  - `notebooks/free_gpu_eval.ipynb`: runs on Colab or Kaggle with Ollama. It checks for the GPU and
-    prints a runtime estimate before the long part. Rebuild it with `scripts/build_notebook.py`, and
-    package the code for upload with `scripts/package_for_notebook.py`.
-  - `eval/judge.py`: correct / partial / wrong answer judge (1 / 0.5 / 0).
-  - `eval/human_agreement/`: blind labelling sheets plus judge-vs-human Cohen's kappa. A judge's
-    numbers are citable only if kappa is at least 0.6.
+- **`demo/coding_session/`** was rebuilt from the §9 description; the original `ceai-demo/`
+  scaffold was not available.
+  - `python -m demo.coding_session.run_demo` writes `runs/demo/` (decision log, dashboard HTML,
+    `results.json`).
 - **RAG read path** (`RetrievalConfig`):
-  - **Compact chunk headers** are the default: `[turns: t0012]`. The old headers spent about 20
-    tokens per chunk, close to half of a 1,024-token budget.
-  - **Optional cross-encoder reranker**: `reranker="cross-encoder/ms-marco-MiniLM-L-6-v2"`, in
-    `packages/retrieval/rerank.py`. It is on by default in every benchmark harness and the demo
-    (`--no-reranker` turns it off).
-    - It is **skipped for code tasks** (`rerank_skip_task_types`: `code_generation` and
-      `code_refactor`, read from the TurnSignal), which keep the bi-encoder ranking. See 12.3.
-  - **Optional neighbour turns** around each hit (`neighbors`), kept as an ablation only.
-- **More benchmarks and options:**
-  - `eval/locomo/stream.py`, **in-stream LoCoMo**: each question is asked either right after the
-    session holding its evidence ("fresh") or at the end ("late"), so the right strategy changes
-    during the conversation.
-  - `eval.locomo.run --split dev|test`: conversations 1, 3, 5, 7, 9 are dev, the rest test.
-  - The answer prompt now tells the model to resolve relative dates against the session date.
-- **Controller routing options** in `RuleConfig`: `long_chat_strategy`, `loss_escalation_target` and
-  `qa_strategy`. Rules also receive the TurnSignal's topic-shift flag, a Tier 0 signal, so this
-  doesn't break §5.
-- **Frozen configuration:** `eval/synthetic/controller/frozen_rule_config.json`, loaded by
-  `eval/frozen.py`. Every benchmark and the demo run with it. It is written by
-  `eval.synthetic.controller.tune_rules`, which tunes on train + val only, and recording resumes
-  after an interruption.
-- **The notebook also runs GPU-only jobs** (controller tuning, LoCoMo-Plus dev routing variants),
-  and installs Ollama only when an LLM job is selected.
+  - Compact chunk headers `[turns: t0012]`.
+  - A cross-encoder reranker (`cross-encoder/ms-marco-MiniLM-L-6-v2`), **skipped for code-task
+    turns** (`rerank_skip_task_types`), because a web-QA reranker ranks prose above code.
+  - Optional and **off in the frozen system:** neighbour turns, hybrid BM25 (`hybrid`,
+    `hybrid_task_types`, `packages/retrieval/lexical.py`), MMR (`mmr_lambda`) and observations
+    (`observations`, fed from the summarizer by the integration layer).
+- **Controller:** `RuleConfig` routing options (`long_chat_strategy`, `loss_escalation_target`,
+  `qa_strategy`). Rules also see the TurnSignal topic-shift flag, which is Tier 0, so §5 holds.
+- **Frozen configuration:**
+  - `eval/synthetic/controller/frozen_rule_config.json` (tuned on train + val), loaded by
+    `eval/frozen.py`.
+  - `CEAI_SYSTEM` selects the system variant: `frozen` (default), `v2_hybrid` or
+    `v3_qa_hybrid_obs`. Every result file records which system produced it.
+- **Evaluation harnesses** (each writes `summary.json` plus per-item rows):
+  - `eval/locomo/run.py` (primary; `--split dev|test`; `--llm --judge-answers` for answer accuracy)
+  - `eval/locomo/stream.py` (in-stream questions)
+  - `eval/locomo_plus/run.py` (supplementary)
+  - `eval/synthetic/{controller,sliding_window,summarization,retrieval}`, with
+    `eval/synthetic/retrieval/staleness.py` for the MemStrata-style metrics
+  - `eval/baselines/` (external baselines: fixed-chunk RAG, summary buffer, Mem0 via `mem0ai`,
+    full context)
+  - `eval/v2_gate.py` (pre-registration gates G2–G4)
+- **LLM tooling (free):**
+  - `integration/llm_client.py`: OpenAI-compatible client with a disk cache.
+  - `eval/judge.py`: correct / partial / wrong judge.
+  - `eval/human_agreement/`: blind labelling sheets and Cohen's kappa. Judge scores are citable only
+    if kappa is at least 0.6.
+- **Colab workflow:**
+  - `notebooks/free_gpu_eval.ipynb` is generated by `scripts/build_notebook.py`. Jobs are switched
+    by the `RUN` dict; Ollama starts or restarts via `start_ollama()`.
+  - Package the code with `scripts/package_for_notebook.py` (zip with a `BUILD_INFO.txt` stamp).
+  - On Colab: upload the zip to My Drive, upload the notebook, set a T4 GPU, Run all, check the
+    `CODE VERSION` line, then download `ceai_results.zip`.
+- **Results tooling:**
+  - `scripts/build_results.py` writes `results/RESULTS.md` from `results/final/*`.
+  - `scripts/plot_pareto.py` writes `results/figures/pareto_*.png`.
+- **Docs:**
+  - `docs/related_work.md`: the 22-paper review, a threat assessment and the paper-derived
+    experiments.
+  - `docs/baselines_protocol.md`: the baselines protocol, its amendment and the outcomes.
+  - `docs/v2_hybrid_preregistration.md` and `docs/v3_preregistration.md`: each with its gates and
+    outcome.
 
-### 12.2 Results
+### 12.2 Final test results (frozen system; the numbers for slides)
 
-**Final test results, 2026-10-15: these are the numbers for slides.** They come from the frozen
-configuration, with each test split run once. The full sheet with 95% intervals is
-`results/RESULTS.md`, generated by `scripts/build_results.py` from `results/final/*.json`.
+The full sheet with intervals is `results/RESULTS.md`, and the sources are in `results/final/`.
 
-| Where | Result (test split) |
+| Where | Result (test split, run once) |
 |---|---|
 | Val gate before testing | adaptive 0.9917 = frozen value: **passed** |
-| Controller, synthetic switch set (70 conversations, 420 probes) | evidence hit: adaptive **0.986** vs best single (RAG) 0.874, **+0.112 [+0.093, +0.129]**; vs always-hybrid 0.926, **+0.060 [+0.036, +0.088]**, using 29 fewer tokens. Selection macro-F1 0.331 (majority 0.180, random 0.195) |
-| LoCoMo test (5 conversations, 966 questions) | evidence hit: adaptive 0.654, RAG 0.656 (a tie, −0.002 [−0.005, 0.000]), hybrid 0.627, window 0.084, summarization 0.049 |
-| RAG read path, same test conversations | evidence hit **0.391 → 0.655** (compact headers + reranker) |
-| LoCoMo test answer accuracy (230 random answerable questions, Qwen2.5-7B answering and judging) | judge score: adaptive 0.507 = RAG 0.507, hybrid 0.504, window 0.124, summarization 0.109. **Citable only after the human-agreement check.** |
+| Controller, synthetic switch set (70 conversations, 420 probes) | adaptive **0.986** vs best single (RAG) 0.874, **+0.112 [+0.093, +0.129]**; vs always-hybrid 0.926, **+0.060 [+0.036, +0.088]** with 29 fewer tokens. Selection macro-F1 0.331 (majority 0.180, random 0.195) |
+| LoCoMo test (5 conversations, 966 questions) | evidence hit: adaptive 0.654, RAG 0.656 (tie, −0.002 [−0.005, 0.000]), hybrid 0.627, window 0.084, summarization 0.049 |
+| RAG read path, same test conversations | **0.391 → 0.655** (compact headers + reranker) |
+| LoCoMo answer accuracy (230 random answerable test questions; Qwen2.5-7B answering and judging) | judge: adaptive 0.507 = RAG 0.507, hybrid 0.504, window 0.124, summarization 0.109. Token-F1 adaptive 0.406 |
 | In-stream LoCoMo test | adaptive 0.704 = RAG; always-hybrid 0.718 (adaptive −0.013 [−0.029, −0.003]) |
-| LoCoMo-Plus test (200 items) | cue hit: adaptive 0.140 = RAG = hybrid; the naive summary is best at 0.185 |
-| RAG granularity, LoCoMo test at an equal 400-word budget | recall: segment 0.376, **adaptive 0.355**, turn 0.328. The earlier "adaptive best" (12.2, older table) **did not hold on test** |
+| LoCoMo-Plus test (200 items) | cue hit: adaptive 0.140 = RAG = hybrid; the naive summary is best at 0.185 (known weakness) |
+| RAG granularity at an equal 400-word budget | recall: segment 0.376, adaptive 0.355, turn 0.328, so **adaptive chunking is not better** |
 | Coding demo | adaptive 2/2, fixed 6-exchange window 0/2 |
-| **External baselines** (same 230 LoCoMo test questions, same model, judge and budget; `docs/baselines_protocol.md`) | CEAI judge 0.507 / token-F1 0.406. **Mem0 (corrected): 0.467 / 0.278**: judge difference +0.039 [−0.060, +0.127] *not significant*, token-F1 **+0.129 [+0.038, +0.210]**; Mem0 makes about 54 LLM calls per conversation to store memory, CEAI 0. Fixed-chunk RAG: CEAI **+0.074** judge / **+0.064** F1. Summary buffer: **+0.411** / **+0.340**. Full context (60 questions): judge −0.067 n.s., F1 **+0.182**. Run 1 under-counted Mem0 (output cut off); the corrected run is the headline |
-| Component evaluations on final code | summarization stale-fact leakage 0.00 vs 0.50 naive, signature retention 0.90 vs 0; contradiction flags P 0.82 / R 0.73 / F1 0.77; sliding window 59 wins / 0 losses vs recency at budget 100 |
+| Summarization (30 degradation traces) | stale-fact leakage **0.00 vs 0.50** naive; signature retention **0.90 vs 0**; the live loss score tracks deletion (Spearman 0.91) |
+| RAG staleness flags (184 pairs; threshold chosen on dev) | **P 0.82 / R 0.73 / F1 0.77**. At equal F1, NLI wrongly retires 23% of current facts vs 83% for similarity only. **Stale-fact leak 0.27** |
+| Sliding window (40 conversations, 360 probes) | budget 100: recall 0.719 vs recency-only 0.556 (**59 wins / 0 losses**); the ablation ranks equal weights 15th of 35 (relevance-heavy wins) |
 
-**Earlier results (development history, superseded by the table above):**
+Pareto charts (cost vs evidence hit): `results/figures/pareto_controller.png`,
+`results/figures/pareto_locomo.png`.
 
-| Where | Result |
-|---|---|
-| Coding demo (§9) | adaptive **2/2**, fixed 6-exchange window 0/2, always-window 1/2, always-summarization 2/2, always-RAG 2/2 |
-| Controller, synthetic (180 probes) | evidence hit: adaptive **1.000** vs best single strategy (RAG) 0.900, **+0.10**; always-hybrid ties at 1.000. Selection macro-F1 0.35 |
-| LoCoMo, 1,986 questions, NLI off | evidence hit: adaptive 0.443 vs RAG 0.444, a tie (almost every question routes to RAG); hybrid 0.358 |
-| LoCoMo answer accuracy, Colab pilot (`eval/locomo/results_colab_pilot`) | Qwen2.5-7B answering and judging, 100 questions. Judge score: RAG 0.310, hybrid 0.315, adaptive 0.310, window 0.140, summarization 0.100. **Pilot only:** the sample was the first 50 questions per conversation (since replaced by a seeded random sample) |
-| LoCoMo-Plus, 401 items | cue hit: adaptive 0.087 vs RAG 0.167 vs hybrid 0.185, a **negative result**: statement-style triggers are routed to summarization |
-| Summarization (30 degradation traces, budget 1000) | structured + merge vs naive: loss 0.06 vs 0.37; symbol retention 0.90 vs 0.00; stale-fact leakage **0.00 vs 0.50** |
-| Sliding window (budget 100) | gold-turn recall 0.719 vs recency-only 0.556 (59 wins / 0 losses) |
-| RAG contradiction flags (184 pairs) | test P 0.82 / R 0.73 / F1 0.77 at threshold 0.95, chosen on dev |
-| RAG granularity (LoCoMo, equal 400-word budget) | recall: adaptive 0.428, segment 0.421, turn 0.381 |
+### 12.3 External baselines (`docs/baselines_protocol.md`; results in `results/final/baselines*`)
 
-**Dev-split results, 2026-10-13.** These were used to choose settings; they are **not** test
-results.
+Conditions: the same 230 LoCoMo test questions as CEAI's frozen answer run, the same Qwen2.5-7B
+answering and judging, the same answer prompt and the same 1,024-token memory budget. Full
+context is a ceiling run on 60 of the questions. Paired as CEAI − system:
 
-| Dev set | Result |
-|---|---|
-| LoCoMo dev (5 conversations, 999 questions), RAG read path | evidence hit, with adaptive equal to RAG: old headers **0.496** → compact headers 0.542 → **+ reranker 0.709** (answer in context 0.326 → 0.476; multi-hop 0.15 → 0.31). Adding one neighbour turn gave 0.735 but slightly *lower* answer-in-context and multi-hop, so it was not adopted |
-| In-stream LoCoMo dev (1,018 questions, reranker on) | evidence hit: window 0.449, summarization 0.168, RAG 0.744, **hybrid 0.758**, adaptive 0.746. Fresh: window 0.828, hybrid 0.848, RAG 0.793. Late: RAG 0.697 |
-| LoCoMo-Plus dev (201 items, 10 warm-up decision turns) | without reranker: RAG 0.164, hybrid 0.194, adaptive 0.169. With reranker: RAG 0.129, hybrid 0.164, adaptive 0.134 (current routing) or 0.164 (long chat / lossy summary → hybrid). The new `user_state` facts lifted summarization 0.090 → 0.109 |
-| Synthetic controller val (tuning grid, 1,512 configs) | best val evidence hit 0.992 with the current routing at `low_pressure` 0.9 and `min_dwell_turns` 3 (val macro-F1 0.327 vs 0.263 for the old defaults). Routing long chat to hybrid: 0.933 |
-| Coding demo with the frozen config | **1/2 with the reranker on every turn** (hybrid misses the duplicate-function trap), 2/2 without it, and **2/2 with the reranker skipped for code tasks** (the adopted setting) |
+| System | Judge | CEAI − system (judge) | Token-F1 | CEAI − system (F1) | LLM calls to store memory / conversation |
+|---|---|---|---|---|---|
+| **CEAI (frozen)** | **0.507** | — | **0.406** | — | **0** |
+| **Mem0 (corrected run)** | 0.467 | +0.039 [−0.060, +0.127] **(n.s.)** | 0.278 | **+0.129 [+0.038, +0.210]** | about 54 (15–20 min) |
+| Fixed-chunk RAG | 0.433 | **+0.074 [+0.017, +0.132]** | 0.343 | **+0.064 [+0.026, +0.103]** | 0 |
+| Summary buffer (LangChain-style) | 0.096 | **+0.411 [+0.310, +0.494]** | 0.066 | **+0.340 [+0.240, +0.422]** | about 69 |
+| Full context (60 questions) | 0.417 | −0.067 [−0.183, +0.050] (n.s.) | 0.195 | **+0.182 [+0.064, +0.299]** | 0 (about 24k tokens per question) |
 
-**Dev results for paper-derived options, 2026-10-15** (LoCoMo dev; details in
-`docs/related_work.md` §5). These are not test results, and the frozen system is unchanged.
+- **Mem0 run 1 under-counted Mem0.** This harness's 1,500-token output limit cut off 8.8% of its
+  extractions. The **corrected run** (limit 8,000, declared as a protocol amendment before running)
+  is the headline. **Do not claim "CEAI beats Mem0 on accuracy".** Claim instead: *"same judged
+  accuracy, higher exact-answer F1, zero write-time LLM calls"*.
+- **Judge scores become citable only after the human-agreement check;** until then, lead with
+  token-F1.
+- Not run (setup too heavy for free Colab before the deadline): Zep, LangMem, Letta/MemGPT and A-Mem.
+  They are cited only as related work, never as numbers next to ours.
 
-| Option (off in the frozen system) | Result |
-|---|---|
-| Hybrid BM25 + dense retrieval (RRF) on top of the reranker | LoCoMo dev: RAG evidence hit 0.709 → **0.762**, **+0.052 [+0.018, +0.088]** (temporal 0.74 → 0.84, single-hop 0.83 → 0.89, multi-hop unchanged). But **LoCoMo-Plus dev: −0.040 [−0.070, −0.015]**. It **failed its pre-registered gate**, so no test run was made; dev-only (`docs/v2_hybrid_preregistration.md`) |
-| MMR ordering | +0.002 [−0.008, +0.009]: no effect, dropped |
-| v3 = hybrid for `qa` turns + summarizer facts as RAG observations (`docs/v3_preregistration.md`) | **Failed gate G3**: LoCoMo-Plus dev 0.134 → 0.020. LoCoMo dev answer accuracy only +0.007 [−0.058, +0.069]. No test run; dev-only |
+### 12.4 Experiments that were not adopted (honest negatives; the frozen system is unchanged)
 
-### 12.3 Findings that narrow the §6 claims
+| Experiment | How it was evaluated | Outcome |
+|---|---|---|
+| **v2: hybrid BM25 + dense on every turn** (`docs/v2_hybrid_preregistration.md`) | Pre-registered; gates G1 demo, G2 synthetic val, G3 LoCoMo-Plus dev | LoCoMo dev RAG evidence **+0.052 [+0.018, +0.088]**, but **G3 failed**: LoCoMo-Plus dev −0.040 [−0.070, −0.015]. No test run |
+| **MMR ordering** | LoCoMo dev | +0.002 [−0.008, +0.009]: no effect |
+| **v3: hybrid for `qa` turns + summarizer facts as RAG observations** (`docs/v3_preregistration.md`) | Pre-registered; G1–G3 plus G4 LoCoMo dev answer accuracy | **G3 failed badly** (LoCoMo-Plus dev 0.134 → 0.020: short observations crowd out the second line of two-line cues). Dev answer accuracy only +0.007 [−0.058, +0.069]. No test run |
+| Neighbour turns around RAG hits | LoCoMo dev | Evidence 0.735 vs 0.709, but answer-in-context and multi-hop slightly lower; not adopted |
+| Reranker on every turn | LoCoMo dev + demo | +0.17 on LoCoMo dev, but the demo fell to 1/2 (it ranks prose above code). **Adopted with a code-task skip**, which keeps the demo at 2/2 |
+| Routing variants (long chat → hybrid, loss → hybrid, qa → hybrid) | Pre-declared dev selection rule across four dev sets | The current routing won (0.645 vs 0.638–0.640); frozen at `low_pressure` 0.9, `min_dwell_turns` 3 |
 
-Present these as they are; don't argue around them.
+**Lesson worth presenting:** lexical retrieval helps explicit recall and hurts implicit cues. No
+single retrieval setting wins everywhere, which supports adaptivity.
 
-- **§6.1 controller:** on pure-recall benchmarks (LoCoMo) adaptive *ties* the best fixed strategy,
-  because the right choice is always RAG. Its gains show on mixed workloads: the coding traps and
-  the synthetic switch set. Frame it as **"no regret when one strategy is right, a gain when the
-  conversation changes type."**
-- **§6.2 sliding window:** **equal weights are not optimal** in the ablation; relevance at 0.5 or
-  more wins. Weights should be selected on dev, not defended as equal.
-- **§6.4 RAG:**
-  - **The NLI model cannot tell code identifiers apart**, so code-symbol staleness uses an exact AST
-    signature diff (`verifier="signature_diff"`).
-  - **The NLI scores are made bidirectional** (minimum of both directions). That removed the
-    one-directional false positives seen in the demo.
-- **The reranker is a trade-off, not a free gain.** It lifts LoCoMo dev RAG from 0.542 to 0.709, but
-  it hurts LoCoMo-Plus (0.164 → 0.129) and code retrieval. It was trained on web QA (MS MARCO), so it
-  ranks prose above code blocks. In the demo, hybrid's half-budget RAG slice then loses the existing
-  definition.
-- **Routing has little room on LoCoMo-style QA.** Hybrid and RAG retrieve nearly the same evidence,
-  so even perfect fresh/late routing would reach only about 0.769, against 0.758 for always-hybrid.
-  - The topic-shift flag barely separates fresh from late questions: it fires on 47% vs 62% of them.
-  - Similarity to the last turns separates them better (AUC 0.74), but gave only +0.004, so it was
-    not added.
-- **Test-split findings:**
-  - The controller's gain is clear and significant on mixed workloads: +0.112 over the best single
-    strategy, and +0.060 over always-hybrid while using fewer tokens.
-  - On LoCoMo-style recall it ties RAG, and always-hybrid is marginally better in-stream.
-  - Adaptive chunking is **not** better than fixed segments at an equal word budget on test. Present
-    granularity as an engineering choice (fewer tokens per hit than segments), not a claim.
-- **Judges:** a 7B judge is fine for grading answers. It is **not** usable for the controller's
-  strategy oracle: it agreed with the objective oracle at only 0.33 (kappa 0.11). That half of the
-  dual-source oracle needs a much stronger judge (70B class or Claude).
+### 12.5 The four components: what to present
 
-### 12.4 Rules adopted during the build
+| Component | Claim (from §6.5) | Closest work | Evidence | Caveat to prepare |
+|---|---|---|---|---|
+| 1. Dynamic sliding window (+ conversation manager) | An evaluation claim: light 4-factor scoring beats recency; the ablation picks the weights | Generative Agents (origin of recency + importance + relevance), AFM, LUFY | 59 wins / 0 losses vs recency; 0.719 vs 0.556 | Equal weights are not optimal; weights are runtime config |
+| 2. Hierarchical summarization | The live loss score is a **control signal** that triggers a switch | ProMem (post-hoc only); the merge sits next to MemStrata, Mem0 and Zep | Stale-fact leakage 0.00 vs 0.50; signature retention 0.90 vs 0; the demo's renamed-API catch came from loss 0.59 → RAG | Alone, it is weak at detail recall (LoCoMo 0.05); the controller compensates |
+| 3. RAG | **LLM-free staleness flagging on raw conversation** (structural for code, calibrated NLI otherwise) | MemStrata (needs triples), Zep (LLM-extracted edges) | P 0.82 / R 0.73; wrongly retired facts 83% → 23%; read path 0.391 → 0.655 | Adaptive chunking withdrawn as a claim; 27% stale-fact leak; v2 / MMR / v3 not adopted |
+| 4. ASSE controller (headline) | **Per-turn switching across three paradigms, logged, explainable, overridable, no LLM in the decision** | FluxMem, MemCon, MemGAS, RMM, Self-RAG, MemGPT, MoMA | +0.112 over the best single strategy; +0.060 over always-hybrid with fewer tokens; demo 2/2 vs 0/2; ties RAG on LoCoMo; about 0.1 ms per decision | The largest win is on our own synthetic set; answer with the train/val/test discipline and the deterministic demo |
+
+**One-line message:** *memory systems lock in one strategy; choosing per turn wins on mixed
+conversations, costs nothing on uniform ones, and every decision is explainable.*
+
+### 12.6 Findings that narrow the §6 claims
+
+- On pure-recall benchmarks (LoCoMo) adaptive *ties* the best fixed strategy, because the right
+  choice is always RAG. Its gains show on mixed workloads. Frame it as **"no regret when one
+  strategy is right, a gain when the conversation changes type."**
+- Sliding-window equal weights are not optimal; the weights are selected, not defended.
+- The NLI model cannot tell code identifiers apart, so code staleness uses an exact AST signature
+  diff. NLI scores are bidirectional (minimum of both directions).
+- The reranker is a trade-off: it helps conversational recall and hurts code and implicit cues.
+- Routing has little room on LoCoMo-style QA: a perfect fresh/late router would reach about 0.769
+  vs 0.758 for always-hybrid. The topic-shift flag is a weak signal.
+- A 7B judge is usable for grading answers but **not** for the controller's strategy oracle
+  (agreement 0.33, kappa 0.11).
+
+### 12.7 Rules adopted during the build
 
 - **Dev/test discipline.**
-  - LoCoMo: conversations at even index (1, 3, 5, 7, 9) are dev, odd are test.
+  - LoCoMo: conversations 1, 3, 5, 7, 9 are dev; 2, 4, 6, 8, 10 are test.
   - LoCoMo-Plus: even item ids are dev, odd are test.
-  - The synthetic sets are split at conversation level (train / val / test in `splits.json`).
-  - Tune only on dev, and report test once.
+  - Synthetic sets: train / val / test in `splits.json`.
   - The coding demo is a check, never a tuning set.
-- **Selection rule for controller routing, declared before the results:** the best average evidence
-  hit across the dev sets, equally weighted. The dev sets are synthetic val, LoCoMo-Plus dev and
-  in-stream LoCoMo dev, plus plain LoCoMo dev, which was added before deciding because it makes the
-  choice stricter.
-  - Result: keep the current routing (long chat → summarization, lossy summary → RAG,
-    questions → RAG) with `low_pressure` 0.9 and `min_dwell_turns` 3. That averages 0.645, against
-    0.638–0.640 for the alternatives.
-- **Non-committing probes.** Evaluation questions are probes (`user_turn(..., remember=False)`): they
-  never change turn counts, controller history or escalations.
-- **The §5 rule is enforced structurally.** `RuleBasedController.decide()` receives only the
-  `TurnSignal`, and escalations apply on the next turn only.
-- **Fair comparisons only.** Every system or strategy compared gets the same conversations, the same
-  token budget, the same answering model and the same judge. Never compare against numbers copied
-  from other papers.
-- **Commits are authored by the student only**, with no AI attribution lines.
+  - **Test splits were used on 2026-10-15 for the frozen system. Do not tune anything on them.**
+- **Pre-registration for any new candidate:**
+  - Write `docs/<name>_preregistration.md` (config, gates, test runs, reporting rule) and commit it
+    *before* any run.
+  - Gates run on dev/val (`eval/v2_gate.py`); the notebook stops itself if a gate fails.
+  - Every result is reported whatever its sign.
+- **Fair comparisons only:** the same conversations, questions, budget, answering model and judge.
+  Never compare with numbers copied from other papers. Correct any handicap to a baseline (as with
+  Mem0), declared first.
+- **§5 is enforced structurally:** `RuleBasedController.decide()` sees only the `TurnSignal`, and
+  escalations apply on the next turn.
+- **Non-committing probes:** evaluation questions use `user_turn(..., remember=False)`.
+- **Git:**
+  - Commits are authored by the student (Manuga Romal), with **no AI attribution lines**.
+  - Work happens on `retrieval-augmented`; merge `development` in first, then fast-forward
+    `development`.
+  - Run `pytest -m "not models"` before every commit.
+- **No personal names** in code or docs other than this file's team line.
 
-### 12.5 Open work (in this order)
+### 12.8 Open work
 
-0. **Done 2026-10-15:** reranker scope settled (non-code turns only, val gate passed) and every
-   test split run once (12.2). **No more tuning on any test split**; any change from here is v2.
-1. **Human agreement labelling** of the test-answer judge: the sheets are in
-   `runs/colab3/final/human_agreement/` (24 rows per annotator; keep `key.json` private). Score
-   them with `python -m eval.human_agreement.score --sheets <folder>`.
-2. **Demo package** for the presentation: the coding session on the live dashboard, plus a static
-   fallback.
-3. **A stronger judge** for the controller's strategy oracle: a pay-per-token 70B model (about $1) or Claude.
-4. **External baselines: done 2026-10-16** (12.2). Still open: the coding traps on Mem0, and LangMem / A-Mem.
-5. **An OpenAI-compatible proxy** so CEAI can sit in front of any chat app or agent, with the
-   dashboard live during the presentation demo.
-6. **Larger answer-accuracy sample** with a stronger model, for the final report (not needed for
-   Progress Presentation 1).
+1. **Demo package for Monday (not started):**
+   - One command runs the coding session and opens the live dashboard (`dashboard.server`).
+   - A static HTML fallback.
+   - A one-page run guide.
+   - Slide text: four component slides per §11, the integration (CAUGHT/MISSED) slide, the Pareto
+     and baselines slides, and Q&A answers.
+2. **Human-agreement labelling:**
+   - The sheets for the test answers are in Colab output `ceai_runs/final/human_agreement/` (local copy:
+     `runs/colab3/final/human_agreement/`, which is git-ignored; keep `key.json` private). If
+     they are lost, regenerate them from `results/final/locomo_qa_test_questions.jsonl` with
+     `eval.human_agreement.make_sheets`.
+   - Four annotators, about 20 minutes each.
+   - Score with `python -m eval.human_agreement.score --sheets <folder>`.
+3. **Merge into `development`:** fast-forward after the latest commits on `retrieval-augmented`.
+4. **After Monday (v2 of the project):**
+   - A stronger answering model and judge for every system.
+   - The LR/RF/GBDT controller trained on decision logs.
+   - Coding traps run on Mem0.
+   - LangMem / A-Mem baselines.
+   - A controller rule for "recent cue → keep the window" (on LoCoMo-Plus, cues fewer than 50 turns
+     back are lost to RAG routing).
+   - An OpenAI-compatible proxy for a live chat demo.
 
-### 12.6 Branches
+### 12.9 How to run things
+
+- **Setup:** `python -m venv .venv`, then `.venv/Scripts/pip install -e ".[dev]"`. Fast tests:
+  `pytest -m "not models"`.
+- **Demo:** `python -m demo.coding_session.run_demo` (frozen system, about 2 minutes on CPU).
+  Live dashboard: `python -m dashboard.server --log-dir runs/demo`.
+- **Results sheet:** `python scripts/build_results.py --colab <unzipped Colab results folder>`.
+  Charts: `python scripts/plot_pareto.py`.
+- **Anything needing an LLM or a GPU:**
+  1. Edit `RUN` in `scripts/build_notebook.py`.
+  2. Run `python scripts/build_notebook.py` and `python scripts/package_for_notebook.py`.
+  3. Upload the zip and the notebook to Colab (T4), Run all, and check the `CODE VERSION` line.
+
+### 12.10 Branches
 
 - `development` is the integration branch.
-- Each component has a working branch: `retrieval-augmented`, `summarization`,
+- Component branches: `retrieval-augmented` (where this work happens), `summarization`,
   `sliding-window-conversation-manager` and `runtime-controller`.
 - Component work merges into `development`, normally by pull request.
