@@ -12,9 +12,16 @@ Committed **before** any assisted run.
     - L1 stays rule-based in both modes: exact facts, the keyed contradiction merge and code
       signatures. The coding-demo traps depend on these.
     - Invalid model output falls back to the rule-based tier and is counted.
-- **The hard boundary:** the setting never reaches the controller. `tests/test_llm_policy.py` checks
-  that strict and assisted give identical controller choices on the same conversation. The §5 rule
-  and the ~0.1 ms decision time hold in both modes.
+- **The hard boundary:** the setting never reaches the controller.
+  - `RuleBasedController.decide()` receives the same TurnSignal in both modes.
+  - The only way the mode can change a choice is the designed §5 path: a different summary has a
+    different measured loss, so a `loss_threshold_exceeded` escalation may fire differently and
+    change the **next** turn's decision. That change is logged in the rationale.
+  - `tests/test_llm_policy.py` checks both properties: identical controller inputs, and every
+    differing choice explained by a loss escalation.
+  - *(Corrected before any assisted run: an earlier draft said "identical choices", which the
+    test showed is not true.)*
+  - The §5 rule and the ~0.1 ms decision time hold in both modes.
 - Every result file records the policy and the number of LLM calls.
 
 ## Question
