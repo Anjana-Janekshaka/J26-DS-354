@@ -63,8 +63,11 @@ RUN = {
     # External baselines under identical conditions (docs/baselines_protocol.md):
     "baselines": False,                 # run 1 done 2026-10-16 (results/final/baselines)
     "mem0_fixed": False,                # done 2026-10-16 (results/final/baselines_mem0_fixed)
+    # v4 jobs that need an LLM (pre-registered 2026-10-17; the CPU-only v4 items run locally):
+    "llm_policy_dev": True,             # docs/llm_policy_preregistration.md: strict vs assisted, 60 LoCoMo-Plus dev items
+    "mem0_coding_traps": True,          # docs/mem0_coding_preregistration.md: the coding traps on Mem0
     # v3, PRE-REGISTERED (docs/v3_preregistration.md): gates G2-G4 on dev/val, then each test split once
-    "v3_preregistered": True,                 # corrected Mem0 run (protocol amendment): max_tokens 8000, 16k context
+    "v3_preregistered": False,          # done 2026-10-16: gate G3 failed, so no v3 test runs (must stay off)
     "v2_preregistered": False,          # done 2026-10-15: gate G3 failed, so no v2 test runs (must stay off)
     # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
     "v2_dev_retrieval": False,
@@ -82,7 +85,8 @@ RUN = {
     "locomo_plus": False,
 }
 NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
-            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"] or RUN["v3_preregistered"])
+            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"] or RUN["v3_preregistered"]
+            or RUN["llm_policy_dev"] or RUN["mem0_coding_traps"])
 
 """),
     code("""
@@ -300,6 +304,24 @@ if RUN["mem0_fixed"]:
     os.environ["CEAI_MEM0_MAX_TOKENS"], os.environ["CEAI_LLM_TIMEOUT"] = "8000", "1200"
     run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "mem0",
          "--out", str(WORK / "baselines_mem0_fixed")], "baselines_mem0_fixed")
+    os.environ["CEAI_LLM_TIMEOUT"] = "300"
+    start_ollama()
+
+# ---- v4 LLM jobs (pre-registered 2026-10-17) -----------------------------------------------------
+if RUN["llm_policy_dev"]:
+    # Same 60 seeded LoCoMo-Plus dev items under both policies; skipped if already done (resumes).
+    for pol in ("strict", "assisted"):
+        os.environ["CEAI_LLM_POLICY"] = pol
+        out = WORK / "llm_policy" / pol
+        if not (out / "summary.json").exists():
+            run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--sample", "60",
+                 "--out", str(out)], f"llm_policy_{pol}")
+    os.environ["CEAI_LLM_POLICY"] = "strict"
+if RUN["mem0_coding_traps"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    start_ollama(context=16384, parallel=1)
+    os.environ["CEAI_MEM0_MAX_TOKENS"], os.environ["CEAI_LLM_TIMEOUT"] = "8000", "1200"
+    run(["demo.coding_session.run_mem0", "--out", str(WORK / "demo_mem0")], "demo_mem0")
     os.environ["CEAI_LLM_TIMEOUT"] = "300"
     start_ollama()
 

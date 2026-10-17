@@ -187,7 +187,8 @@ def get_llm(cache_path: str | Path | None = None, role: str = "answer"):
         if not model:
             raise LLMUnavailable("CEAI_LLM_BASE_URL is set but CEAI_LLM_MODEL is not")
         # Short replies are all the harnesses need; a low cap stops a chatty model spending minutes per call.
-        default_cap = "16" if role == "judge" else "96"
+        # Summary tiers (llm_policy="assisted") return a JSON record, so they get a larger cap.
+        default_cap = {"judge": "16", "summary": "600"}.get(role, "96")
         llm = OpenAICompatibleLLM(base, model, api_key=pick("API_KEY"), max_tokens=int(pick("MAX_TOKENS") or default_cap),
                                   timeout_s=float(os.environ.get("CEAI_LLM_TIMEOUT", "300")))
     elif credentials_present():

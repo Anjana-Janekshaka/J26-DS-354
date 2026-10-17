@@ -14,6 +14,7 @@ from pathlib import Path
 
 from controller import RuleBasedController, RuleConfig
 from retrieval import ContradictionConfig
+from retrieval.chunking import BoundaryConfig
 
 FROZEN_RULES = Path(__file__).parent / "synthetic" / "controller" / "frozen_rule_config.json"
 
@@ -40,7 +41,9 @@ SYSTEMS: dict[str, dict] = {
     "v3_qa_hybrid_obs": {"hybrid_task_types": ("qa",), "observations": True},
     # v4 (docs/v4_preregistration.md): the two component candidates that passed their dev gates.
     # Retrieval side: the staleness ensemble (weights and threshold fitted on the dev contradiction pairs).
-    "v4": {"contradiction": ContradictionConfig(ensemble=(-3.020881, 1.329963, 1.243888, 0.441096, 2.506616), ensemble_threshold=0.4666)},
+    # Plus the dev-tuned chunking weights (eval.locomo.chunking_search; joined after beating fixed segments on test).
+    "v4": {"boundary": BoundaryConfig(bias=-4.556022, w_semantic=4.408378, w_length=0.354663, w_turns=2.261815, max_segment_tokens=150, max_segment_turns=3),
+           "contradiction": ContradictionConfig(ensemble=(-3.020881, 1.329963, 1.243888, 0.441096, 2.506616), ensemble_threshold=0.4666)},
 }
 
 # Sliding-window weights per system ("relevance,freshness,importance,state"); the v4 weights were
@@ -54,6 +57,15 @@ def system_name() -> str:
     if name not in SYSTEMS:
         raise ValueError(f"CEAI_SYSTEM={name!r}; expected one of {sorted(SYSTEMS)}")
     return name
+
+
+def llm_policy() -> str:
+    """``CEAI_LLM_POLICY``: ``strict`` (default, no LLM in the memory path) or ``assisted`` (the LLM
+    writes the L2/L3 summary tiers only; docs/llm_policy_preregistration.md)."""
+    policy = os.environ.get("CEAI_LLM_POLICY", "strict")
+    if policy not in ("strict", "assisted"):
+        raise ValueError(f"CEAI_LLM_POLICY={policy!r}; expected 'strict' or 'assisted'")
+    return policy
 
 
 def system_retrieval(**kwargs) -> dict:

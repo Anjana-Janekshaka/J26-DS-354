@@ -128,6 +128,19 @@ only if its test result also beats fixed segments; §4 never joins. Before any v
   LoCoMo test and the demo scenarios.
 - If any gate fails, v4 is reported as dev-only and the frozen system stays.
 
-## Outcomes
+## Outcomes (2026-10-17)
 
-To be filled in after each run, with the date.
+| Item | Gate (dev / val) | Test (run once) |
+|---|---|---|
+| §1 Sliding-window weights | **Passed.** The chosen weights (relevance 0.5, importance 0.5, freshness 0, state 0) reach dev recall 1.000; equal weights reach 0.733 (rank 15 of 35) | Budget 100: chosen **1.000** vs equal 0.706 vs recency-only 0.556 (80 wins / 0 losses vs recency; 53 wins / 0 losses vs equal). Budget 220: 1.000 vs 0.989 vs 0.556 |
+| §2 Staleness ensemble | **Passed.** Out-of-fold dev F1 0.826 vs 0.776; false supersession 0.022 vs 0.156 | P **1.00** / R 0.69 / F1 **0.81** vs v1 0.82 / 0.73 / 0.77. Wrongly retired current facts **0%** (v1 23%). Stale-fact leak 0.31 (v1 0.27): recall is capped by the prefilter, and the ensemble trades one more leak for zero false retirements |
+| §3 Dev-tuned chunking | **Passed.** Dev recall at 400 words: best of 61 configurations 0.516; fixed segment 0.463; hand-set 0.498 | Recall at 400 words: **dev-tuned 0.399** vs segment 0.376, hand-set 0.355, turn 0.328 (the last three reproduce the recorded test numbers). **Joins v4** |
+| §4 Learned controller | **Failed.** Val evidence hit: LR 0.933, RF 0.917, GBDT 0.917 vs rules 0.992 (gate needs at least 0.982). Macro-F1 is higher (0.40–0.45 vs 0.33): imitating the cheapest correct strategy costs hits when the model is wrong | Not run. The rules stay; the model-based variant is implemented and reported as dev-only |
+| §5 Length test | (no gate) | See below once run |
+| §6 System gates | Running with v4 = §1 + §2 + §3 | — |
+
+- **Caveat on §1:** the synthetic workload rewards relevance heavily (recall 1.000), and freshness 0
+  may hurt real conversations. That is exactly what gates G1–G4 check.
+- **Note on §3:** the chunking result is a single test run on 5 conversations. It reverses the
+  earlier "withdrawn" status of granularity only as an engineering result (dev-tuned boundary
+  weights beat fixed segments at equal cost). It is not a learned-model claim.

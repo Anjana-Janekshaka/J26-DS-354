@@ -36,7 +36,7 @@ from conversation_manager import ClassifierConfig, ConversationManager, SignalBu
 from decision_logger import DecisionLogger, OverrideInbox
 from retrieval import NLIScorer, RetrievalConfig, RetrievalEngine
 from sliding_window import DynamicSlidingWindow, SlidingWindowConfig
-from summarization import HierarchicalSummarizer, LLMGenerator, SummarizationConfig
+from summarization import AssistedGenerator, HierarchicalSummarizer, LLMGenerator, SummarizationConfig
 
 from .llm_interface import AssembledPrompt, assemble_prompt
 
@@ -72,6 +72,7 @@ class MemoryPipeline:
         controller: RuleBasedController | None = None,
         llm=None,
         summarize_with_llm: bool = False,
+        llm_policy: str = "strict",
         sw_config: SlidingWindowConfig | None = None,
         summarization_config: SummarizationConfig | None = None,
         retrieval_config: RetrievalConfig | None = None,
@@ -84,7 +85,15 @@ class MemoryPipeline:
         self.bus = SignalBus()
         self.manager = ConversationManager(conversation_id, token_budget, self.bus, self.embedder, classifier_config)
         if modules is None:
-            generator = LLMGenerator(llm) if (summarize_with_llm and llm is not None) else None
+            # llm_policy: "strict" (default) = no LLM anywhere in the memory path; "assisted" = the LLM
+            # writes only the L2/L3 summary tiers. It changes what the summarizer writes, never which
+            # strategy the controller picks (the controller never sees it).
+            if llm_policy not in ("strict", "assisted"):
+                raise ValueError(f"llm_policy must be 'strict' or 'assisted', not {llm_policy!r}")
+            if llm_policy == "assisted" and llm is None:
+                raise ValueError("llm_policy='assisted' needs an llm")
+            generator = (AssistedGenerator(llm) if llm_policy == "assisted" else
+                         LLMGenerator(llm) if (summarize_with_llm and llm is not None) else None)
             modules = {
                 "sliding_window": DynamicSlidingWindow(self.embedder, sw_config),
                 "summarization": HierarchicalSummarizer(generator, summarization_config),
