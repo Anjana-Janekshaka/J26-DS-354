@@ -37,10 +37,20 @@ def forced(tid: str, s: str) -> ControllerDecision:
                               decision_latency_ms=0.0, override=OverrideInfo(applied=False, by=None))
 
 
+def _flatten(v) -> list[int]:
+    if isinstance(v, dict):
+        return [i for x in v.values() for i in _flatten(x)]
+    if isinstance(v, (list, tuple)):
+        return [i for x in v for i in _flatten(x)]
+    return [int(v)] if isinstance(v, int) or (isinstance(v, str) and v.isdigit()) else []
+
+
 def cited_ids(q: dict) -> list[int]:
-    ids = q.get("source_chat_ids")
+    """Every cited turn id. BEAM stores them as a list, a dict of lists (e.g. original/updated info)
+    or nested lists, depending on the question category."""
+    ids = _flatten(q.get("source_chat_ids"))
     if ids:
-        return [int(i) for i in ids]
+        return ids
     refs = " ".join(map(str, q.get("conversation_references", []) or []))
     return [int(x) for x in re.findall(r"chat_id:\s*(\d+)", refs)]
 
