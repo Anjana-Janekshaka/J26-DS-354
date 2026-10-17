@@ -1,0 +1,28 @@
+{
+  "hardware": "free Colab T4, Qwen2.5-7B via Ollama for LLM-based systems",
+  "conversations": 5,
+  "mean_turns_per_conversation": 584.4,
+  "systems": {
+    "CEAI (frozen)": {
+      "build_seconds_per_conversation": 5.983174610137939,
+      "write_llm_calls_per_conversation": 0,
+      "note": "all three strategy modules + conversation manager; NLI staleness check off in this run",
+      "x_slower_than_ceai": 1.0
+    },
+    "Mem0 (corrected)": {
+      "build_seconds_per_conversation": 971.8070391654968,
+      "write_llm_calls_per_conversation": 54.4,
+      "x_slower_than_ceai": 162.42331245336868
+    },
+    "Summary buffer": {
+      "build_seconds_per_conversation": 704.3972605705261,
+      "write_llm_calls_per_conversation": 68.6,
+      "x_slower_than_ceai": 117.72968473575712
+    },
+    "Fixed-chunk RAG": {
+      "build_seconds_per_conversation": 1.0081928253173829,
+      "write_llm_calls_per_conversation": 0,
+      "x_slower_than_ceai": 0.1685046636628476
+    }
+  }
+}

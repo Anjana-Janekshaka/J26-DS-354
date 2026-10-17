@@ -354,6 +354,44 @@ in `docs/related_work.md`. **Present these lines, not the older wording.**
 | RAG claim 1 (granularity) | **Withdrawn as a performance claim.** It did not beat fixed segments on test (recall at 400 words: 0.355 vs 0.376). Kept as a design element | **MemGAS** (read-time entropy router), **SeCom** (segments plus denoising), LycheeMemory V2 | — |
 | RAG claim 2 (staleness) | **Extraction-free, LLM-free staleness flagging on raw conversation chunks: an exact structural check (code signature) where a key exists, calibrated NLI where none does** | **MemStrata** needs clean (subject, relation, object) triples and reports that NLI/LLM judges leak; **Zep** needs LLM-extracted edges and an LLM verifier; CLEAR / TSM (6.4) | P 0.82 / R 0.73. At equal F1, NLI cuts wrongly retired current facts from **0.83** (similarity only) to **0.23**. **Stale-fact leak 0.27: state it plainly** |
 
+### 6.6 Presentation framing (2026-10-17; from `docs/zero_cost_improvement_roadmap.md` §6)
+
+This is how to *say* the §6.5 results. **The numbers are unchanged, and so is the frozen system.**
+
+- **Unifying claim, the lead slide:** *"The whole memory substrate (write, retrieve and route) makes
+  zero generative LLM calls."*
+  - The summarizer is rule-based; the NLI checker and the reranker are small, non-generative models;
+    the controller is rules.
+  - Measured: memory for a LoCoMo conversation is built in **about 6 s with 0 LLM calls**, against
+    **about 972 s and 54 calls for Mem0** (162× slower) and about 704 s and 69 calls for the
+    summary buffer. Source: `results/final/cost_latency.json`, `results/figures/memory_build_time.png`.
+  - Caveat: CEAI's timing excludes the NLI staleness check, which was off in that LoCoMo run.
+  - Contrast: Mem0 extracts with an LLM, Zep builds graph edges with an LLM, and MemGPT lets the LLM
+    page its own memory.
+- **Controller: order the claims so the universally true part leads:**
+  - First: *"Same accuracy as the best fixed strategy, at zero marginal cost, fully explainable"*
+    (true on every benchmark).
+  - Then: *"When the conversation changes type mid-way, also more accurate"* (+0.112 on the mixed
+    set, 2/2 vs 0/2 in the demo).
+  - Do not lead with the synthetic-set number.
+- **RAG: drop adaptive granularity from the novelty slide entirely.** Let the staleness claim carry
+  the component alone (P 0.82 / R 0.73, LLM-free, no triples needed). Granularity returns only if a
+  pre-registered learned-weight version beats fixed segments.
+- **Summarization: lead with the measured result.** *"It measures what it is about to lose, in real
+  time (0.91 correlation with actual loss), and that signal switches strategy."* Then stale-fact
+  leakage 0.00 vs 0.50.
+- **Sliding window: claim unchanged.**
+  - **Known inconsistency, to fix after Monday:** the ablation favours relevance-heavy weights, but
+    the frozen system ships equal weights.
+  - Fixing it means changing the frozen system, and the ablation set has no dev/test split. So it
+    needs a dev/test split of that set and a pre-registration first (roadmap §6.1). Until then, say:
+    *"weights are runtime config; the ablation shows relevance matters most."*
+- **Manual override: verified live (2026-10-17).**
+  - A POST to `/api/override` makes the next decision use the requested strategy, marked
+    `OVERRIDE by …` in the rationale.
+  - A `next_turn` override expires after one turn, the dashboard shows the overridden decision, and
+    invalid requests get HTTP 400.
+
 ---
 
 ## 7. What "80% done" means, concretely, per component (Progress Presentation 1 scope)
@@ -489,6 +527,8 @@ what was built and measured, and the decisions later work must respect. **In a n
   MMR, v3 (hybrid for question turns + observations). See 12.4.
 - **Left before Monday:** the demo package (12.8 item 1), the teammates' labelling sheets, and a
   merge into `development`.
+- **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
+  `docs/zero_cost_improvement_roadmap.md`.
 - **Non-negotiable rules** (12.7):
   - Never tune on test; pre-register any new candidate and gate it on dev/val.
   - Commits are authored by the student only, with no AI attribution.
