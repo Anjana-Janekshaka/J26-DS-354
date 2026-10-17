@@ -49,6 +49,14 @@ Does assisted L2/L3 close the LoCoMo-Plus implicit-cue gap, and at what cost?
   paraphrase-aware judge is the stronger test. It is not run here, because a 7B judge failed the
   agreement check for strategy labels (CLAUDE.md §12.6).
 
+## Amendment (2026-10-17, before any run)
+
+- **Sample size cut from 60 to 20 items** (same seed, 2310). The reason is runtime, measured before
+  running: the sampled items average 610 turns, which means about 66 summary calls per item and
+  4,000–5,000 calls in total, or 7–14 hours on a free T4.
+- With 20 items, the result is a pilot. A 95% CI entirely above 0 is unlikely at this size, so a test
+  run is unlikely too. That is reported as is; the sample is not enlarged after seeing the result.
+
 ## Reporting rule
 
 - Both modes are reported side by side, whatever the sign, with paired bootstrap CIs over items.
