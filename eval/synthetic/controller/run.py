@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import warnings
 from collections import Counter
@@ -215,7 +216,23 @@ def main() -> None:
     rows = replay(traces, lambda: RuleBasedController(cfg, default_strategy=default_strategy))
 
     # Majority class comes from TRAIN labels, never from the split being evaluated.
-    train_traces = traces if args.split == "train" else (traces_for("train", args) if args.split != "legacy" else traces)
+    # The majority baseline is a fixed reference, so it always uses the frozen system's train traces
+    # (it never affects the adaptive numbers or the v4 gates).
+    if args.split == "train" or args.split == "legacy":
+        train_traces = traces
+    else:
+        saved = os.environ.get("CEAI_SYSTEM")
+        os.environ["CEAI_SYSTEM"] = "frozen"
+        saved_sw = os.environ.pop("CEAI_SW_WEIGHTS", None)  # set by the v4 variant; must not reach frozen traces
+        try:
+            train_traces = traces_for("train", args)
+        finally:
+            if saved_sw is not None:
+                os.environ["CEAI_SW_WEIGHTS"] = saved_sw
+            if saved is None:
+                os.environ.pop("CEAI_SYSTEM", None)
+            else:
+                os.environ["CEAI_SYSTEM"] = saved
     train_labels = [ev["oracle"] for t in train_traces for ev in t["events"] if ev["type"] == "probe" and ev["oracle"] != "none"]
     majority = Counter(train_labels).most_common(1)[0][0]
 
