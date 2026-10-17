@@ -543,6 +543,8 @@ what was built and measured, and the decisions later work must respect. **In a n
   - `scripts/build_results.py` writes `results/RESULTS.md` from `results/final/*`.
   - `scripts/plot_pareto.py` writes `results/figures/pareto_*.png`.
 - **Docs:**
+  - `docs/SYSTEM_OVERVIEW.md`: how the system is built, every directory and file, the code ideas,
+    and a timeline of the changes.
   - `docs/related_work.md`: the 22-paper review, a threat assessment and the paper-derived
     experiments.
   - `docs/baselines_protocol.md`: the baselines protocol, its amendment and the outcomes.
