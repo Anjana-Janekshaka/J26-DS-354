@@ -136,7 +136,7 @@ only if its test result also beats fixed segments; §4 never joins. Before any v
 | §2 Staleness ensemble | **Passed.** Out-of-fold dev F1 0.826 vs 0.776; false supersession 0.022 vs 0.156 | P **1.00** / R 0.69 / F1 **0.81** vs v1 0.82 / 0.73 / 0.77. Wrongly retired current facts **0%** (v1 23%). Stale-fact leak 0.31 (v1 0.27): recall is capped by the prefilter, and the ensemble trades one more leak for zero false retirements |
 | §3 Dev-tuned chunking | **Passed.** Dev recall at 400 words: best of 61 configurations 0.516; fixed segment 0.463; hand-set 0.498 | Recall at 400 words: **dev-tuned 0.399** vs segment 0.376, hand-set 0.355, turn 0.328 (the last three reproduce the recorded test numbers). **Joins v4** |
 | §4 Learned controller | **Failed.** Val evidence hit: LR 0.933, RF 0.917, GBDT 0.917 vs rules 0.992 (gate needs at least 0.982). Macro-F1 is higher (0.40–0.45 vs 0.33): imitating the cheapest correct strategy costs hits when the model is wrong | Not run. The rules stay; the model-based variant is implemented and reported as dev-only |
-| §5 Length test | (no gate) | See below once run |
+| §5 Length test | (no gate) | See "Length test outcome" below |
 | §6 System gates (v4 = §1 + §2 + §3) | G1 **passed** (original 2/2, held-out 16/26 = frozen). **G2 failed:** synthetic val 0.992 → **0.800**, −0.192 [−0.242, −0.133] | Not run. **v4 is dev-only** |
 
 - **Caveat on §1:** the synthetic workload rewards relevance heavily (recall 1.000), and freshness 0
@@ -168,3 +168,28 @@ only if its test result also beats fixed segments; §4 never joins. Before any v
 - **Gates:** the same G1–G4 as §6, against the same frozen reference runs.
 - **If all gates pass:** each test split runs once, as in §6.
 - **If a gate fails:** v4b is dev-only too.
+
+### Length test outcome (§5, 2026-10-17; `eval/synthetic/controller/results_v4/length.json`, chart `results/figures/length_advantage.png`)
+
+60 new conversations (family C wording, seed 404), frozen system, budget 400:
+
+| Detour (exchanges) | Adaptive | RAG | Hybrid | Window | Adaptive − RAG | Adaptive − hybrid | Adaptive − window |
+|---|---|---|---|---|---|---|---|
+| 2 | 0.956 | 0.867 | **0.978** | 0.678 | +0.089 [+0.022, +0.144] | −0.022 [−0.067, 0.000] | +0.278 |
+| 10 | **0.989** | 0.833 | 0.911 | 0.722 | +0.156 [+0.133, +0.167] | +0.078 [+0.022, +0.144] | +0.267 |
+| 25 | **1.000** | 0.867 | 0.956 | 0.644 | +0.133 [+0.100, +0.167] | +0.044 [0.000, +0.111] | +0.356 |
+| 50 | **1.000** | 0.867 | 0.922 | 0.578 | +0.133 [+0.100, +0.167] | +0.078 [+0.022, +0.144] | **+0.422** |
+
+**Reading:**
+
+- **The advantage over the sliding window grows with length:** +0.28 at 2 exchanges, +0.42 at 50.
+- **Over always-hybrid:** at the shortest length, hybrid is slightly better (−0.022, not
+  significant). From 10 exchanges on, adaptive is ahead (+0.04 to +0.08).
+- **Over always-RAG:** the gap is roughly constant (+0.09 to +0.16). RAG does not decay with length;
+  its misses are the recent-context probes.
+- Adaptive stays at 0.96–1.00 at every length.
+- On the existing test traces by length tercile, the advantage holds at every length (+0.10 to
+  +0.12 over RAG) and is largest over hybrid for the longest third (+0.086).
+- **Honest summary:** *"adaptive does not degrade as conversations grow, while the window does; the
+  gain over the best fixed strategy is present from moderate length on."* This is not "the gain
+  grows without bound".
