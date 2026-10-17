@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 from controller import RuleBasedController, RuleConfig
+from retrieval import ContradictionConfig
 
 FROZEN_RULES = Path(__file__).parent / "synthetic" / "controller" / "frozen_rule_config.json"
 
@@ -37,7 +38,14 @@ SYSTEMS: dict[str, dict] = {
     "v2_hybrid": {"hybrid": True},
     # v3 (docs/v3_preregistration.md): hybrid only for question turns + summarizer facts as RAG observations
     "v3_qa_hybrid_obs": {"hybrid_task_types": ("qa",), "observations": True},
+    # v4 (docs/v4_preregistration.md): the two component candidates that passed their dev gates.
+    # Retrieval side: the staleness ensemble (weights and threshold fitted on the dev contradiction pairs).
+    "v4": {"contradiction": ContradictionConfig(ensemble=(-3.020881, 1.329963, 1.243888, 0.441096, 2.506616), ensemble_threshold=0.4666)},
 }
+
+# Sliding-window weights per system ("relevance,freshness,importance,state"); the v4 weights were
+# chosen on the dev half of the topic-shift workloads (eval.synthetic.sliding_window.select_weights).
+SYSTEM_SW_WEIGHTS: dict[str, str] = {"v4": "0.5,0,0.5,0"}
 
 
 def system_name() -> str:
@@ -49,8 +57,15 @@ def system_name() -> str:
 
 
 def system_retrieval(**kwargs) -> dict:
-    """RetrievalConfig keyword arguments with the selected system variant applied on top."""
-    return {**kwargs, **SYSTEMS[system_name()]}
+    """RetrievalConfig keyword arguments with the selected system variant applied on top.
+
+    Also applies the variant's sliding-window weights through ``CEAI_SW_WEIGHTS``, which every
+    ``DynamicSlidingWindow`` built without an explicit config reads (harnesses call this before
+    constructing the pipeline)."""
+    name = system_name()
+    if name in SYSTEM_SW_WEIGHTS:
+        os.environ["CEAI_SW_WEIGHTS"] = SYSTEM_SW_WEIGHTS[name]
+    return {**kwargs, **SYSTEMS[name]}
 
 
 def frozen_controller(**overrides) -> RuleBasedController:

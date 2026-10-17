@@ -88,7 +88,15 @@ def test_probe_decision_does_not_commit():
     assert c.prior_strategy == "sliding_window" and len(c.history) == 1
 
 
-def test_model_based_is_an_explicit_stub():
-    m = ModelBasedController("gbdt")
-    with pytest.raises(NotImplementedError, match="TODO: v2"):
+def test_model_based_refuses_until_trained_then_decides_from_signal_only():
+    m = ModelBasedController("logistic_regression")
+    with pytest.raises(RuntimeError, match="not trained"):
         m.decide(make_signal())
+    from controller.model_based import FEATURE_NAMES
+
+    X = [[float(i % 3)] * len(FEATURE_NAMES) for i in range(12)]
+    y = ["rag", "hybrid", "sliding_window"] * 4
+    m.train(X, y)
+    fv, d = m.decide(make_signal())
+    assert d.controller_variant == "logistic_regression" and d.selected_strategy in {"rag", "hybrid", "sliding_window"}
+    assert d.rationale.startswith("[logistic_regression] p(") and m.prior_strategy == d.selected_strategy

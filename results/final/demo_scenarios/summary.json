@@ -1,0 +1,804 @@
+{
+  "system": "frozen",
+  "budget_tokens": 700,
+  "held_out": {
+    "fixed_6_exchange_window": {
+      "caught": 3,
+      "of": 26
+    },
+    "sliding_window": {
+      "caught": 9,
+      "of": 26
+    },
+    "summarization": {
+      "caught": 11,
+      "of": 26
+    },
+    "rag": {
+      "caught": 16,
+      "of": 26
+    },
+    "hybrid": {
+      "caught": 18,
+      "of": 26
+    },
+    "adaptive": {
+      "caught": 16,
+      "of": 26
+    }
+  },
+  "held_out_excluding_control": {
+    "fixed_6_exchange_window": {
+      "caught": 3,
+      "of": 25
+    },
+    "sliding_window": {
+      "caught": 9,
+      "of": 25
+    },
+    "summarization": {
+      "caught": 11,
+      "of": 25
+    },
+    "rag": {
+      "caught": 16,
+      "of": 25
+    },
+    "hybrid": {
+      "caught": 18,
+      "of": 25
+    },
+    "adaptive": {
+      "caught": 16,
+      "of": 25
+    }
+  },
+  "original": {
+    "fixed_6_exchange_window": {
+      "caught": 0,
+      "of": 2
+    },
+    "sliding_window": {
+      "caught": 1,
+      "of": 2
+    },
+    "summarization": {
+      "caught": 2,
+      "of": 2
+    },
+    "rag": {
+      "caught": 2,
+      "of": 2
+    },
+    "hybrid": {
+      "caught": 2,
+      "of": 2
+    },
+    "adaptive": {
+      "caught": 2,
+      "of": 2
+    }
+  },
+  "by_kind": {
+    "config": {
+      "fixed_6_exchange_window": {
+        "caught": 0,
+        "of": 5
+      },
+      "sliding_window": {
+        "caught": 0,
+        "of": 5
+      },
+      "summarization": {
+        "caught": 0,
+        "of": 5
+      },
+      "rag": {
+        "caught": 1,
+        "of": 5
+      },
+      "hybrid": {
+        "caught": 1,
+        "of": 5
+      },
+      "adaptive": {
+        "caught": 1,
+        "of": 5
+      }
+    },
+    "decision": {
+      "fixed_6_exchange_window": {
+        "caught": 0,
+        "of": 3
+      },
+      "sliding_window": {
+        "caught": 1,
+        "of": 3
+      },
+      "summarization": {
+        "caught": 1,
+        "of": 3
+      },
+      "rag": {
+        "caught": 3,
+        "of": 3
+      },
+      "hybrid": {
+        "caught": 3,
+        "of": 3
+      },
+      "adaptive": {
+        "caught": 2,
+        "of": 3
+      }
+    },
+    "duplicate": {
+      "fixed_6_exchange_window": {
+        "caught": 0,
+        "of": 7
+      },
+      "sliding_window": {
+        "caught": 7,
+        "of": 7
+      },
+      "summarization": {
+        "caught": 6,
+        "of": 7
+      },
+      "rag": {
+        "caught": 7,
+        "of": 7
+      },
+      "hybrid": {
+        "caught": 7,
+        "of": 7
+      },
+      "adaptive": {
+        "caught": 7,
+        "of": 7
+      }
+    },
+    "rename": {
+      "fixed_6_exchange_window": {
+        "caught": 1,
+        "of": 7
+      },
+      "sliding_window": {
+        "caught": 1,
+        "of": 7
+      },
+      "summarization": {
+        "caught": 1,
+        "of": 7
+      },
+      "rag": {
+        "caught": 2,
+        "of": 7
+      },
+      "hybrid": {
+        "caught": 4,
+        "of": 7
+      },
+      "adaptive": {
+        "caught": 3,
+        "of": 7
+      }
+    },
+    "signature": {
+      "fixed_6_exchange_window": {
+        "caught": 2,
+        "of": 4
+      },
+      "sliding_window": {
+        "caught": 0,
+        "of": 4
+      },
+      "summarization": {
+        "caught": 3,
+        "of": 4
+      },
+      "rag": {
+        "caught": 3,
+        "of": 4
+      },
+      "hybrid": {
+        "caught": 3,
+        "of": 4
+      },
+      "adaptive": {
+        "caught": 3,
+        "of": 4
+      }
+    }
+  },
+  "rows": [
+    {
+      "scenario": "task-tracker (original)",
+      "language": "python",
+      "held_out": false,
+      "trap": "duplicate-function trap",
+      "kind": "duplicate",
+      "gap_exchanges": 14,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def format_due_date(`",
+      "sliding_window": false,
+      "sliding_window_detail": "missing `def format_due_date(`",
+      "summarization": true,
+      "summarization_detail": "found `def format_due_date(`",
+      "rag": true,
+      "rag_detail": "found `def format_due_date(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def format_due_date(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def format_due_date(`"
+    },
+    {
+      "scenario": "task-tracker (original)",
+      "language": "python",
+      "held_out": false,
+      "trap": "renamed-API trap",
+      "kind": "rename",
+      "gap_exchanges": 9,
+      "adaptive_strategy": "rag",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def get_user_tasks(uid`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def get_user_tasks(uid`",
+      "summarization": true,
+      "summarization_detail": "found `def get_user_tasks(uid`",
+      "rag": true,
+      "rag_detail": "found `def get_user_tasks(uid`",
+      "hybrid": true,
+      "hybrid_detail": "found `def get_user_tasks(uid`",
+      "adaptive": true,
+      "adaptive_detail": "found `def get_user_tasks(uid`"
+    },
+    {
+      "scenario": "invoice-service",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate helper",
+      "kind": "duplicate",
+      "gap_exchanges": 12,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def compute_line_total(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def compute_line_total(`",
+      "summarization": true,
+      "summarization_detail": "found `def compute_line_total(`",
+      "rag": true,
+      "rag_detail": "found `def compute_line_total(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def compute_line_total(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def compute_line_total(`"
+    },
+    {
+      "scenario": "invoice-service",
+      "language": "python",
+      "held_out": true,
+      "trap": "changed tax constant",
+      "kind": "config",
+      "gap_exchanges": 9,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `TAX_RATE = 0.095`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `TAX_RATE = 0.08` present",
+      "summarization": false,
+      "summarization_detail": "missing `TAX_RATE = 0.095`",
+      "rag": true,
+      "rag_detail": "found `TAX_RATE = 0.095`",
+      "hybrid": true,
+      "hybrid_detail": "found `TAX_RATE = 0.095`",
+      "adaptive": true,
+      "adaptive_detail": "found `TAX_RATE = 0.095`"
+    },
+    {
+      "scenario": "invoice-service",
+      "language": "python",
+      "held_out": true,
+      "trap": "renamed email function",
+      "kind": "rename",
+      "gap_exchanges": 10,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def enqueue_invoice_email(`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def send_invoice_email(` present",
+      "summarization": false,
+      "summarization_detail": "unmarked stale `def send_invoice_email(` present",
+      "rag": true,
+      "rag_detail": "found `def enqueue_invoice_email(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def enqueue_invoice_email(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def enqueue_invoice_email(`"
+    },
+    {
+      "scenario": "event-pipeline",
+      "language": "python",
+      "held_out": true,
+      "trap": "renamed loader parameter",
+      "kind": "rename",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "summarization",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def load_events(path, timezone=`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def load_events(path, tz=` present",
+      "summarization": true,
+      "summarization_detail": "found `def load_events(path, timezone=`",
+      "rag": true,
+      "rag_detail": "found `def load_events(path, timezone=`",
+      "hybrid": true,
+      "hybrid_detail": "found `def load_events(path, timezone=`",
+      "adaptive": true,
+      "adaptive_detail": "found `def load_events(path, timezone=`"
+    },
+    {
+      "scenario": "event-pipeline",
+      "language": "python",
+      "held_out": true,
+      "trap": "memory constraint",
+      "kind": "decision",
+      "gap_exchanges": 10,
+      "adaptive_strategy": "summarization",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `chunksize=100_000`",
+      "sliding_window": false,
+      "sliding_window_detail": "missing `chunksize=100_000`",
+      "summarization": false,
+      "summarization_detail": "missing `chunksize=100_000`",
+      "rag": true,
+      "rag_detail": "found `chunksize=100_000`",
+      "hybrid": true,
+      "hybrid_detail": "found `chunksize=100_000`",
+      "adaptive": false,
+      "adaptive_detail": "missing `chunksize=100_000`"
+    },
+    {
+      "scenario": "event-pipeline",
+      "language": "python",
+      "held_out": true,
+      "trap": "deprecated append",
+      "kind": "decision",
+      "gap_exchanges": 10,
+      "adaptive_strategy": "rag",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `pd.concat(frames`",
+      "sliding_window": false,
+      "sliding_window_detail": "missing `pd.concat(frames`",
+      "summarization": false,
+      "summarization_detail": "missing `pd.concat(frames`",
+      "rag": true,
+      "rag_detail": "found `pd.concat(frames`",
+      "hybrid": true,
+      "hybrid_detail": "found `pd.concat(frames`",
+      "adaptive": true,
+      "adaptive_detail": "found `pd.concat(frames`"
+    },
+    {
+      "scenario": "react-dashboard",
+      "language": "typescript",
+      "held_out": true,
+      "trap": "duplicate debounce hook",
+      "kind": "duplicate",
+      "gap_exchanges": 9,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `export function useDebounce<T>(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `export function useDebounce<T>(`",
+      "summarization": false,
+      "summarization_detail": "missing `export function useDebounce<T>(`",
+      "rag": true,
+      "rag_detail": "found `export function useDebounce<T>(`",
+      "hybrid": true,
+      "hybrid_detail": "found `export function useDebounce<T>(`",
+      "adaptive": true,
+      "adaptive_detail": "found `export function useDebounce<T>(`"
+    },
+    {
+      "scenario": "react-dashboard",
+      "language": "typescript",
+      "held_out": true,
+      "trap": "renamed prop",
+      "kind": "rename",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `DatePicker({ value, onChange }`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `DatePicker({ value, onSelect }` present",
+      "summarization": false,
+      "summarization_detail": "missing `DatePicker({ value, onChange }`",
+      "rag": false,
+      "rag_detail": "unmarked stale `DatePicker({ value, onSelect }` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `DatePicker({ value, onSelect }` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `DatePicker({ value, onSelect }` present"
+    },
+    {
+      "scenario": "download-cli",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate size parser",
+      "kind": "duplicate",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def parse_size(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def parse_size(`",
+      "summarization": true,
+      "summarization_detail": "found `def parse_size(`",
+      "rag": true,
+      "rag_detail": "found `def parse_size(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def parse_size(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def parse_size(`"
+    },
+    {
+      "scenario": "download-cli",
+      "language": "python",
+      "held_out": true,
+      "trap": "changed default timeout",
+      "kind": "config",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `DEFAULT_TIMEOUT = 30`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `DEFAULT_TIMEOUT = 10` present",
+      "summarization": false,
+      "summarization_detail": "missing `DEFAULT_TIMEOUT = 30`",
+      "rag": false,
+      "rag_detail": "unmarked stale `DEFAULT_TIMEOUT = 10` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `DEFAULT_TIMEOUT = 10` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `DEFAULT_TIMEOUT = 10` present"
+    },
+    {
+      "scenario": "download-cli",
+      "language": "python",
+      "held_out": true,
+      "trap": "renamed fetch function",
+      "kind": "rename",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "rag",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def fetch_url(`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def fetch_page(` present",
+      "summarization": false,
+      "summarization_detail": "unmarked stale `def fetch_page(` present",
+      "rag": false,
+      "rag_detail": "unmarked stale `def fetch_page(` present",
+      "hybrid": true,
+      "hybrid_detail": "found `def fetch_url(`",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `def fetch_page(` present"
+    },
+    {
+      "scenario": "training-loop",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate seed helper",
+      "kind": "duplicate",
+      "gap_exchanges": 9,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def set_seed(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def set_seed(`",
+      "summarization": true,
+      "summarization_detail": "found `def set_seed(`",
+      "rag": true,
+      "rag_detail": "found `def set_seed(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def set_seed(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def set_seed(`"
+    },
+    {
+      "scenario": "training-loop",
+      "language": "python",
+      "held_out": true,
+      "trap": "added scaler parameter",
+      "kind": "signature",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def train_epoch(model, loader, optimizer, scaler)`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def train_epoch(model, loader, optimizer):` present",
+      "summarization": true,
+      "summarization_detail": "found `def train_epoch(model, loader, optimizer, scaler)`",
+      "rag": true,
+      "rag_detail": "found `def train_epoch(model, loader, optimizer, scaler)`",
+      "hybrid": true,
+      "hybrid_detail": "found `def train_epoch(model, loader, optimizer, scaler)`",
+      "adaptive": true,
+      "adaptive_detail": "found `def train_epoch(model, loader, optimizer, scaler)`"
+    },
+    {
+      "scenario": "training-loop",
+      "language": "python",
+      "held_out": true,
+      "trap": "changed learning rate",
+      "kind": "config",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "rag",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `LEARNING_RATE = 1e-4`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `LEARNING_RATE = 3e-4` present",
+      "summarization": false,
+      "summarization_detail": "missing `LEARNING_RATE = 1e-4`",
+      "rag": false,
+      "rag_detail": "unmarked stale `LEARNING_RATE = 3e-4` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `LEARNING_RATE = 3e-4` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `LEARNING_RATE = 3e-4` present"
+    },
+    {
+      "scenario": "django-shop",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate slug helper",
+      "kind": "duplicate",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def slugify_title(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def slugify_title(`",
+      "summarization": true,
+      "summarization_detail": "found `def slugify_title(`",
+      "rag": true,
+      "rag_detail": "found `def slugify_title(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def slugify_title(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def slugify_title(`"
+    },
+    {
+      "scenario": "django-shop",
+      "language": "python",
+      "held_out": true,
+      "trap": "money decision",
+      "kind": "decision",
+      "gap_exchanges": 9,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `Decimal`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `Decimal`",
+      "summarization": true,
+      "summarization_detail": "found `Decimal`",
+      "rag": true,
+      "rag_detail": "found `Decimal`",
+      "hybrid": true,
+      "hybrid_detail": "found `Decimal`",
+      "adaptive": true,
+      "adaptive_detail": "found `Decimal`"
+    },
+    {
+      "scenario": "go-client",
+      "language": "go",
+      "held_out": true,
+      "trap": "added timeout parameter",
+      "kind": "signature",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `func NewClient(addr string, timeout time.Duration)`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `func NewClient(addr string) *Client` present",
+      "summarization": false,
+      "summarization_detail": "missing `func NewClient(addr string, timeout time.Duration)`",
+      "rag": false,
+      "rag_detail": "unmarked stale `func NewClient(addr string) *Client` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `func NewClient(addr string) *Client` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `func NewClient(addr string) *Client` present"
+    },
+    {
+      "scenario": "user-db-migration",
+      "language": "sql",
+      "held_out": true,
+      "trap": "renamed column",
+      "kind": "rename",
+      "gap_exchanges": 7,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `RENAME COLUMN email_address TO email`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `RENAME COLUMN email_address TO email`",
+      "summarization": false,
+      "summarization_detail": "missing `RENAME COLUMN email_address TO email`",
+      "rag": false,
+      "rag_detail": "missing `RENAME COLUMN email_address TO email`",
+      "hybrid": true,
+      "hybrid_detail": "found `RENAME COLUMN email_address TO email`",
+      "adaptive": true,
+      "adaptive_detail": "found `RENAME COLUMN email_address TO email`"
+    },
+    {
+      "scenario": "auth-module",
+      "language": "python",
+      "held_out": true,
+      "trap": "added rounds parameter",
+      "kind": "signature",
+      "gap_exchanges": 6,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": true,
+      "fixed_6_exchange_window_detail": "found `def hash_password(password, rounds=12)`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def hash_password(password):` present",
+      "summarization": true,
+      "summarization_detail": "found `def hash_password(password, rounds=12)`",
+      "rag": true,
+      "rag_detail": "found `def hash_password(password, rounds=12)`",
+      "hybrid": true,
+      "hybrid_detail": "found `def hash_password(password, rounds=12)`",
+      "adaptive": true,
+      "adaptive_detail": "found `def hash_password(password, rounds=12)`"
+    },
+    {
+      "scenario": "auth-module",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate token verifier",
+      "kind": "duplicate",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def verify_token(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def verify_token(`",
+      "summarization": true,
+      "summarization_detail": "found `def verify_token(`",
+      "rag": true,
+      "rag_detail": "found `def verify_token(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def verify_token(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def verify_token(`"
+    },
+    {
+      "scenario": "auth-module",
+      "language": "python",
+      "held_out": true,
+      "trap": "changed token lifetime",
+      "kind": "config",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `ACCESS_TOKEN_TTL = 900`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `ACCESS_TOKEN_TTL = 3600` present",
+      "summarization": false,
+      "summarization_detail": "missing `ACCESS_TOKEN_TTL = 900`",
+      "rag": false,
+      "rag_detail": "unmarked stale `ACCESS_TOKEN_TTL = 3600` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `ACCESS_TOKEN_TTL = 3600` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `ACCESS_TOKEN_TTL = 3600` present"
+    },
+    {
+      "scenario": "async-scraper",
+      "language": "python",
+      "held_out": true,
+      "trap": "now async",
+      "kind": "signature",
+      "gap_exchanges": 6,
+      "adaptive_strategy": "hybrid",
+      "fixed_6_exchange_window": true,
+      "fixed_6_exchange_window_detail": "found `async def fetch(url, session)`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def fetch(url):` present",
+      "summarization": true,
+      "summarization_detail": "found `async def fetch(url, session)`",
+      "rag": true,
+      "rag_detail": "found `async def fetch(url, session)`",
+      "hybrid": true,
+      "hybrid_detail": "found `async def fetch(url, session)`",
+      "adaptive": true,
+      "adaptive_detail": "found `async def fetch(url, session)`"
+    },
+    {
+      "scenario": "async-scraper",
+      "language": "python",
+      "held_out": true,
+      "trap": "duplicate URL normaliser",
+      "kind": "duplicate",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `def normalize_url(`",
+      "sliding_window": true,
+      "sliding_window_detail": "found `def normalize_url(`",
+      "summarization": true,
+      "summarization_detail": "found `def normalize_url(`",
+      "rag": true,
+      "rag_detail": "found `def normalize_url(`",
+      "hybrid": true,
+      "hybrid_detail": "found `def normalize_url(`",
+      "adaptive": true,
+      "adaptive_detail": "found `def normalize_url(`"
+    },
+    {
+      "scenario": "platformer",
+      "language": "python",
+      "held_out": true,
+      "trap": "renamed physics function",
+      "kind": "rename",
+      "gap_exchanges": 6,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": true,
+      "fixed_6_exchange_window_detail": "found `def integrate_motion(`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def apply_physics(` present",
+      "summarization": false,
+      "summarization_detail": "unmarked stale `def apply_physics(` present",
+      "rag": false,
+      "rag_detail": "unmarked stale `def apply_physics(` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `def apply_physics(` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `def apply_physics(` present"
+    },
+    {
+      "scenario": "platformer",
+      "language": "python",
+      "held_out": true,
+      "trap": "changed gravity",
+      "kind": "config",
+      "gap_exchanges": 8,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "missing `GRAVITY = 1800`",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `GRAVITY = 980` present",
+      "summarization": false,
+      "summarization_detail": "missing `GRAVITY = 1800`",
+      "rag": false,
+      "rag_detail": "unmarked stale `GRAVITY = 980` present",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `GRAVITY = 980` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `GRAVITY = 980` present"
+    },
+    {
+      "scenario": "short-utils (control)",
+      "language": "python",
+      "held_out": true,
+      "trap": "recent rename (control)",
+      "kind": "rename",
+      "gap_exchanges": 1,
+      "adaptive_strategy": "sliding_window",
+      "fixed_6_exchange_window": false,
+      "fixed_6_exchange_window_detail": "unmarked stale `def batched(items, n)` present",
+      "sliding_window": false,
+      "sliding_window_detail": "unmarked stale `def batched(items, n)` present",
+      "summarization": false,
+      "summarization_detail": "unmarked stale `def batched(items, n)` present",
+      "rag": false,
+      "rag_detail": "missing `def batched(iterable, n)`",
+      "hybrid": false,
+      "hybrid_detail": "unmarked stale `def batched(items, n)` present",
+      "adaptive": false,
+      "adaptive_detail": "unmarked stale `def batched(items, n)` present"
+    }
+  ]
+}
