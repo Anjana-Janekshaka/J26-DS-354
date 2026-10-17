@@ -111,7 +111,7 @@ FAMILY_SEEDS = {"A": 101, "B": 202, "C": 303}
 VAL_FROM_B = 20  # the last 20 B conversations are validation
 
 
-def make_family(rng: random.Random, cid: str, family: str) -> dict:
+def make_family(rng: random.Random, cid: str, family: str, detour: int | None = None) -> dict:
     """Same evidence structure as ``make`` but with family wording and varied structure:
     0-3 extra exchanges before the code phase and a 2-12 exchange detour, so turn count and token
     pressure differ between conversations instead of being near-constant per probe kind."""
@@ -174,7 +174,7 @@ def make_family(rng: random.Random, cid: str, family: str) -> dict:
     say("user", text("rename"))
     say("assistant", f"Done:\n```python\ndef load_{many}({p_new}, status='open'):\n    return db.select('{many}', {p_old}={p_new}, status=status)\n```")
 
-    filler(rng.randint(2, 12))
+    filler(rng.randint(2, 12) if detour is None else detour)  # fixed detour: length test only
     probe("duplicate_build", [f"def format_{one}_total("])
     probe("renamed_call", [f"def load_{many}({p_new}"], [f"load_{many}({p_old}"])
     probe("late_recall", [city])
