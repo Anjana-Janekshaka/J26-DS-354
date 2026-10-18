@@ -1,0 +1,24 @@
+{
+  "budget_tokens": 700,
+  "model": "qwen2.5:7b-instruct",
+  "held_out": {
+    "mem0": {
+      "caught": 5,
+      "of": 26
+    },
+    "mem0_plus_window": {
+      "caught": 6,
+      "of": 26
+    }
+  },
+  "original": {
+    "mem0": {
+      "caught": 0,
+      "of": 2
+    },
+    "mem0_plus_window": {
+      "caught": 0,
+      "of": 2
+    }
+  }
+}

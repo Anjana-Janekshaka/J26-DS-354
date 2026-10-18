@@ -34,4 +34,24 @@ actually use (Mem0) carry the trap evidence?
 
 ## Outcome
 
-To be filled in after the run (Colab notebook job `mem0_coding_traps`).
+Run once on Colab, 2026-10-18 (`results/final/demo_mem0/`). Mem0 worked normally: 3–14 LLM
+calls per session and 0 failed `add()` calls.
+
+| Arm | Original session | Held-out traps (26) | Duplicate | Rename | Signature | Config | Decision |
+|---|---|---|---|---|---|---|---|
+| **CEAI adaptive (frozen)** | **2/2** | **16** | 7/7 | 3/7 | 3/4 | 1/5 | 2/3 |
+| Mem0 | 0/2 | 5 | 1/7 | 0/7 | 0/4 | 1/5 | **3/3** |
+| Mem0 + last 6 exchanges | 0/2 | 6 | 1/7 | 1/7 | 0/4 | 1/5 | 3/3 |
+| Fixed 6-exchange window | 0/2 | 3 | 0/7 | 1/7 | 2/4 | 0/5 | 0/3 |
+
+**Reading:**
+
+- Mem0 misses both original traps and catches 5 of 26 held-out traps; CEAI catches 2/2 and 16/26.
+- **Why Mem0 misses, from its own memories:** it keeps *that* something exists but not the exact
+  code. For the duplicate-function trap its top memory is "Helpers were added to
+  `app/services/tasks.py`: `get_user_tasks` and `format_due_date`". It has the name, without the
+  signature the model needs to reuse the function correctly.
+- Mem0 is **better on project decisions** (3/3 vs 2/3): rewriting a rule as a short memory is
+  exactly what it is built for.
+- **Stated in advance, and holding:** the check needs exact text, which favours systems that keep
+  the original turns. That is the property the traps test, but say it when presenting this.

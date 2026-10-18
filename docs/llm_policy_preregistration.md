@@ -70,4 +70,28 @@ Does assisted L2/L3 close the LoCoMo-Plus implicit-cue gap, and at what cost?
 
 ## Outcome
 
-To be filled in after the run (needs the Colab notebook job `llm_policy_dev`).
+Run once on Colab, 2026-10-18 (`results/final/llm_policy/`), 20 LoCoMo-Plus dev items, Qwen2.5-7B.
+
+| Policy | Cue hit: adaptive | Cue hit: always-summarization | LLM calls per item | Invalid LLM outputs | Seconds per item |
+|---|---|---|---|---|---|
+| strict | 0.10 | 0.05 | 0 | — | 5 |
+| assisted | 0.10 | 0.05 | 85.5 | **950 of 1,710 (56%)** | 469 |
+
+Difference: 0.000 on every item for both arms, and also 0.000 on mean cue coverage.
+
+**Diagnosis (replayed locally from the run's own LLM cache, no new LLM calls):**
+
+- **The 7B model often did not follow the tier prompts.**
+  - 56% of its outputs were invalid (for example, it copied the input L1 records back) and fell
+    back to the rule-based tier.
+  - Many valid ones misread the prompt's instruction as content: one L2 intent reads "user requests
+    removal of specific facts", from the prompt's own "drop the individual facts" rule.
+- **On these 600-turn conversations only the L3 tier fits the budget,** and the cue's words were in
+  neither version. The assisted contexts did differ slightly from strict, just not on the cues.
+- **The result:** with a 7B model, assisted mode costs about 86 LLM calls and roughly 90× the time
+  per conversation, and gives no measurable gain.
+- **Per the reporting rule:** `strict` stays the default. The toggle stays as an engineering option.
+  - Whether a stronger model helps is still open: roadmap 1.1, a free 70B-class model.
+  - It would need its own pre-registration, and the prompt wording may need fixing first, which
+    counts as a system change.
+- **No test run** (the dev CI is not above 0).

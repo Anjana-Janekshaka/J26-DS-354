@@ -1,0 +1,139 @@
+{
+  "n_items": 20,
+  "system": "frozen",
+  "llm_policy": "strict",
+  "sample": 20,
+  "sample_seed": 2310,
+  "llm_calls_per_item": 0,
+  "llm_fallbacks": 0,
+  "seconds_per_item": 5.376916837692261,
+  "split": "dev",
+  "warmup_turns": 10,
+  "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "rule_overrides": {},
+  "budget_tokens": 1024,
+  "strategies": {
+    "sliding_window": {
+      "cue_hit_rate": 0.0,
+      "cue_any_rate": 0.0,
+      "mean_coverage": 0.14879599567099566,
+      "mean_tokens": 891.15
+    },
+    "summarization": {
+      "cue_hit_rate": 0.05,
+      "cue_any_rate": 0.15,
+      "mean_coverage": 0.20258838383838385,
+      "mean_tokens": 994.15
+    },
+    "rag": {
+      "cue_hit_rate": 0.1,
+      "cue_any_rate": 0.4,
+      "mean_coverage": 0.395646645021645,
+      "mean_tokens": 960.9
+    },
+    "hybrid": {
+      "cue_hit_rate": 0.1,
+      "cue_any_rate": 0.25,
+      "mean_coverage": 0.304876443001443,
+      "mean_tokens": 961.9
+    },
+    "adaptive": {
+      "cue_hit_rate": 0.1,
+      "cue_any_rate": 0.4,
+      "mean_coverage": 0.395646645021645,
+      "mean_tokens": 960.9
+    },
+    "naive_summary": {
+      "cue_hit_rate": 0.2,
+      "cue_any_rate": 0.2,
+      "mean_coverage": 0.32214736652236653,
+      "mean_tokens": 924.65
+    }
+  },
+  "by_relation_type": {
+    "causal": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.0,
+      "hybrid": 0.0,
+      "adaptive": 0.0,
+      "naive_summary": 0.0,
+      "n": 2
+    },
+    "goal": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.0,
+      "hybrid": 0.14285714285714285,
+      "adaptive": 0.0,
+      "naive_summary": 0.0,
+      "n": 7
+    },
+    "state": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.4,
+      "hybrid": 0.2,
+      "adaptive": 0.4,
+      "naive_summary": 0.2,
+      "n": 5
+    },
+    "value": {
+      "sliding_window": 0.0,
+      "summarization": 0.16666666666666666,
+      "rag": 0.0,
+      "hybrid": 0.0,
+      "adaptive": 0.0,
+      "naive_summary": 0.5,
+      "n": 6
+    }
+  },
+  "by_cue_distance": {
+    "<50 turns": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.0,
+      "hybrid": 0.0,
+      "adaptive": 0.0,
+      "naive_summary": 1.0,
+      "n": 1
+    },
+    "50-200 turns": {
+      "sliding_window": 0.0,
+      "summarization": 0.125,
+      "rag": 0.125,
+      "hybrid": 0.125,
+      "adaptive": 0.125,
+      "naive_summary": 0.375,
+      "n": 8
+    },
+    ">200 turns": {
+      "sliding_window": 0.0,
+      "summarization": 0.0,
+      "rag": 0.09090909090909091,
+      "hybrid": 0.09090909090909091,
+      "adaptive": 0.09090909090909091,
+      "naive_summary": 0.0,
+      "n": 11
+    }
+  },
+  "controller": {
+    "choice_distribution": {
+      "rag": 20
+    },
+    "task_type_distribution": {
+      "chat": 16,
+      "exploration": 4
+    },
+    "oracle_distribution": {
+      "none": 16,
+      "rag": 2,
+      "hybrid": 1,
+      "summarization": 1
+    },
+    "macro_f1_vs_objective_oracle": 0.2222222222222222
+  },
+  "llm_judge": "not run (deterministic cue-in-context scoring only)",
+  "best_fixed_baseline": "rag",
+  "adaptive_minus_best_fixed": 0.0
+}
