@@ -1,307 +1,443 @@
 # CEAI explained from zero (for a panel with no background)
 
-Read top to bottom: it is written as something you can say aloud. Every technical word is explained
-the first time it appears, and again in the glossary at the end.
+Written to be read aloud. Every unusual word is explained in brackets the first time it appears,
+like this: *token (a small piece of a word)*. All terms are also collected in the glossary at the
+end. File names such as `pipeline.py` are the real files in our code, so you can open them if
+asked.
 
 ---
 
-## Part 1: The background, in everyday terms
+## Part 1: Background in everyday words
 
-**An LLM** (Large Language Model) is the kind of AI behind ChatGPT or Claude. You type a message,
-it writes a reply.
+- **LLM** (Large Language Model: the kind of AI behind ChatGPT or Claude, which reads text and
+  writes a reply).
+- **The model has no memory of its own.** Every time you send a message, the app must send the model
+  everything it should know: your new message, plus whatever earlier parts of the conversation it
+  needs. That bundle of text is called the **context** (the text handed to the model together with
+  your message).
+- **The context has a size limit**, called the **context window** (the most text the model can read
+  at once). Size is counted in **tokens** (small pieces of words; about four tokens make three
+  words). Long conversations stop fitting. Sending more text also costs more money and time.
+- So on every message the app must answer one question: *"Of everything said so far, what do we send
+  this time?"* The part of the software that answers it is the **memory system**. One message in a
+  conversation is a **turn** (one message from either the user or the assistant).
 
-**The model has no memory of its own.** Every time you send a message, the application must send the
-model *everything it should know*: your new message, plus the earlier parts of the conversation it
-needs. That bundle of text is called the **context**.
+## Part 2: The three usual ways to remember
 
-**The context has a size limit**, called the **context window**. Size is measured in **tokens**. A
-token is a piece of a word, roughly three-quarters of a word on average. If a conversation runs
-for hours, it no longer fits. Even when it does fit, sending more text costs more money and takes
-longer.
+Think of a human assistant helping you with a long task.
 
-So every chat application has to answer one question on every message: **"Of everything said so
-far, what do we send to the model this time?"** The part of the software that answers it is called
-the **memory system**. Each message in a conversation is a **turn**.
+1. **Sliding window** (keep only the most recent messages; older ones fall off the end, like a
+   window sliding along the conversation). Cheap, and great for what you are doing *right now*. But
+   older facts are simply gone.
+2. **Summarization** (rewrite older messages into a shorter summary, like meeting minutes). Keeps
+   the gist of a long conversation in little space, but exact details (a number, the exact name and
+   inputs of a function) get lost.
+3. **RAG**, Retrieval-Augmented Generation (store every message, and for each new message *search*
+   the store for the most related old passages and send only those, like a filing cabinet with a
+   search box). Excellent for "what did I say about X weeks ago?", but it can miss the recent flow.
 
-## Part 2: The three common ways to remember
+A fourth option, **hybrid** (half the space for recent messages, half for searched passages), mixes
+1 and 3.
 
-There are three main approaches. A simple analogy is a person helping you with a long task.
+## Part 3: The problem
 
-1. **Sliding window: "remember only the last few minutes."** Send the most recent turns and drop
-   the rest. Cheap and perfect for the thing you are doing right now. But anything said earlier is
-   simply gone.
-2. **Summarization: "keep meeting minutes."** Older parts of the conversation are condensed into a
-   short summary. It keeps the gist of a long conversation in little space, but details (an exact
-   number, the exact name of a function) get lost.
-3. **RAG (Retrieval-Augmented Generation): "a filing cabinet with a search."** Every past turn is
-   stored. When a new message arrives, the system searches the store for the passages most related
-   to it and sends only those. Excellent for "what did I say about X weeks ago?", but it can miss
-   the immediate recent flow of the conversation.
+**Every existing memory product picks one of these approaches when it is built, and uses it for
+the entire conversation.** Mem0, Zep, Letta and LangChain (well-known memory products and toolkits
+for AI apps) each lock in one strategy.
 
-A fourth option is **hybrid**: half the space for recent turns, half for searched passages.
+**But real conversations change type.** In one session with an AI coding assistant, a programmer
+may:
 
-## Part 3: The problem we solve
+- chat about the project (recent flow matters);
+- debug an error (debug: find and fix a fault; the last few messages matter);
+- go on a long side topic (the gist matters);
+- ask about something from an hour ago (one exact old detail matters).
 
-**Every existing memory product picks one of these approaches when it is built, and uses it for the
-whole conversation.** Products like Mem0, Zep, Letta and LangChain each lock in one strategy.
+No single method is right for all of these, and the wrong one causes real mistakes. We show two
+live:
 
-But real conversations **change type** as they go. In one session, a programmer with an AI coding
-assistant might:
+- **Duplicate-function trap.** An hour ago the assistant wrote a helper called `format_due_date`
+  (a *function*: a named, reusable piece of code). Now you ask for "a helper that formats due
+  dates". A memory that keeps only recent messages has forgotten it, so the assistant writes a
+  second copy.
+- **Renamed-API trap** (API, Application Programming Interface: the name and inputs you use to call
+  a piece of code). Earlier you renamed the input of `get_user_tasks` from `user_id` to `uid`.
+  Later you ask to use that function. If memory hands the model the old version, the code it writes
+  is broken.
 
-- chat about the project (the recent flow matters → sliding window);
-- debug an error (the last few messages matter → sliding window);
-- go off on a long side topic (the gist matters → summary);
-- ask "what was that function I wrote earlier?" (a specific old detail matters → search/RAG).
+## Part 4: Our solution in one sentence
 
-**No single strategy is right for all of those.** Using the wrong one causes real mistakes. Two
-examples we demonstrate live:
+**CEAI chooses the best memory method for every single message, automatically, writes down why,
+and lets a person override (overrule) the choice.** It is **middleware** (software that sits in the
+middle, here between the chat app and the AI model), so the app and the model do not need to change.
 
-- **Duplicate-function trap:** an hour ago the assistant wrote a helper called `format_due_date`.
-  Now you ask for "a helper that formats due dates". A memory that only keeps recent messages has
-  forgotten it exists, so the assistant writes a second, duplicate one.
-- **Renamed-API trap:** earlier you renamed a function's input from `user_id` to `uid`. Later you
-  ask to use that function. If the memory gives the model the *old* version, the model writes code
-  that breaks.
+---
 
-## Part 4: Our solution, CEAI
+## Part 5: The journey of one message, step by step, with the files that run it
 
-**CEAI is a memory system that chooses the right strategy for every single message, automatically,
-and explains each choice.** It sits between the chat application and the AI model, as
-**middleware**: software that sits in the middle.
+We follow a real message from our demo (the scripted coding session we run live), message 18:
 
-On every turn, five steps happen:
+> **"Now call get_user_tasks from the weekly digest job for each subscribed user."**
 
-1. **The Conversation Manager** looks at the new message and produces a short **signal**: how many
-   turns so far; how full the context budget is; what *type* of message this is (chat, debugging,
-   a question about the past, a request to write code, a request to change existing code); and
-   whether the topic just changed.
-2. **All three memory strategies prepare their version** of the context in parallel: the recent
-   window, the summary, and the search results.
-3. **The Controller** (we call it **ASSE**, the Adaptive Strategy Selection Engine) picks one
-   version, using simple, readable rules. For example: "this is a request to write new code, so use
-   hybrid, which brings back existing code before writing more"; "this is a question about the
-   past, so use search".
-4. **The decision is recorded** in a log, with a plain-English reason, and shown live on a
-   **dashboard** (a web page). A person can **override** it, meaning force a different choice.
-5. The chosen context is sent to the AI model with the user's message.
+Seventeen messages came before it. Among them: the function was written at message 2, renamed
+(`user_id` → `uid`) at message 9, and then six messages were spent on an unrelated side topic.
 
-**Three design principles that make it trustworthy:**
+The whole journey is run by one function, `user_turn()` in **`integration/pipeline.py`** (the "turn
+loop": the code that runs once for every user message). It does the steps below in order.
 
-- **It decides only from information available *before* the decision.** The strategies also report
-  how good their own output is. For example, the summary reports how much information it lost. We
-  deliberately do **not** let the controller use that report for the same message, because that
-  would be circular (judging a choice by the result of having made it). Instead, the report acts as
-  a **warning (an "escalation") that changes the *next* message's decision.** This keeps the system
-  honest, simple and fast.
-- **No AI inside the memory itself.** Every part of the memory (choosing, summarizing, searching,
-  checking for outdated facts) uses fast rules and small, specialised models, never a large
-  chat-style AI. Competitors call a large AI model dozens of times per conversation just to
-  maintain memory.
-- **Everything is explainable and correctable**: every decision has a written reason and can be
-  overridden live.
+### Step 0: Check for a human override
 
-## Part 5: The four components, simply
+`user_turn()` first asks `decision_logger/logger.py` whether anyone pressed **override** on the
+dashboard (a web page showing the system's decisions live; file `dashboard/server.py`). If so, the
+request is passed to the controller (the part that makes the choice, Step 3). In this example,
+nobody did.
 
-The project has four components, one per team member.
+### Step 1: The Conversation Manager reads the message
 
-### Component 1: Dynamic Sliding Window (with the Conversation Manager)
+File: **`conversation_manager/manager.py`**, function `observe()`. It:
 
-Instead of blindly keeping "the last N messages", it **scores each past message** on four things
-and keeps the best ones that fit:
+1. **Gives the message an id** ("t0035") and counts it: this is turn number 35, counting both
+   sides.
+2. **Counts tokens** using **tiktoken** (a standard library, i.e. ready-made code, that counts
+   tokens exactly as AI models do), and works out **token-budget pressure** (how full the memory
+   space is: 0 = empty, 1 = full or overflowing). Here it is **1.00**: the conversation no longer
+   fits.
+3. **Classifies the message type** in `conversation_manager/classifier.py`, using **patterns**
+   (rules that look for telltale words). Words like *rename*, *refactor* or *call … from* mean
+   **code_refactor** (changing or using existing code). Other types are *debugging*,
+   *code_generation* (writing new code), *qa* (a question about the past) and *chat*.
+   - Here "call get_user_tasks from …" matches the code_refactor pattern.
+4. **Checks for a topic shift** (the subject suddenly changing). It turns the message into an
+   **embedding** (a list of numbers that captures meaning, so sentences that mean similar things get
+   similar numbers; made by the small model **MiniLM**) and compares it with the recent topic. A big
+   drop in similarity, or words like "switching gears", means a shift.
+5. **Publishes a signal**: the **TurnSignal** (a small standard message: turn id, turn count, task
+   type, token usage, topic state), sent on the **signal bus** (`conversation_manager/bus.py`: a
+   simple broadcast line every component listens to).
 
-- **Relevance:** how related the message is in meaning to the current one. Measured with
-  **embeddings**: each piece of text is turned into a list of numbers that captures its meaning, so
-  texts with similar meaning get similar numbers.
-- **Freshness:** how recent the message is.
-- **Importance:** whether it contains a decision, a definition, an error, a number (and not just
-  "ok, thanks").
-- **State:** whether it belongs to the current topic.
+The shapes of these messages are fixed in **`contracts/schemas.py`**. These are the *contracts*
+(agreed formats that every component must use, checked automatically by a library called
+**Pydantic**). If any component sends a wrongly shaped message, it is rejected immediately.
 
-**Result:** it found the right earlier message far more often than "just keep the latest": better
-in 59 cases and worse in 0 (recall 0.719 vs 0.556; *recall* = how often the needed message was
-kept).
+### Step 2: All three memory methods prepare their version, at the same time
 
-### Component 2: Hierarchical Summarization
+`user_turn()` starts the three methods **in parallel** (at the same time, on separate threads:
+independent lines of work inside one program). Each produces a **candidate context** (its proposal
+for what to send the model).
 
-Older conversation is condensed at **three levels** ("tiers"):
+**(a) Sliding window**: `sliding_window/window.py`, function `build_context()`. It gives every
+past message a **composite score** (one combined score), built from four parts in
+`sliding_window/scoring.py`:
 
-- **L1:** exact facts, word for word, including the exact definition of any code;
-- **L2:** what the user was trying to do and what was decided;
-- **L3:** a profile of who the user is and their overall goal.
+- **relevance**: how close in meaning the old message is to the new one, measured as **cosine
+  similarity** (a number from 0 to 1 comparing two embeddings; 1 = same meaning);
+- **freshness**: how recent it is; it halves every 8 turns (a *half-life* of 8);
+- **importance**: whether it contains code, a decision, a rule, an error, numbers. "ok thanks" scores
+  0;
+- **state**: whether it belongs to the current topic.
 
-Two special features:
+It always keeps the last 2 messages, then adds the highest-scoring ones until the token budget is
+full, and puts them back in time order.
 
-- **Contradiction-resolving merge:** when a new fact replaces an old one ("I moved from Madrid to
-  Berlin", or a renamed function), the old one is marked **superseded** (replaced), so the summary
-  never contains both as if both were true.
-- **A live "loss score":** every time it summarizes, it measures how much important information
-  (names, numbers, code identifiers) it just dropped. If too much was lost, it raises the warning
-  that makes the controller switch to search on the next message.
+**(b) Summarization**: `summarization/engine.py`, function `build_context()`. As the conversation
+went on, older messages were already rolled up (every 6 messages) into three **tiers** (levels of
+detail):
 
-**Results:** outdated facts leaking into the summary: **0% vs 50%** for a simple summarizer. Exact
-code definitions kept: **90% vs 0%**. The loss score closely tracks real information loss (a
-**correlation** of 0.91, where 1.0 would mean perfectly in step).
+- **L1** (exact facts, copied word for word, including exact code *signatures*: the function's name
+  and inputs, e.g. `get_user_tasks(uid, include_done=False)`), made by `summarization/extract.py`
+  with Python's **AST** (Abstract Syntax Tree: Python's own way of reading code as a structure, so
+  signatures are captured exactly);
+- **L2** (what the user was trying to do and what was decided);
+- **L3** (a short profile of who the user is and their overall goal).
 
-### Component 3: Retrieval / RAG (search memory)
+Two key features:
 
-Every turn is stored in a **vector database**: a store that finds text by meaning, using the
-embeddings described above. We use **FAISS**, a fast open-source library for this.
+- **Contradiction-resolving merge** (`summarization/merge.py`). When message 9 renamed the input,
+  the old fact `get_user_tasks(user_id…)` was marked **superseded** (replaced by newer
+  information, with the time it was replaced). The summary never presents both as true.
+- **Loss score** (`summarization/loss.py`: a live measure of how much important information the
+  summary dropped). It collects the **anchors** (checkable details: names, numbers, code
+  identifiers) of the summarized messages and counts how many are missing from the summary. On the
+  previous message this score was **0.59** (59% of anchors missing), far above the alarm level of
+  **0.15**.
 
-- **Chunking:** deciding whether to store each turn separately or group neighbouring turns into one
-  "chunk".
-- **Reranking:** after a fast first search, a second, more careful model (a **reranker**) re-orders
-  the results. Because that model was trained on web text and ranks prose above code, we
-  **switch it off for coding messages**. We found this by measuring it.
-- **Staleness checking:** this is the novel part. When a new message arrives, the system checks
-  whether it *contradicts* something stored earlier. "I moved to Berlin" makes "I live in Madrid"
-  **stale** (out of date).
-  - For ordinary text it uses an **NLI model** (Natural Language Inference: a small model trained
-    to tell whether one sentence contradicts another).
-  - For code it compares the exact function definitions using Python's own code parser (**AST**,
-    the Abstract Syntax Tree: the parser's structured view of code), because the NLI model cannot
-    tell `user_id` from `uid`.
-  - Stale passages are **marked as outdated, never silently hidden**, and the newer passage is
-    brought in next to them.
-  - It does this **without any large AI model**. Competing systems need a large model, or neatly
-    structured facts, to do it.
+**(c) RAG / search**: `retrieval/engine.py`, function `build_context()`.
 
-**Results:**
+- Every earlier message was stored in a **vector database** (a store that finds text by meaning,
+  using embeddings). We use **FAISS** (a fast open-source search library from Meta),
+  `retrieval/index.py`.
+- It searches for the passages closest in meaning to message 18.
+- For non-code messages, a **reranker** (`retrieval/rerank.py`: a second, slower but more careful
+  model that re-orders the search results) refines the order. For coding messages like this one the
+  reranker is **switched off**, because we measured that it ranks ordinary prose above code.
+- It packs the best passages into the token budget.
+- **Staleness check** (checking whether a stored passage has become out of date). This is done when
+  each message is first stored, in `retrieval/contradiction.py`:
+  - **Code:** if a newer message redefines the same function with different inputs, the old passage
+    is flagged stale, using an exact AST comparison.
+  - **Ordinary sentences:** an **NLI model** (Natural Language Inference: a small model trained to
+    tell whether one sentence contradicts another) checks pairs of sentences, in both directions.
+    One example: "I live in Madrid" vs "I moved to Berlin".
+  - A stale passage is never hidden. It is labelled **"[!] stale: superseded by …"**, and the newer
+    passage is placed right next to it.
+- Whether each message is stored alone or grouped with neighbours is the **chunking** decision
+  (`retrieval/chunking.py`; a *chunk* is one stored piece).
 
-- When it flags something as stale, it is right **82%** of the time (**precision**), and it catches
-  **73%** of the real contradictions (**recall**).
-- An improved version (the **v4b** version below) is right **100%** of the time and never wrongly
-  retires a current fact (0%, down from 23%). It catches slightly fewer contradictions (69%).
-- Improvements to how results are read and ranked raised the share of questions where the needed
-  evidence was found from **39% to 66%**.
+### Step 3: The controller chooses, using only the signal
 
-### Component 4: The Controller (ASSE), the headline contribution
+File: **`controller/controller.py`**, function `decide()`, with the rules in
+**`controller/rules.py`**. The controller is called **ASSE** (Adaptive Strategy Selection Engine).
 
-It picks the strategy for each message, using readable rules, in about **0.1 milliseconds**.
+**Important design rule:** `decide()` receives **only the TurnSignal from Step 1**, never the three
+candidate contexts from Step 2. It decides from information known *before* the methods run.
+(Otherwise it would judge a choice by the result of making it, which is circular and called
+*leakage*: information leaking from after the decision into the decision.)
 
-**Results:**
+It builds a **feature vector** (the short list of facts it decides from): turn count, budget
+pressure, message type, previous choice, turns since the last switch. Then it checks the rules in
+order:
 
-- On conversations that change type, it found the needed information **98.6%** of the time, against
-  **87.4%** for the best single fixed strategy: **+11.2 points**. It also beat "always hybrid" by
-  6 points, while sending less text.
-- On a benchmark where the right answer is always "search", it **ties** search. It loses nothing by
-  being adaptive.
-- We also tried a **machine-learned** controller (learning the choices from recorded examples). It
-  did worse (93% vs 99%), so we kept the readable rules.
+| Rule | Choice |
+|---|---|
+| The whole history still fits | sliding window (nothing is lost) |
+| A question about the past (qa) | RAG |
+| A request to write new code | hybrid (bring back existing code first) |
+| A request to change existing code (refactor) | summarization (it holds the current signatures) |
+| Debugging | sliding window |
+| Long casual chat | summarization |
 
-## Part 6: How we tested it, and why you can trust the numbers
+For message 18, the rule says **refactor → summarization**. But there is a **pending escalation**
+(a warning from an earlier turn). On message 17 the summary's loss score was 0.59, above 0.15, so
+the warning says *"the summary is losing too much; switch summarization to RAG"*. The final choice
+is **RAG**.
 
-**A benchmark** is a standard test set that many researchers use, so results can be compared. We
-used:
+Two more mechanisms:
 
-- **LoCoMo:** very long conversations (about 600 messages each) with questions about earlier
-  parts. This is our main benchmark.
-- **LoCoMo-Plus:** questions where the clue was implied, not stated directly.
-- **BEAM:** a benchmark made by **other researchers**, with coding and general conversations. We
-  never adjusted anything for it, so it is an independent check.
-- **Our own test sets** for each component. For example, conversations that deliberately change
-  type, and coding sessions with traps.
+- **Dwell time** (a minimum number of turns before switching again, to stop the choice flipping back
+  and forth).
+- **Override** (a human's choice, which replaces the rule's choice and is marked "OVERRIDE by …").
 
-**Main measures:**
+It writes a **rationale** (a plain-English reason), e.g.: *"[refactor_request] task_type=code_refactor
+→ summarization | escalation from t0033: summary loss 0.59 > 0.15 → switch summarization to RAG"*.
+The decision takes about **0.1 milliseconds**.
 
-- **Evidence hit:** did the information needed to answer actually reach the model? It is
-  objective and checkable.
-- **Answer accuracy:** we let an AI model answer the question from the memory provided, and another
-  AI model (the **judge**) mark it correct, partly correct or wrong. Because AI judges can be
-  wrong, we also check a sample against human marking.
-- **F1 score:** a standard score of how closely the answer's words match the correct answer.
+### Step 4: Build the final prompt
 
-**Fair testing rules we followed:**
+File: **`integration/llm_interface.py`**, function `assemble_prompt()`. It takes the chosen
+method's candidate context and wraps it with an instruction for the model ("prefer current facts;
+never use anything marked stale; reuse existing definitions"). The result is the **prompt** (the
+full text sent to the AI model). For hybrid, it combines searched passages (up to half the budget)
+with recent messages, without duplicates.
 
-- **Dev/test split:** we divide each dataset in two. We adjust the system only on the "dev" half
-  and report results on the "test" half, which the system never saw. Testing on what you tuned on
-  is like grading a student on the exact questions they practised.
-- **Frozen system:** once settings were chosen, we locked them, and ran each test set **once**.
-- **Pre-registration:** before trying any new improvement, we wrote down in advance what we would
-  test and what result would count as success. Then we reported the outcome whatever it was.
-  This prevents quietly keeping only the experiments that worked.
-- **Confidence intervals:** every comparison comes with a range, for example "+0.112, between +0.093
-  and +0.129". If the whole range is above zero, the difference is **statistically significant**:
-  very unlikely to be luck.
-- **Baselines:** we compared against other systems under identical conditions: same questions, same
-  amount of memory space, same AI model, same judge.
+### Step 5: Record everything, and raise warnings for the next turn
 
-## Part 7: How we compare with existing systems
+- **Decision log**: `decision_logger/logger.py` appends one line to **`decisions.jsonl`**
+  (**JSONL**: a text file with one structured record per line; **append-only**: lines are only ever
+  added, never edited, so the history cannot be quietly changed). The line holds the signal, the
+  feature vector, the decision and all three candidates.
+- **Escalations** (warnings) are created by `_escalations()` in `pipeline.py` from what the methods
+  reported in Step 2:
+  - "summary loss too high", and
+  - "new stale passages found".
 
-**Mem0** is a popular commercial and open-source memory product. We ran the real Mem0 software on
-the same tests.
+  They are saved to `escalations.jsonl` and queued for the controller. **They affect only the next
+  message.** That is exactly how the warning from message 17 changed message 18.
+- **Dashboard**: `dashboard/server.py` reads these files and shows the decision live in the browser.
+
+### Step 6: Remember the new message
+
+`_ingest()` in `pipeline.py` hands the message to all three methods to store:
+
+- the window adds it to its list;
+- the summarizer adds it and, every 6 messages, rolls older ones into L1/L2/L3;
+- RAG embeds it, decides its chunk, stores it in FAISS and runs the staleness check against older
+  passages.
+
+### Step 7: The AI model replies
+
+The prompt goes to the AI model through `integration/llm_client.py` (a connector that works with any
+model offering the standard "OpenAI-compatible" interface, the common way programs talk to AI
+models). The reply is itself stored as a turn. **This is the only place a large AI model is used;
+the memory system itself never calls one.**
+
+### The outcome for message 18
+
+- The context sent to the model contains the **new** signature `def get_user_tasks(uid` and no
+  unmarked old version: **CAUGHT** (the trap was avoided).
+- A fixed window of the last 6 exchanges (an *exchange* is one user message plus one reply) no longer
+  contains the function at all: **MISSED**.
+- On message 16 (the duplicate-function trap), the rule "write new code → hybrid" brought back
+  `def format_due_date(` from message 2: **CAUGHT**; the fixed window **MISSED**.
+
+The demo runs all of this live: `python -m demo.coding_session.present`, which uses
+`demo/coding_session/present.py` with the script in `demo/coding_session/script.py`.
+
+---
+
+## Part 6: The four components and their results
+
+Each team member owns one.
+
+### 1. Dynamic Sliding Window (with the Conversation Manager)
+
+- **What:** the scored window from Step 2a, plus the message reading in Step 1.
+- **Result:** we planted a fact, asked about it later, and checked whether the window kept the
+  message holding it.
+  - The scored window kept it **71.9%** of the time. A plain "keep the latest messages" window
+    (**recency-only**: choosing by time alone) kept it 55.6%. This is called **recall** (the share
+    of needed items that were actually found).
+  - It was better in **59** cases and worse in **0**.
+- **Honest note:** equal weights for the four scores are not the best. Relevance matters most.
+
+### 2. Hierarchical Summarization
+
+- **What:** the L1/L2/L3 summaries, the merge and the loss score from Step 2b.
+- **Results:**
+  - **Stale-fact leakage** (an outdated fact still appearing as current in the summary): **0% vs
+    50%** for a **naive** summarizer (a simple one-step summarizer, used for comparison).
+  - **Signature retention** (the exact function definition still present later): **90% vs 0%**.
+  - The loss score follows real information loss with a **correlation of 0.91** (how closely two
+    measurements move together; 1 = perfectly in step). That is why it can be trusted to trigger a
+    switch.
+
+### 3. Retrieval (RAG)
+
+- **What:** search, reranking and the staleness check from Step 2c.
+- **Results:**
+  - Staleness flags: **precision 0.82** (when it flags something, it is right 82% of the time) and
+    **recall 0.73** (it catches 73% of real contradictions).
+  - The improved version **v4b** (this week's pre-tested upgrade) reaches **precision 1.00**, and
+    **false supersession** (a still-current fact wrongly marked as outdated) falls from **23% to
+    0%**. Recall is 0.69, slightly lower.
+  - Better reading of search results (shorter labels, plus the reranker) raised **evidence hit**
+    (the share of questions where the needed information reached the model) from **39% to 66%**.
+  - It needs **no large AI model**. Competitors need one, or need facts already stored in a neat
+    structured form.
+
+### 4. The Controller (ASSE): the main contribution
+
+- **What:** the choice from Step 3.
+- **Results:**
+  - On conversations that change type, it found the needed information **98.6%** of the time,
+    against **87.4%** for the best single fixed method: **+11.2 points**.
+    - The **confidence interval** (the range the true difference very likely lies in) is +9.3 to
+      +12.9. The whole range is above zero, so the result is **statistically significant** (very
+      unlikely to be luck).
+  - It beats "always hybrid" by +6.0 points while sending less text.
+  - On a benchmark where search is always right, it **ties** search: adapting costs nothing.
+  - We also built a **machine-learned controller** (one that learns the choices from recorded
+    examples, using logistic regression, random forest and gradient boosting: three standard
+    learning methods). It scored lower (93% vs 99%), so we kept the readable rules.
+
+---
+
+## Part 7: How we tested it, and why the numbers can be trusted
+
+**Benchmarks** (standard test sets many researchers use, so results can be compared):
+
+- **LoCoMo**: about 600-message conversations with questions about earlier parts; our main test.
+- **LoCoMo-Plus**: questions where the clue was only implied.
+- **BEAM**: made by **other researchers**; we never adjusted anything for it, so it is an
+  independent check.
+- **Our own test sets** for each component, e.g. conversations that change type, and coding sessions
+  with traps.
+
+**Measures:**
+
+- **Evidence hit**: did the needed information reach the model? This is objective.
+- **Answer accuracy**: an AI model answers from the memory provided; another AI model, the
+  **judge**, marks it correct, partly correct or wrong. We check a sample against human marking
+  using **Cohen's kappa** (a standard score of how much two markers agree beyond chance).
+- **F1 score**: how closely the answer's words match the correct answer (0 to 1).
+
+**Fairness rules:**
+
+- **Dev/test split** (we split every dataset in two, adjust the system only on the "dev" half, and
+  report on the unseen "test" half; otherwise it is like grading a student on the exact questions
+  they practised).
+- **Frozen system** (settings locked before final testing), with each test run **once**.
+- **Pre-registration** (writing down, before an experiment, exactly what will be tested and what
+  counts as success, then reporting the result whatever it is; this stops anyone quietly keeping
+  only the experiments that worked).
+- **Gates** (pass/fail checks on the dev data that a new version must pass before it may touch the
+  test data).
+- **Baselines** (other systems compared under identical conditions: same questions, same memory
+  space, same AI model, same judge).
+- **Automated tests**: 89 small programs that check each part still works, run on every change by
+  **CI** (Continuous Integration: GitHub runs them automatically on every upload).
+
+## Part 8: Comparison with existing systems
+
+**Mem0** is a popular memory product. We ran the real Mem0 software under the same conditions.
 
 | | CEAI | Mem0 |
 |---|---|---|
-| Answer accuracy (judged) | 50.7% | 46.7% (the difference is not significant, so we call it equal) |
+| Answer accuracy (judged) | 50.7% | 46.7% (difference not significant, so we call it equal) |
 | Exact-answer match (F1) | **0.406** | 0.278 (significantly better for CEAI) |
-| AI-model calls needed to build memory, per conversation | **0** | about 54 |
+| Large-AI calls needed to build memory, per conversation | **0** | about 54 |
 | Time to build memory for one long conversation | **about 6 seconds** | about 16 minutes (162× slower) |
 | Coding traps, original demo | **2 of 2 caught** | 0 of 2 |
-| Coding traps, 12 new sessions | **16 of 26** | 5 of 26 |
+| Coding traps, 12 new unseen sessions | **16 of 26** | 5 of 26 |
 
-Why Mem0 misses the coding traps: it rewrites what it remembers into short notes. It remembers
-"a helper called `format_due_date` was added", but not the exact code, which is what the assistant
-needs to reuse it correctly.
+**Why Mem0 misses the traps:** it rewrites what it remembers into short notes. It remembers "a
+helper called `format_due_date` was added", not the exact code needed to reuse it.
 
-**Does it get better as conversations get longer?** Yes, compared with a simple window. CEAI stays
-at 96–100% at every length, while the simple window gets worse: CEAI's advantage grows from +28
-points in short conversations to +42 points in long ones.
+**Longer conversations:** CEAI stays at 96–100% at every length, while a simple window gets worse.
+CEAI's lead over the window grows from **+28 points** for short conversations to **+42 points** for
+long ones.
 
-## Part 8: What does not work yet (say this openly)
+## Part 9: What does not work yet (say it openly)
 
 - **On the independent BEAM benchmark, CEAI scored below "always search"** (34.6% vs 44.5%).
   - The cause is found: many BEAM questions are phrased as requests ("Could you show me how…").
-    The system mistakes them for casual chat and uses the summary, which lacks the detail.
-  - The fix is the first item of future work.
-- **In the 12 new coding sessions, "always hybrid" caught slightly more traps (18 vs 16).** The
-  misses are mostly changed settings and functions renamed to a completely new name, which the
-  staleness check does not yet recognise.
-- **Making the summaries with a small AI model did not help.** So the default stays "no AI calls
-  in memory".
+    The classifier (Step 1) labels them casual chat, so the controller picks the summary, which
+    lacks the details.
+  - Fixing this is the first item of future work.
+- **In the 12 unseen coding sessions, "always hybrid" caught 18 traps vs our 16.** The misses are
+  mostly changed settings (e.g. a tax rate), and functions renamed to a completely new name, which
+  the staleness check does not yet recognise.
+- **Letting a small AI model write the summaries did not help.** So the default stays "no AI calls
+  inside memory".
 
-Showing what does not work, and why, is part of doing research properly.
+## Part 10: This week's improvements, and how our checks protected us
 
-## Part 9: Improvements made this week
+- We tested three upgrades, each on its own first:
+  - better window weights;
+  - a better staleness check;
+  - better chunking.
+- All three together (**v4**) failed a gate: the new window weights dropped messages even when
+  everything fitted, and accuracy fell from 99% to 80%. It was **not** adopted.
+- The version without the window change (**v4b**) passed every gate. On the dev data:
+  - it nearly doubled the implied-clue score (0.134 → 0.264);
+  - it raised the main benchmark from 0.709 to 0.785.
+- Its final test runs are being completed. The official results remain those of the frozen system.
 
-We tested three improvements, each first on its own:
-
-- better scoring weights for the window;
-- the improved staleness check;
-- better chunking.
-
-All three together (**v4**) broke something: the new window weights dropped messages even when
-everything fitted. Our safety checks caught it, so it was not adopted. The version without the
-window change (**v4b**) passed every check. It nearly doubled the score on the implied-clue
-benchmark (0.134 → 0.264) and raised the main benchmark from 0.709 to 0.785 on the dev data. Its
-final test runs are being completed. The official numbers remain those of the locked system.
-
-## Part 10: Why it matters (who would use it)
+## Part 11: Why it matters (who would use it)
 
 - **Cheaper:** no extra AI bill for memory.
-- **Faster:** memory is built in seconds instead of minutes.
+- **Faster:** memory is built in seconds, not minutes.
 - **Safer for coding assistants:** fewer duplicate or broken functions.
-- **Private:** runs entirely on an ordinary laptop, offline. No conversation data leaves the
-  machine.
-- **Accountable:** every memory decision is written down and can be corrected, which matters for
-  organisations that must explain what their AI was shown.
+- **Private:** runs fully offline on a normal laptop; no conversation data leaves the machine.
+- **Accountable:** every memory decision is written down and can be corrected.
 
-Users: companies building coding assistants and chatbots, organisations with privacy rules (health,
-finance, government), and teams using small or local AI models.
+**Users:** companies building coding assistants and chatbots; organisations with privacy rules
+(health, finance, government); teams using small or local models.
 
-**How it could be offered:** a free open-source library; a drop-in version that sits in front of any
-chat app (change one web address); and a paid dashboard for teams.
+**How it could be offered:**
+- a free **open-source** library (code anyone can use and inspect);
+- a drop-in version placed in front of any chat app (change one web address);
+- a paid dashboard for teams.
 
-## Part 11: The 30-second version
+## Part 12: The 30-second version
 
-> "AI chat assistants have no memory of their own: on every message, software must decide what
-> past conversation to send them. Today's memory products choose one method for the whole
-> conversation, but conversations change: chatting, debugging, recalling, coding. CEAI chooses the
-> right memory method for every single message, explains each choice, and lets a person override
-> it. It needs no extra AI calls, so it is 162 times faster to build memory than Mem0. On
-> conversations that change type, it finds the needed information 98.6% of the time vs 87.4% for
-> the best fixed method. It catches coding mistakes that Mem0 and simple memory miss. We tested it
-> fairly, with locked settings, pre-registered experiments and an independent benchmark, and we
-> report where it still falls short."
+> "AI assistants have no memory of their own: for every message, software must choose what past
+> conversation to send them. Today's memory products use one method for the whole conversation,
+> but conversations change: chatting, debugging, recalling, coding. CEAI chooses the right method
+> for every message, explains why, and lets a person override it. It needs no extra AI calls, so it
+> builds memory 162 times faster than Mem0. When the conversation changes type, it finds the needed
+> information 98.6% of the time vs 87.4% for the best fixed method, and it catches coding mistakes
+> that Mem0 and simple memory miss. We tested it fairly, with locked settings, experiments written
+> down in advance and an independent benchmark, and we show where it still falls short."
 
 ---
 
@@ -309,42 +445,73 @@ chat app (change one web address); and a paid dashboard for teams.
 
 | Term | Meaning |
 |---|---|
-| **AI judge** | An AI model used to mark answers correct / partly correct / wrong |
-| **AST (Abstract Syntax Tree)** | How a programming language's parser represents code as structure; we use it to compare function definitions exactly |
-| **ASSE / Controller** | Our component that picks the memory strategy for each message |
-| **Baseline** | A simpler or existing system you compare against |
-| **Benchmark** | A standard test set used by many researchers |
-| **BEAM** | An independent benchmark by other researchers (coding and general conversations) |
-| **Chunk / chunking** | A stored piece of conversation; deciding how big each stored piece is |
-| **Confidence interval** | The range the true difference most likely lies in (95% sure) |
-| **Context** | The text sent to the AI model with each message |
-| **Context window** | The maximum amount of text a model can take at once |
-| **Correlation** | How closely two measurements move together (1 = perfectly) |
-| **Dashboard** | A web page showing each decision live |
-| **Dev / test split** | Tune on one half of the data, report on the other, unseen half |
-| **Embedding** | Text turned into numbers that capture its meaning, so similar meanings are close |
-| **Escalation** | A warning from one component that changes the *next* decision |
-| **Evidence hit** | Whether the information needed to answer reached the model |
-| **F1 score** | How closely an answer's words match the correct answer (0 to 1) |
-| **FAISS** | A fast open-source library for searching by meaning |
-| **Frozen system** | Settings locked before final testing |
-| **Hybrid** | Recent messages plus searched older passages, together |
-| **LLM** | Large Language Model, the AI that writes replies (e.g. ChatGPT, Claude) |
-| **LoCoMo / LoCoMo-Plus** | Benchmarks of very long conversations with questions about earlier parts (Plus: implied clues) |
-| **Loss score** | How much important information a summary dropped |
-| **Mem0** | A popular existing memory product we compared against |
-| **Middleware** | Software that sits between two others (here: between the chat app and the AI model) |
-| **NLI (Natural Language Inference)** | A small model that tells whether one sentence contradicts another |
-| **Override** | A person forcing a different memory choice |
-| **Precision** | Of the items flagged, how many were truly correct |
-| **Pre-registration** | Writing down the test and success rule *before* running it |
-| **RAG (Retrieval-Augmented Generation)** | Searching stored conversation and sending the most related passages |
-| **Recall** | Of all the items that should have been found, how many were found |
-| **Reranker** | A second, more careful model that re-orders search results |
-| **Sliding window** | Sending only the most recent messages |
-| **Stale / superseded** | Outdated: replaced by newer information |
-| **Statistically significant** | Very unlikely to be due to chance |
-| **Summarization (L1 / L2 / L3)** | Condensing old conversation: exact facts / intentions and decisions / user profile |
-| **Token** | A piece of a word; the unit in which text size and cost are measured |
-| **Turn** | One message in the conversation |
-| **v4 / v4b** | This week's improved versions; v4 failed our checks, v4b passed |
+| AI judge | An AI model used to mark answers correct / partly correct / wrong |
+| Anchor | A checkable detail (name, number, code identifier) used to measure summary loss |
+| API | Application Programming Interface: the name and inputs used to call a piece of code |
+| Append-only log | A record file where lines are only added, never changed |
+| ASSE / Controller | Our component that chooses the memory method for each message (`controller/`) |
+| AST | Abstract Syntax Tree: Python's structured view of code, used to compare function definitions exactly |
+| Baseline | A simpler or existing system used for comparison |
+| Benchmark | A standard test set used by many researchers |
+| BEAM | An independent benchmark by other researchers |
+| Candidate context | One method's proposal for what to send the model |
+| Chunk / chunking | A stored piece of conversation / deciding how big each piece is |
+| CI | Continuous Integration: tests run automatically on every code change |
+| Cohen's kappa | A score of how much two markers agree beyond chance |
+| Composite score | One combined score made from several parts |
+| Confidence interval | The range the true difference very likely lies in |
+| Context / context window | The text sent to the model / the most it can read at once |
+| Contracts | Agreed message formats every component must use (`contracts/schemas.py`) |
+| Correlation | How closely two measurements move together (1 = perfectly) |
+| Cosine similarity | A 0–1 number comparing the meaning of two embeddings |
+| Dashboard | A web page showing each decision live |
+| Dev / test split | Tune on one half of the data, report on the unseen other half |
+| Dwell time | Minimum turns before the controller may switch again |
+| Embedding | Text turned into numbers that capture its meaning |
+| Escalation | A warning from one component that changes the *next* decision |
+| Evidence hit | Whether the needed information reached the model |
+| Exchange | One user message plus the assistant's reply |
+| F1 score | How closely an answer matches the correct one (0 to 1) |
+| FAISS | A fast open-source library for searching by meaning |
+| False supersession | A still-current fact wrongly marked as outdated |
+| Feature vector | The short list of facts the controller decides from |
+| Freshness / relevance / importance / state | The four parts of the window's score: recency, closeness in meaning, useful content, same topic |
+| Frozen system | Settings locked before final testing |
+| Function / signature | A named reusable piece of code / its name and inputs |
+| Gate | A pass/fail check a new version must pass on dev data first |
+| Half-life | How many turns until freshness halves |
+| Hybrid | Recent messages plus searched older passages together |
+| JSONL | A text file with one structured record per line |
+| Leakage | Information from after a decision wrongly used in making it |
+| LLM | Large Language Model, the AI that writes replies |
+| LoCoMo / LoCoMo-Plus | Benchmarks of very long conversations (Plus: implied clues) |
+| Loss score | Share of important details a summary dropped |
+| Mem0 | A popular existing memory product we compared against |
+| Middleware | Software sitting between two others |
+| MiniLM | The small model that makes our embeddings |
+| Naive summarizer | A simple one-step summarizer used for comparison |
+| NLI | Natural Language Inference: a model that tells if one sentence contradicts another |
+| Open-source | Code anyone can use and inspect |
+| Override | A person replacing the system's choice |
+| Parallel / thread | Doing several things at the same time inside one program |
+| Precision | Of what was flagged, how much was right |
+| Pre-registration | Writing the test and success rule down *before* running it |
+| Prompt | The full text sent to the AI model |
+| Pydantic | A library that checks messages have the agreed format |
+| RAG | Retrieval-Augmented Generation: search stored conversation and send the best passages |
+| Rationale | The plain-English reason recorded with each decision |
+| Recall | Of everything that should have been found, how much was found |
+| Recency-only | Choosing messages by time alone |
+| Reranker | A second, more careful model that re-orders search results |
+| Signal bus | The broadcast line that carries the TurnSignal to all components |
+| Sliding window | Sending only the most recent messages |
+| Stale / superseded | Out of date / replaced by newer information |
+| Stale-fact leakage | An outdated fact still shown as current |
+| Staleness check | Checking whether stored information has become out of date |
+| Statistically significant | Very unlikely to be due to chance |
+| Summarization tiers (L1 / L2 / L3) | Exact facts / intentions and decisions / user profile |
+| tiktoken | A library that counts tokens the way AI models do |
+| Token / token-budget pressure | A piece of a word / how full the memory space is (0 to 1) |
+| Turn / TurnSignal | One message / the small standard message describing it |
+| v4 / v4b | This week's upgraded versions: v4 failed our checks, v4b passed |
+| Vector database | A store that finds text by meaning |
