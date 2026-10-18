@@ -532,6 +532,10 @@ what was built and measured, and the decisions later work must respect. **In a n
   `development`. The demo package is **done** (`demo/coding_session/present.py`, `docs/DEMO_GUIDE.md`).
 - **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
   `docs/zero_cost_improvement_roadmap.md`.
+- **Assessment compliance** (IT4010 PP1 mark sheet, `docs/PP1 Assessment Criteria.pdf`): criterion →
+  evidence map, slide order and Q&A in `docs/PP1_CHECKLIST.md`; traced requirements in
+  `docs/REQUIREMENTS.md`; plan vs actual and risk register in `docs/RISKS_AND_PLAN.md`; business
+  case in `docs/COMMERCIALIZATION.md`; CI in `.github/workflows/tests.yml`.
 - **Non-negotiable rules** (12.7):
   - Never tune on test; pre-register any new candidate and gate it on dev/val.
   - Commits are authored by the student only, with no AI attribution.
