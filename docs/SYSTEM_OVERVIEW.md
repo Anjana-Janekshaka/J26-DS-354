@@ -3,8 +3,8 @@
 **What this document is:** how the system is built, what every directory and file does, the main
 ideas in the code, and how the project changed between 2026-10-06 and 2026-10-17.
 
-**Work in progress (2026-10-17):** the v4 round. See §12 at the end of this file for what is being
-done now, what has finished and what is still running.
+**Latest (2026-10-18):** the v4 round is done except the v4b test runs. §12 at the end of this file
+lists every new result; §13 lists the documents written for the PP1 mark sheet.
 
 **How it relates to the other documents:**
 - `CLAUDE.md` is the build plan and the current status (read its §12.0 for the snapshot).
@@ -213,7 +213,7 @@ tangling.
 | Path | Purpose |
 |---|---|
 | `metrics.py` | Shared metrics: evidence hit/coverage, token-F1, NDCG, macro-F1, an objective strategy oracle, and **conversation-level bootstrap confidence intervals** |
-| `frozen.py` | Loads the **frozen** controller configuration. `CEAI_SYSTEM` selects `frozen` (default), `v2_hybrid`, `v3_qa_hybrid_obs` or `v4`, and every result file records which one ran. `CEAI_LLM_POLICY` selects `strict` (default) or `assisted` |
+| `frozen.py` | Loads the **frozen** controller configuration. `CEAI_SYSTEM` selects `frozen` (default), `v2_hybrid`, `v3_qa_hybrid_obs`, `v4` or `v4b`, and every result file records which one ran. `CEAI_LLM_POLICY` selects `strict` (default) or `assisted` |
 | `judge.py` | LLM answer judge (correct 1 / partial 0.5 / wrong 0) |
 | `human_agreement/` | Blind labelling sheets plus scoring (Cohen's kappa) that check the LLM judge against people |
 | `locomo/` | **Primary benchmark** (LoCoMo, 10 long conversations): `loader.py`, `run.py` (evidence, chunking, answer accuracy; `--split dev/test`), `stream.py` (questions asked *during* the conversation) |
@@ -269,7 +269,10 @@ tangling.
 | 10-17 | Roadmap items: manual override verified live; cost/latency chart (CEAI 6 s / 0 LLM calls vs Mem0 972 s / 54 per conversation); presentation framing (CLAUDE.md §6.6) | `docs/zero_cost_improvement_roadmap.md` |
 | 10-17 | **12 held-out coding sessions**, pre-registered | One hand-built demo invites "was it built to pass?". Result 16/26 vs 3/26 |
 | 10-17 | **v4 candidates**, pre-registered (`docs/v4_preregistration.md`): sliding-window weights, staleness ensemble, dev-tuned chunking, learned controller | Fix the known weak points. Three passed dev and test; the learned controller failed its gate |
-| 10-17 | **v4 system gates** started; `llm_policy` toggle; BEAM; presenter mode; Mem0 coding traps | Still running (see §12) |
+| 10-17 | `llm_policy` toggle; live presenter mode; BEAM; length test | See §12 |
+| 10-17 → 10-18 | **v4 failed** its system gate (sliding-window weights broke the "window is lossless when history fits" assumption); **v4b** (staleness ensemble + chunking) pre-registered and **passed every gate** | The gates prevented a harmful change from being adopted |
+| 10-18 | Colab: **Mem0 on the coding traps** (0/2, 5/26) and **`llm_policy` assisted** (no gain with 7B); v4b test runs started | See §12 |
+| 10-18 | PP1 compliance: requirements, risks and plan, commercialization, CI workflow, mark-sheet checklist | §13 |
 
 ---
 
@@ -315,43 +318,42 @@ the notebook to Colab, choose a T4, Run all, and check the `CODE VERSION` line.
 
 ---
 
-## 12. Current work: the v4 round (2026-10-17, in progress)
+## 12. The v4 round: results (2026-10-17/18)
 
-The presentation moved to **Wednesday 2026-10-21**, so the roadmap items
-(`docs/zero_cost_improvement_roadmap.md`) are being done now. Every change follows the same rules:
-pre-register, gate on dev, run test once, report whatever the sign. **The frozen system stays the
-system of record until v4 passes all its gates.**
+Every item was pre-registered, gated on dev and run on test once. **The frozen system stays the
+system of record** for the numbers in CLAUDE.md §12.2; v4b is reported next to it.
 
-### What "v4" is
-
-v4 = the frozen system plus the three component changes that passed their own dev and test checks:
-
-| Change | Where | Result (test, run once) |
+| Result | Numbers | Source |
 |---|---|---|
-| Sliding-window weights chosen on dev (relevance 0.5, importance 0.5) | `eval/frozen.py` → `CEAI_SW_WEIGHTS` | Recall 1.000 vs 0.706 with equal weights |
-| Staleness ensemble | `ContradictionConfig.ensemble` | Precision 1.00 / recall 0.69 (was 0.82 / 0.73). Wrongly retired current facts 0% (was 23%). Stale-fact leak 0.31 (was 0.27) |
-| Dev-tuned chunk boundaries | `BoundaryConfig` | Recall at 400 words 0.399 vs fixed segments 0.376 (hand-set was 0.355) |
+| **12 held-out coding sessions** (26 traps, written before running; Python, TypeScript, Go, SQL) | Adaptive **16/26**; fixed 6-exchange window **3/26**; always-hybrid 18/26; every duplicate-function trap caught (7/7) | `docs/demo_scenarios_preregistration.md` |
+| **Mem0 on the same coding traps** | Original demo: Mem0 **0/2**, CEAI **2/2**. Held-out: Mem0 **5/26** (6/26 with the last 6 exchanges added), CEAI **16/26**. Mem0 is better only on project decisions (3/3 vs 2/3). Its memories keep a function's *name* but not its exact signature | `docs/mem0_coding_preregistration.md`, `results/final/demo_mem0/` |
+| **Length test** (60 new conversations, frozen system) | Adaptive stays **0.96–1.00** at every length. Lead over the sliding window grows **+0.28 → +0.42** (detour of 2 → 50 exchanges); over always-hybrid +0.04 to +0.08 from 10 exchanges on (hybrid slightly ahead at the shortest, n.s.); over always-RAG roughly constant +0.09 to +0.16 | `docs/v4_preregistration.md` (length outcome), `results/figures/length_advantage.png` |
+| **BEAM** (independent benchmark by other authors, never tuned on; frozen system) | **Negative:** evidence hit adaptive 0.346 vs always-RAG **0.445** (−0.099 [−0.135, −0.065]). Cause: about a third of BEAM's questions are phrased as requests, get classified as chat and go to the summarizer (0.03 vs 0.29 on those). On questions recognised as recall, adaptive = RAG (0.54) | `docs/beam_preregistration.md`, `results/final/beam/summary.json` |
+| **Cost and latency** (recorded timings) | Memory build per LoCoMo conversation: CEAI **~6 s, 0 LLM calls**; Mem0 ~972 s, ~54 calls (**162× slower**); summary buffer ~704 s, ~69 calls | `results/final/cost_latency.json`, `results/figures/memory_build_time.png` |
+| **Component improvements** (each tested alone, test run once) | Staleness ensemble: precision **1.00** / recall 0.69 (was 0.82 / 0.73); wrongly retired current facts **0%** (was 23%); stale leak 0.31 (was 0.27). Dev-tuned chunking: recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355). Sliding-window weights chosen on dev: recall 1.000 vs 0.706 with equal weights | `docs/v4_preregistration.md` |
+| **v4 = all three improvements together** | **Failed its system gate:** synthetic val 0.992 → 0.800. Cause: the new sliding-window weights drop turns even when the whole history fits. Not adopted | same |
+| **v4b = staleness ensemble + chunking only** (pre-registered after the v4 failure, disclosed) | **Passed every gate** on dev: coding scenarios 17/26 (frozen 16); controller val 0.992 = 0.992; **LoCoMo-Plus dev 0.134 → 0.264** (+0.129 [+0.075, +0.189]); **LoCoMo dev 0.709 → 0.785** (+0.076 [+0.059, +0.095]) | same |
+| **v4b test runs** (each once) | Controller test: 0.983 vs frozen 0.986 (−0.002 [−0.007, 0.000], a tie). **LoCoMo, in-stream LoCoMo, LoCoMo-Plus and BEAM test: still running (2026-10-18)**; fill in from `runs/v4b_test/comparison.json` | `eval/v4_test.py` |
+| **Learned controller** (LR / RF / GBDT on recorded traces) | Val evidence hit 0.93 / 0.92 / 0.92 vs rules **0.99**: gate failed, rules stay | `docs/v4_preregistration.md` §4 |
+| **`llm_policy` assisted** (LLM writes L2/L3 summaries; 20 LoCoMo-Plus dev items, Qwen2.5-7B) | **No gain:** identical cue hit (0.10 vs 0.10); 86 LLM calls and ~90× the time per conversation; 56% of the 7B model's outputs invalid. `strict` (zero LLM calls) stays the default | `docs/llm_policy_preregistration.md` |
 
-Not in v4: the **learned controller** (failed its val gate: 0.93 vs 0.99 for the rules).
+### What changed in the code for this round
 
-### Status of each piece
+- `demo/coding_session/scenarios.py`, `run_scenarios.py`, `present.py`, `run_mem0.py`: held-out sessions, presenter mode, Mem0 on the traps.
+- `packages/retrieval/contradiction.py`: optional staleness `ensemble`; `packages/retrieval/chunking.py`: tuned `BoundaryConfig` used by v4b.
+- `packages/controller/model_based.py`: the learned controller (implemented, not adopted).
+- `packages/summarization/generators.py` (`AssistedGenerator`) and `integration/pipeline.py` (`llm_policy`).
+- `eval/frozen.py`: system variants `v4` and `v4b`; `eval/v4_gate.py` and `eval/v4_test.py`: gates and once-only test runs.
+- `eval/beam/`: the independent benchmark; `eval/synthetic/controller/length.py`, `learned.py`; `eval/synthetic/sliding_window/select_weights.py`; `eval/synthetic/retrieval/staleness_v2.py`; `eval/locomo/chunking_search.py`.
 
-| Piece | Where it runs | Status |
-|---|---|---|
-| 12 held-out coding sessions | laptop | **Done:** adaptive 16/26, fixed window 3/26, always-hybrid 18/26 |
-| v4 component checks (above) | laptop | **Done** |
-| v4 system gates G1–G4 | laptop (`eval.v4_gate`) | **Running.** G1 passed (2/2 and 16/26, same as frozen). G2–G4 pending |
-| Length test | laptop (`eval.synthetic.controller.length`) | **Running** |
-| BEAM (independent benchmark) | laptop (`eval.beam.run`) | **Running** |
-| Mem0 on the coding traps | Colab (`mem0_coding_traps`) | Ready to run |
-| `llm_policy` strict vs assisted (20 LoCoMo-Plus dev items, a pilot) | Colab (`llm_policy_dev`) | Ready to run |
-| Stronger free model and judge (Groq/OpenRouter) | later | Needs a free API key from the user |
-| Human-agreement labelling | team | Sheets ready |
-| Live presenter mode + `docs/DEMO_GUIDE.md` | laptop | **Done** |
+## 13. Documents for the PP1 mark sheet
 
-### What happens next
-
-- If **all v4 gates pass**, v4 is run once on the test splits and becomes the new system of record.
-  Otherwise v4 stays dev-only, and the component results above are reported as component findings.
-- BEAM, the length test and the Colab jobs are reported whatever they show.
-- Then the slide text is written from the final numbers.
+| Mark-sheet item | Document |
+|---|---|
+| All criteria: evidence map, slide order, technology table, Q&A | `docs/PP1_CHECKLIST.md` |
+| User / functional requirements (each traced to code and a test) | `docs/REQUIREMENTS.md` |
+| Completion vs plan, risk mitigation | `docs/RISKS_AND_PLAN.md` |
+| Commercialization | `docs/COMMERCIALIZATION.md` |
+| Standards (CI) | `.github/workflows/tests.yml` (89 fast tests on every push) |
+| Live demo and fallback | `docs/DEMO_GUIDE.md` |
+| Slide-by-slide brief | CLAUDE.md §12.12 |

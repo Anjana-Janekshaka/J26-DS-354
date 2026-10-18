@@ -1,7 +1,7 @@
 # CEAI — Adaptive Memory Middleware — Build Guide
 
-**Status (2026-10-17): built, frozen and evaluated; the v4 improvement round is in progress (§12.11).
-A new session should read §12.0 first, then §12.11, then §6.5 for the current claims.** **Read this whole file before writing any code.** This is the single source of truth for what to
+**Status (2026-10-18): built, frozen, evaluated and extended (v4 round, §12.11). For the
+presentation, read §12.0, then §12.12 (presentation brief), then §6.5–6.6 for the claims.** **Read this whole file before writing any code.** This is the single source of truth for what to
 build, where it lives, what makes each piece novel, and how each piece proves itself. It supersedes
 any conflicting detail in the four individual proposal PDFs for interfaces, ownership, and build
 order — those stay the source for literature review and write-up language only.
@@ -527,9 +527,16 @@ what was built and measured, and the decisions later work must respect. **In a n
     - Sliding window: **59 wins / 0 losses** vs recency-only.
 - **Tried and not adopted** (all pre-registered or dev-only, honest negatives): v2 hybrid retrieval,
   MMR, v3 (hybrid for question turns + observations). See 12.4.
-- **Left before Wednesday:** finish the v4 round (§12.11: gates, length test, BEAM, two Colab jobs),
-  write the slide text from the final numbers, the teammates' labelling sheets, and a merge into
-  `development`. The demo package is **done** (`demo/coding_session/present.py`, `docs/DEMO_GUIDE.md`).
+- **Added since the freeze (2026-10-17/18, all pre-registered; §12.11):**
+  - Coding traps on unseen sessions: CEAI **16/26**, Mem0 **5/26**, fixed window **3/26**.
+  - Original demo: CEAI **2/2**, Mem0 **0/2**.
+  - Adaptive advantage over the window **grows with conversation length** (+0.28 → +0.42).
+  - **v4b** (staleness ensemble + tuned chunking) passed every dev gate: LoCoMo-Plus dev
+    0.134 → 0.264, LoCoMo dev 0.709 → 0.785. Its test runs are in progress.
+  - **Honest negatives:** BEAM (independent) adaptive 0.346 vs always-RAG 0.445; the learned
+    controller lost to the rules; LLM-assisted summaries gave no gain with a 7B model.
+- **Left before Wednesday:** fill in the v4b test numbers when they finish, rehearse the demo
+  (`docs/DEMO_GUIDE.md`), the teammates' labelling sheets.
 - **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
   `docs/zero_cost_improvement_roadmap.md`.
 - **Assessment compliance** (IT4010 PP1 mark sheet, `docs/PP1 Assessment Criteria.pdf`): criterion →
@@ -757,35 +764,73 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
   `sliding-window-conversation-manager` and `runtime-controller`.
 - Component work merges into `development`, normally by pull request.
 
-### 12.11 The v4 round (2026-10-17, in progress)
+### 12.11 The v4 round: results (2026-10-17/18)
 
-The presentation moved to Wednesday, so the roadmap (`docs/zero_cost_improvement_roadmap.md`) is
-being worked through now under the §12.7 rules. Plan and outcomes: `docs/v4_preregistration.md`;
-code map: `docs/SYSTEM_OVERVIEW.md` §12. **Until every gate below passes, every number in §12.2
-stays the headline and the frozen system is unchanged.**
+The presentation moved to Wednesday 2026-10-21, so the roadmap (`docs/zero_cost_improvement_roadmap.md`)
+was worked through under the §12.7 rules: pre-register, gate on dev, run test once, report every
+result. Plans and outcomes: `docs/v4_preregistration.md` and the other `docs/*_preregistration.md`.
+**The frozen system remains the system of record for every number in §12.2.** v4b is reported next
+to it as a pre-registered improvement once its test runs finish.
 
-**Done (each pre-registered, test run once):**
-
-| Item | Result | Status |
+| Result | Numbers | Source |
 |---|---|---|
-| 12 held-out coding sessions, 26 traps (`docs/demo_scenarios_preregistration.md`) | Adaptive **16/26**, fixed window **3/26**, always-hybrid 18/26; every duplicate-function trap caught (7/7) | Report as is. Do **not** claim "beats every fixed strategy" here |
-| Sliding-window weights chosen on a dev half (relevance 0.5, importance 0.5) | Test recall **1.000** vs equal weights 0.706 vs recency 0.556 | In v4. Resolves the §6.6 inconsistency if v4 passes |
-| Staleness ensemble (NLI both directions + similarity + change cue) | Test P **1.00** / R 0.69 / F1 0.81 (was 0.82 / 0.73 / 0.77); wrongly retired facts **0%** (was 23%); leak 0.31 (was 0.27) | In v4 |
-| Dev-tuned chunk-boundary weights | Test recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355) | In v4. Granularity returns as an engineering result, not a learned-model claim |
-| Learned controller (LR/RF/GBDT, `packages/controller/model_based.py`) | Val hit 0.93 vs rules 0.99: **gate failed** | Not run on test; rules stay |
-| `llm_policy` toggle (`strict` default / `assisted` = LLM writes L2/L3 only) | Implemented; the controller sees identical inputs in both modes, and differences come only via logged next-turn loss escalations | Evaluation is a Colab job |
-| Live presenter mode + demo guide | 2/2 vs 0/2 live, with override and audience questions | Done |
+| **12 held-out coding sessions** (26 traps, written before running; Python, TypeScript, Go, SQL) | Adaptive **16/26**; fixed 6-exchange window **3/26**; always-hybrid 18/26; every duplicate-function trap caught (7/7) | `docs/demo_scenarios_preregistration.md` |
+| **Mem0 on the same coding traps** | Original demo: Mem0 **0/2**, CEAI **2/2**. Held-out: Mem0 **5/26** (6/26 with the last 6 exchanges added), CEAI **16/26**. Mem0 is better only on project decisions (3/3 vs 2/3). Its memories keep a function's *name* but not its exact signature | `docs/mem0_coding_preregistration.md`, `results/final/demo_mem0/` |
+| **Length test** (60 new conversations, frozen system) | Adaptive stays **0.96–1.00** at every length. Lead over the sliding window grows **+0.28 → +0.42** (detour of 2 → 50 exchanges); over always-hybrid +0.04 to +0.08 from 10 exchanges on (hybrid slightly ahead at the shortest, n.s.); over always-RAG roughly constant +0.09 to +0.16 | `docs/v4_preregistration.md` (length outcome), `results/figures/length_advantage.png` |
+| **BEAM** (independent benchmark by other authors, never tuned on; frozen system) | **Negative:** evidence hit adaptive 0.346 vs always-RAG **0.445** (−0.099 [−0.135, −0.065]). Cause: about a third of BEAM's questions are phrased as requests, get classified as chat and go to the summarizer (0.03 vs 0.29 on those). On questions recognised as recall, adaptive = RAG (0.54) | `docs/beam_preregistration.md`, `results/final/beam/summary.json` |
+| **Cost and latency** (recorded timings) | Memory build per LoCoMo conversation: CEAI **~6 s, 0 LLM calls**; Mem0 ~972 s, ~54 calls (**162× slower**); summary buffer ~704 s, ~69 calls | `results/final/cost_latency.json`, `results/figures/memory_build_time.png` |
+| **Component improvements** (each tested alone, test run once) | Staleness ensemble: precision **1.00** / recall 0.69 (was 0.82 / 0.73); wrongly retired current facts **0%** (was 23%); stale leak 0.31 (was 0.27). Dev-tuned chunking: recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355). Sliding-window weights chosen on dev: recall 1.000 vs 0.706 with equal weights | `docs/v4_preregistration.md` |
+| **v4 = all three improvements together** | **Failed its system gate:** synthetic val 0.992 → 0.800. Cause: the new sliding-window weights drop turns even when the whole history fits. Not adopted | same |
+| **v4b = staleness ensemble + chunking only** (pre-registered after the v4 failure, disclosed) | **Passed every gate** on dev: coding scenarios 17/26 (frozen 16); controller val 0.992 = 0.992; **LoCoMo-Plus dev 0.134 → 0.264** (+0.129 [+0.075, +0.189]); **LoCoMo dev 0.709 → 0.785** (+0.076 [+0.059, +0.095]) | same |
+| **v4b test runs** (each once) | Controller test: 0.983 vs frozen 0.986 (−0.002 [−0.007, 0.000], a tie). **LoCoMo, in-stream LoCoMo, LoCoMo-Plus and BEAM test: still running (2026-10-18)**; fill in from `runs/v4b_test/comparison.json` | `eval/v4_test.py` |
+| **Learned controller** (LR / RF / GBDT on recorded traces) | Val evidence hit 0.93 / 0.92 / 0.92 vs rules **0.99**: gate failed, rules stay | `docs/v4_preregistration.md` §4 |
+| **`llm_policy` assisted** (LLM writes L2/L3 summaries; 20 LoCoMo-Plus dev items, Qwen2.5-7B) | **No gain:** identical cue hit (0.10 vs 0.10); 86 LLM calls and ~90× the time per conversation; 56% of the 7B model's outputs invalid. `strict` (zero LLM calls) stays the default | `docs/llm_policy_preregistration.md` |
 
-**Running or waiting:**
+**What these add to the story:**
 
-| Item | Where | Notes |
-|---|---|---|
-| v4 system gates G1–G4 (`eval/v4_gate.py`) | laptop | **G1 passed** (2/2, 16/26 = frozen). G2 synthetic val, G3 LoCoMo-Plus dev, G4 LoCoMo dev pending. All pass → v4 test run once and v4 becomes the system of record; any failure → v4 stays dev-only |
-| Length test (`eval/synthetic/controller/length.py`) | laptop | Does the adaptive advantage grow with conversation length? New family-C conversations, frozen system |
-| BEAM (`eval/beam/`, `docs/beam_preregistration.md`) | laptop | Independent benchmark (other authors), never tuned on; frozen system |
-| Mem0 on the coding traps (`docs/mem0_coding_preregistration.md`) | Colab `mem0_coding_traps` | Is a real competitor also caught out by the traps? |
-| `llm_policy` strict vs assisted (`docs/llm_policy_preregistration.md`) | Colab `llm_policy_dev` | 20 LoCoMo-Plus dev items (amended from 60 before running, for runtime): a pilot |
-| Stronger model and judge (roadmap 1.1/1.2) | later | Needs the user's free API key |
+- The coding-trap result now holds on **13 sessions and against a real competitor (Mem0)**, not
+  only on one hand-built session against a fixed window.
+- The length test supports the thesis directly: fixed strategies degrade as conversations grow;
+  adaptive does not.
+- The independent benchmark exposes **one specific, diagnosed weakness** (request-phrased recall is
+  routed to the summarizer). The same cause underlies the LoCoMo-Plus weakness. It is the first
+  item of future work.
+- The system gates did their job: they stopped v4, whose sliding-window weights won alone but broke
+  the full system.
 
-When results arrive: record them in the relevant pre-registration file and here, regenerate
-`results/RESULTS.md`, then write the slide text.
+**Still open:** the v4b test numbers (running); human-agreement labelling (team); a stronger free
+judge (needs the user's Groq/OpenRouter key).
+
+### 12.12 Presentation brief (for building the slides)
+
+Audience: the IT4010 examiners (`docs/PP1 Assessment Criteria.pdf`). Marks are per student, so each
+member presents their own component. The criterion-to-evidence map, slide order and Q&A are in
+`docs/PP1_CHECKLIST.md`; supporting documents are `docs/REQUIREMENTS.md`,
+`docs/RISKS_AND_PLAN.md` and `docs/COMMERCIALIZATION.md`. Use the claims exactly as narrowed in
+§6.5 and phrased in §6.6.
+
+**One-line message:** memory systems lock in one strategy; CEAI chooses per turn, costs nothing extra
+in LLM calls, and wins when the conversation changes type.
+
+| # | Slide | Content (numbers to use) | Mark-sheet criterion |
+|---|---|---|---|
+| 1 | Title | CEAI: Adaptive Memory Middleware for Multi-Turn LLM Applications; J26-DS-354; team | — |
+| 2 | Problem | Conversations change type (chat → debugging → recall → coding); every memory system (Mem0, Zep, Letta, LangChain) uses one fixed strategy. Example: a fixed window and Mem0 both miss a renamed function and an existing helper (0/2) | LO1 problem |
+| 3 | Gap / novelty | Per-turn switching across three paradigms (window, hierarchical summarization, RAG), logged, explainable, overridable, no LLM in the decision. Closest: FluxMem (structures, at consolidation boundaries), MemCon (operations within retrieval), MemGPT (LLM pages memory) | LO1 |
+| 4 | Architecture | §2 diagram; the no-leakage rule (§5): the controller sees only the turn signal; quality signals act on the next turn | LO3 design |
+| 5 | Requirements | 4 users; key FRs (adaptive switching, stale-fact handling, override, audit log) and NFRs (0 LLM calls, ~0.1 ms decision, offline), all traced to tests | LO3 requirements |
+| 6 | Live demo | `python -m demo.coding_session.present`: traps caught live (2/2 vs 0/2), rationale per turn, live override | LO1 proof of concept |
+| 7–10 | One slide per component (each member) | Claim, closest system, one number (§12.5 + §12.11). Window: 59 wins / 0 losses vs recency. Summarization: live loss score (Spearman 0.91) drives a switch; stale-fact leakage 0.00 vs 0.50. RAG: LLM-free staleness flagging, precision 0.82 → **1.00** with the v4b ensemble, wrongly retired facts 23% → **0%**; tuned chunking 0.399 vs 0.376. Controller: +0.112 over the best single strategy on mixed conversations; ties RAG on LoCoMo; ~0.1 ms | LO2, LO3 |
+| 11 | Results vs others | Coding traps: CEAI 16/26 vs Mem0 5/26 vs fixed window 3/26; Mem0 on LoCoMo: same judged accuracy, +0.129 exact-answer F1, 0 vs ~54 LLM calls | LO1, LO5 |
+| 12 | Cost chart | `results/figures/memory_build_time.png`: 6 s vs 972 s per conversation | LO5 |
+| 13 | Length chart | `results/figures/length_advantage.png`: lead over the window grows +0.28 → +0.42 | LO1 |
+| 14 | Honest limitation | BEAM: 0.346 vs RAG 0.445; cause diagnosed (request-phrased recall → summarizer); planned fix | LO4 Q&A strength |
+| 15 | Technologies | Table in `docs/PP1_CHECKLIST.md` §2, with *why* each was chosen | LO2 |
+| 16 | Standards, plan, risks | CI + 89 tests; pre-registration; no delay vs plan; top risks executed (test-tuning guard, fair baselines, system gates) | LO3 |
+| 17 | Commercialization | 0 memory LLM calls, 162× faster build, private/offline, audit trail; open-source core + drop-in proxy + team dashboard | LO5 |
+| 18 | Next steps | Fix request-phrased routing; staleness for renamed functions and constants; stronger judge; proxy | LO3 plan |
+
+**Do not claim:** "beats Mem0 on accuracy" (not significant); "adaptive beats every fixed strategy
+everywhere" (it ties RAG on LoCoMo, loses on BEAM, and always-hybrid catches 18/26 traps vs 16);
+"the learned controller works". **Do say:** the frozen system's numbers are the official results,
+and v4b is a pre-registered improvement shown next to them.
