@@ -1,0 +1,268 @@
+{
+  "budget_tokens": 700,
+  "final_history_tokens": 1316,
+  "results": {
+    "fixed_6_exchange_window": {
+      "duplicate-function trap": {
+        "caught": false,
+        "detail": "missing `def format_due_date(`",
+        "tokens": 585
+      },
+      "renamed-API trap": {
+        "caught": false,
+        "detail": "missing `def get_user_tasks(uid`",
+        "tokens": 438
+      }
+    },
+    "sliding_window": {
+      "duplicate-function trap": {
+        "caught": false,
+        "detail": "missing `def format_due_date(`",
+        "tokens": 696
+      },
+      "renamed-API trap": {
+        "caught": true,
+        "detail": "found `def get_user_tasks(uid`",
+        "tokens": 697
+      }
+    },
+    "summarization": {
+      "duplicate-function trap": {
+        "caught": true,
+        "detail": "found `def format_due_date(`",
+        "tokens": 692
+      },
+      "renamed-API trap": {
+        "caught": true,
+        "detail": "found `def get_user_tasks(uid`",
+        "tokens": 685
+      }
+    },
+    "rag": {
+      "duplicate-function trap": {
+        "caught": true,
+        "detail": "found `def format_due_date(`",
+        "tokens": 687
+      },
+      "renamed-API trap": {
+        "caught": true,
+        "detail": "found `def get_user_tasks(uid`",
+        "tokens": 679
+      }
+    },
+    "hybrid": {
+      "duplicate-function trap": {
+        "caught": true,
+        "detail": "found `def format_due_date(`",
+        "tokens": 667
+      },
+      "renamed-API trap": {
+        "caught": true,
+        "detail": "found `def get_user_tasks(uid`",
+        "tokens": 661
+      }
+    },
+    "adaptive": {
+      "duplicate-function trap": {
+        "caught": true,
+        "detail": "found `def format_due_date(`",
+        "tokens": 667,
+        "evidence": "exchange 2 (t0004)"
+      },
+      "renamed-API trap": {
+        "caught": true,
+        "detail": "found `def get_user_tasks(uid`",
+        "tokens": 679,
+        "evidence": "exchange 9 (t0018)"
+      }
+    }
+  },
+  "timeline": [
+    {
+      "exchange": 1,
+      "turn_id": "t0001",
+      "task_type": "exploration",
+      "pressure": 0.0243,
+      "strategy": "sliding_window",
+      "rationale": "[history_fits] token pressure 0.02 < 0.90: full recent history fits, window is lossless | features: turn=1, pressure=0.02, task=exploration, prior=None, since_switch=0",
+      "escalations": []
+    },
+    {
+      "exchange": 2,
+      "turn_id": "t0003",
+      "task_type": "code_generation",
+      "pressure": 0.1514,
+      "strategy": "sliding_window",
+      "rationale": "[history_fits] token pressure 0.15 < 0.90: full recent history fits, window is lossless | features: turn=3, pressure=0.15, task=code_generation, prior=sliding_window, since_switch=0",
+      "escalations": []
+    },
+    {
+      "exchange": 3,
+      "turn_id": "t0005",
+      "task_type": "exploration",
+      "pressure": 0.3029,
+      "strategy": "sliding_window",
+      "rationale": "[history_fits] token pressure 0.30 < 0.90: full recent history fits, window is lossless | features: turn=5, pressure=0.30, task=exploration, prior=sliding_window, since_switch=1",
+      "escalations": []
+    },
+    {
+      "exchange": 4,
+      "turn_id": "t0007",
+      "task_type": "debugging",
+      "pressure": 0.42,
+      "strategy": "sliding_window",
+      "rationale": "[history_fits] token pressure 0.42 < 0.90: full recent history fits, window is lossless | features: turn=7, pressure=0.42, task=debugging, prior=sliding_window, since_switch=2",
+      "escalations": [
+        "contradiction_flagged"
+      ]
+    },
+    {
+      "exchange": 5,
+      "turn_id": "t0009",
+      "task_type": "debugging",
+      "pressure": 0.5129,
+      "strategy": "hybrid",
+      "rationale": "[history_fits] token pressure 0.51 < 0.90: full recent history fits, window is lossless | escalation from t0007: 1 stale chunk(s) flagged -> hybrid so the superseding facts are retrievable next to the recent window | features: turn=9, pressure=0.51, task=debugging, prior=sliding_window, since_switch=3",
+      "escalations": [
+        "contradiction_flagged"
+      ]
+    },
+    {
+      "exchange": 6,
+      "turn_id": "t0011",
+      "task_type": "debugging",
+      "pressure": 0.6029,
+      "strategy": "hybrid",
+      "rationale": "[history_fits] token pressure 0.60 < 0.90: full recent history fits, window is lossless | dwell: held hybrid (0 < 3 turns since last switch) | escalation from t0009 (contradiction_flagged) noted; no change for hybrid | features: turn=11, pressure=0.60, task=debugging, prior=hybrid, since_switch=0",
+      "escalations": [
+        "contradiction_flagged"
+      ]
+    },
+    {
+      "exchange": 7,
+      "turn_id": "t0013",
+      "task_type": "debugging",
+      "pressure": 0.6686,
+      "strategy": "hybrid",
+      "rationale": "[history_fits] token pressure 0.67 < 0.90: full recent history fits, window is lossless | dwell: held hybrid (1 < 3 turns since last switch) | escalation from t0011 (contradiction_flagged) noted; no change for hybrid | features: turn=13, pressure=0.67, task=debugging, prior=hybrid, since_switch=1",
+      "escalations": []
+    },
+    {
+      "exchange": 8,
+      "turn_id": "t0015",
+      "task_type": "debugging",
+      "pressure": 0.73,
+      "strategy": "hybrid",
+      "rationale": "[history_fits] token pressure 0.73 < 0.90: full recent history fits, window is lossless | dwell: held hybrid (2 < 3 turns since last switch) | features: turn=15, pressure=0.73, task=debugging, prior=hybrid, since_switch=2",
+      "escalations": []
+    },
+    {
+      "exchange": 9,
+      "turn_id": "t0017",
+      "task_type": "code_refactor",
+      "pressure": 0.7843,
+      "strategy": "sliding_window",
+      "rationale": "[history_fits] token pressure 0.78 < 0.90: full recent history fits, window is lossless | features: turn=17, pressure=0.78, task=code_refactor, prior=hybrid, since_switch=3",
+      "escalations": []
+    },
+    {
+      "exchange": 10,
+      "turn_id": "t0019",
+      "task_type": "chat",
+      "pressure": 0.9043,
+      "strategy": "sliding_window",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 0.90 -> summarization keeps the gist of the long history | dwell: held sliding_window (0 < 3 turns since last switch) | features: turn=19, pressure=0.90, task=chat, prior=sliding_window, since_switch=0",
+      "escalations": []
+    },
+    {
+      "exchange": 11,
+      "turn_id": "t0021",
+      "task_type": "chat",
+      "pressure": 1.0,
+      "strategy": "sliding_window",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 1.00 -> summarization keeps the gist of the long history | dwell: held sliding_window (1 < 3 turns since last switch) | features: turn=21, pressure=1.00, task=chat, prior=sliding_window, since_switch=1",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    },
+    {
+      "exchange": 12,
+      "turn_id": "t0023",
+      "task_type": "chat",
+      "pressure": 1.0,
+      "strategy": "sliding_window",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 1.00 -> summarization keeps the gist of the long history | dwell: held sliding_window (2 < 3 turns since last switch) | escalation from t0021 (loss_threshold_exceeded) noted; no change for sliding_window | features: turn=23, pressure=1.00, task=chat, prior=sliding_window, since_switch=2",
+      "escalations": [
+        "loss_threshold_exceeded",
+        "contradiction_flagged"
+      ]
+    },
+    {
+      "exchange": 13,
+      "turn_id": "t0025",
+      "task_type": "chat",
+      "pressure": 1.0,
+      "strategy": "rag",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 1.00 -> summarization keeps the gist of the long history | escalation from t0023: summary loss 0.4 > 0.15 (tier L2) -> switch summarization to RAG | escalation from t0023 (contradiction_flagged) noted; no change for rag | features: turn=25, pressure=1.00, task=chat, prior=sliding_window, since_switch=3",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    },
+    {
+      "exchange": 14,
+      "turn_id": "t0027",
+      "task_type": "chat",
+      "pressure": 1.0,
+      "strategy": "rag",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 1.00 -> summarization keeps the gist of the long history | dwell: held rag (0 < 3 turns since last switch) | escalation from t0025 (loss_threshold_exceeded) noted; no change for rag | features: turn=27, pressure=1.00, task=chat, prior=rag, since_switch=0",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    },
+    {
+      "exchange": 15,
+      "turn_id": "t0029",
+      "task_type": "chat",
+      "pressure": 1.0,
+      "strategy": "rag",
+      "rationale": "[long_open_conversation] task_type=chat with token pressure 1.00 -> summarization keeps the gist of the long history | dwell: held rag (1 < 3 turns since last switch) | escalation from t0027 (loss_threshold_exceeded) noted; no change for rag | features: turn=29, pressure=1.00, task=chat, prior=rag, since_switch=1",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    },
+    {
+      "exchange": 16,
+      "turn_id": "t0031",
+      "task_type": "code_generation",
+      "pressure": 1.0,
+      "strategy": "hybrid",
+      "rationale": "[build_request] task_type=code_generation (build-request pattern) -> hybrid: recent window + RAG to surface existing definitions before writing new code | escalation from t0029 (loss_threshold_exceeded) noted; no change for hybrid | features: turn=31, pressure=1.00, task=code_generation, prior=rag, since_switch=2",
+      "escalations": [
+        "loss_threshold_exceeded",
+        "contradiction_flagged"
+      ]
+    },
+    {
+      "exchange": 17,
+      "turn_id": "t0033",
+      "task_type": "code_generation",
+      "pressure": 1.0,
+      "strategy": "hybrid",
+      "rationale": "[build_request] task_type=code_generation (build-request pattern) -> hybrid: recent window + RAG to surface existing definitions before writing new code | escalation from t0031 (loss_threshold_exceeded) noted; no change for hybrid | escalation from t0031 (contradiction_flagged) noted; no change for hybrid | features: turn=33, pressure=1.00, task=code_generation, prior=hybrid, since_switch=0",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    },
+    {
+      "exchange": 18,
+      "turn_id": "t0035",
+      "task_type": "code_refactor",
+      "pressure": 1.0,
+      "strategy": "rag",
+      "rationale": "[refactor_request] task_type=code_refactor -> summarization: merged L1 symbol table carries current signatures and renames | escalation from t0033: summary loss 0.5915 > 0.15 (tier L2) -> switch summarization to RAG | features: turn=35, pressure=1.00, task=code_refactor, prior=hybrid, since_switch=1",
+      "escalations": [
+        "loss_threshold_exceeded"
+      ]
+    }
+  ]
+}

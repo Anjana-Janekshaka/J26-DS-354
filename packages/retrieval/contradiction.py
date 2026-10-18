@@ -20,9 +20,9 @@ Only the older chunk is flagged, ``superseded_by`` the newer one. Nothing is del
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+import math
 import re
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -40,6 +40,11 @@ class ContradictionConfig:
     nli_threshold: float = 0.95  # selected on the dev split of eval/synthetic/retrieval (max F1)
     bidirectional: bool = True
     min_content_words: int = 3
+    # v4 option (docs/v4_preregistration.md section 2; off in the frozen system): score NLI-verified
+    # chunks with a logistic regression over (min-direction NLI, max-direction NLI, chunk cosine,
+    # change cue in the newer text), weights fitted on the dev contradiction pairs.
+    ensemble: tuple[float, float, float, float, float] | None = None  # (intercept, w_min, w_max, w_cos, w_cue)
+    ensemble_threshold: float = 0.5
 
 
 @dataclass
@@ -51,6 +56,8 @@ class Verdict:
     evidence: tuple[str, str]
 
 
+CHANGE_CUE = re.compile(r"\b(moved|now|no longer|anymore|any more|switched|changed|left|quit|instead|these days|used to|"
+                        r"not anymore|stopped|started|new)\b", re.I)
 _ROLE_PREFIX = re.compile(r"^(?:\[[^\]]*\]\s*)?[\w .'-]{1,40}:\s+", re.M)
 _REQUEST = re.compile(
     r"^(?:please |can you |could you |let'?s |now |also |next,? )?(?:add|write|create|make|build|implement|update|configure|set up|"
@@ -135,10 +142,12 @@ class ContradictionChecker:
         # ---- stage 2: NLI on the surviving sentence pairs
         if batch:
             probs = self.nli.contradiction_prob(batch)
-            if cfg.bidirectional:
-                rev = self.nli.contradiction_prob([(b, a) for a, b in batch])
-                probs = [min(p, r) for p, r in zip(probs, rev)]
+            rev = self.nli.contradiction_prob([(b, a) for a, b in batch]) if (cfg.bidirectional or cfg.ensemble) else probs
             self.pairs_verified += len(batch)
+            if cfg.ensemble is not None:
+                return verdicts + self._ensemble(new_id, owners, batch, probs, rev, sims, older, new_text, return_all)
+            if cfg.bidirectional:
+                probs = [min(p, r) for p, r in zip(probs, rev)]
             best: dict[str, tuple[float, tuple[str, str]]] = {}
             floor = -1.0 if return_all else cfg.nli_threshold
             for cid, p, pair in zip(owners, probs, batch):
@@ -147,3 +156,18 @@ class ContradictionChecker:
             for cid, (p, pair) in best.items():
                 verdicts.append(Verdict(cid, new_id, p, "nli", pair))
         return verdicts
+
+    def _ensemble(self, new_id, owners, batch, fwd, rev, sims, older, new_text, return_all) -> list[Verdict]:
+        b, w_min, w_max, w_cos, w_cue = self.config.ensemble
+        cue = float(bool(CHANGE_CUE.search(new_text)))
+        cos_of = {cid: float(sims[i]) for i, (cid, *_rest) in enumerate(older)}
+        agg: dict[str, list] = {}
+        for cid, f, r, pair in zip(owners, fwd, rev, batch):
+            lo, hi, best_pair = agg.get(cid, (-1.0, -1.0, pair))
+            agg[cid] = (max(lo, min(f, r)), max(hi, f, r), pair if min(f, r) > lo else best_pair)
+        out = []
+        for cid, (lo, hi, pair) in agg.items():
+            p = 1.0 / (1.0 + math.exp(-(b + w_min * lo + w_max * hi + w_cos * cos_of[cid] + w_cue * cue)))
+            if return_all or p >= self.config.ensemble_threshold:
+                out.append(Verdict(cid, new_id, p, "nli_ensemble", pair))
+        return out

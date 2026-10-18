@@ -140,3 +140,27 @@ def required_hit(context: str, required: list[str], stale: list[str] | None = No
                     if not marked:
                         return False
     return True
+
+
+def cluster_bootstrap_ci(rows: list[dict], stat, group_key: str = "conv", n_boot: int = 2000, seed: int = 0,
+                         alpha: float = 0.05) -> dict[str, float]:
+    """Percentile bootstrap CI that resamples whole groups (conversations), not single rows.
+
+    Probes from one conversation share history, so they are not independent; resampling them
+    one by one would give intervals that are too narrow. ``stat`` maps a list of rows to a float.
+    """
+    import random
+    from collections import defaultdict
+
+    groups: dict = defaultdict(list)
+    for r in rows:
+        groups[r[group_key]].append(r)
+    keys = sorted(groups)
+    est = stat(rows)
+    if len(keys) < 2:
+        return {"estimate": est, "ci_low": est, "ci_high": est, "n_groups": len(keys)}
+    rng = random.Random(seed)
+    vals = sorted(stat([r for k in (rng.choice(keys) for _ in keys) for r in groups[k]]) for _ in range(n_boot))
+    lo = vals[int(alpha / 2 * n_boot)]
+    hi = vals[min(n_boot - 1, int((1 - alpha / 2) * n_boot))]
+    return {"estimate": est, "ci_low": lo, "ci_high": hi, "n_groups": len(keys)}

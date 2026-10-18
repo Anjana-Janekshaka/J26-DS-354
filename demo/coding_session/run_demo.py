@@ -21,7 +21,10 @@ from contracts import ControllerDecision, OverrideInfo, count_tokens
 from contracts.text import BLOCK_TURNS, CONTEXT_BLOCK_SEPARATOR
 from dashboard import render_static
 from decision_logger import DecisionLogger
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from integration import MemoryPipeline, assemble_prompt
+from retrieval import RetrievalConfig
+from retrieval.rerank import DEFAULT_RERANKER
 from sliding_window import RecencyOnlyWindow
 
 from .script import EXCHANGES, TRAPS, Trap
@@ -55,18 +58,24 @@ def _find_turn(context: str, needle: str, ex_of_turn: dict[str, int]) -> str:
     return "summary/window"
 
 
-def run(budget: int, out: Path, quiet: bool = False) -> dict:
+def run(budget: int, out: Path, quiet: bool = False, reranker: str | None = DEFAULT_RERANKER,
+        exchanges: list[tuple[str, str]] = EXCHANGES, traps: list[Trap] = TRAPS,
+        conversation_id: str = "coding-session-demo") -> dict:
     if out.exists():
         shutil.rmtree(out)
-    pipe = MemoryPipeline("coding-session-demo", token_budget=budget, log_dir=out)
+    # The frozen system configuration: tuned controller rules + reranked RAG (CLAUDE.md section 12).
+    pipe = MemoryPipeline(conversation_id, token_budget=budget, log_dir=out, controller=frozen_controller(),
+                          retrieval_config=RetrievalConfig(**system_retrieval(reranker=reranker)))
     fixed6 = RecencyOnlyWindow(k=12)
     ex_of_turn: dict[str, int] = {}
-    traps_by_ex = {t.exchange: t for t in TRAPS}
+    traps_by_ex: dict[int, list[Trap]] = {}
+    for t in traps:
+        traps_by_ex.setdefault(t.exchange, []).append(t)
     strategies = ["fixed_6_exchange_window", "sliding_window", "summarization", "rag", "hybrid", "adaptive"]
     results: dict[str, dict[str, dict]] = {s: {} for s in strategies}
     timeline: list[dict] = []
 
-    for ex, (user_msg, reply) in enumerate(EXCHANGES, start=1):
+    for ex, (user_msg, reply) in enumerate(exchanges, start=1):
         res = pipe.user_turn(user_msg)
         ex_of_turn[res.turn.turn_id] = ex
         d = res.decision
@@ -81,8 +90,7 @@ def run(budget: int, out: Path, quiet: bool = False) -> dict:
                 "escalations": [e.kind for e in res.escalations],
             }
         )
-        if ex in traps_by_ex:
-            trap = traps_by_ex[ex]
+        for trap in traps_by_ex.get(ex, []):
             sig = res.signal
             for s in strategies:
                 if s == "adaptive":
@@ -113,6 +121,7 @@ def run(budget: int, out: Path, quiet: bool = False) -> dict:
     render_static(logger.records(), logger.escalation_events(), out / "dashboard.html")
     pipe.close()
     summary = {
+        "system": system_name(),
         "budget_tokens": budget,
         "final_history_tokens": pipe.manager.tokens_used,
         "results": results,
@@ -147,8 +156,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=700)
     ap.add_argument("--out", default="runs/demo")
+    ap.add_argument("--no-reranker", action="store_true", help="plain FAISS ranking for RAG (ablation)")
     args = ap.parse_args()
-    summary = run(args.budget, Path(args.out))
+    summary = run(args.budget, Path(args.out), reranker=None if args.no_reranker else DEFAULT_RERANKER)
     print_report(summary)
     print(f"\nDecision log: {Path(args.out) / 'decisions.jsonl'}\nDashboard:    {Path(args.out) / 'dashboard.html'}")
     sys.stdout.flush()

@@ -1,0 +1,100 @@
+{
+  "split": "dev",
+  "n_conversations": 20,
+  "budget": 100,
+  "chosen": {
+    "weights": {
+      "relevance": 0.5,
+      "freshness": 0.0,
+      "importance": 0.5,
+      "state": 0.0
+    },
+    "recall": 1.0,
+    "recall_current_block": 1.0,
+    "recall_earlier_block": 1.0,
+    "mean_tokens": 35.388888888888886,
+    "n": 180
+  },
+  "equal_weights": {
+    "weights": {
+      "relevance": 0.25,
+      "freshness": 0.25,
+      "importance": 0.25,
+      "state": 0.25
+    },
+    "recall": 0.7333333333333333,
+    "recall_current_block": 1.0,
+    "recall_earlier_block": 0.4,
+    "mean_tokens": 96.55,
+    "n": 180
+  },
+  "equal_weights_rank": 15,
+  "gate_passed": true,
+  "top5": [
+    {
+      "weights": {
+        "relevance": 0.5,
+        "freshness": 0.0,
+        "importance": 0.5,
+        "state": 0.0
+      },
+      "recall": 1.0,
+      "recall_current_block": 1.0,
+      "recall_earlier_block": 1.0,
+      "mean_tokens": 35.388888888888886,
+      "n": 180
+    },
+    {
+      "weights": {
+        "relevance": 0.75,
+        "freshness": 0.0,
+        "importance": 0.25,
+        "state": 0.0
+      },
+      "recall": 1.0,
+      "recall_current_block": 1.0,
+      "recall_earlier_block": 1.0,
+      "mean_tokens": 41.97222222222222,
+      "n": 180
+    },
+    {
+      "weights": {
+        "relevance": 1.0,
+        "freshness": 0.0,
+        "importance": 0.0,
+        "state": 0.0
+      },
+      "recall": 1.0,
+      "recall_current_block": 1.0,
+      "recall_earlier_block": 1.0,
+      "mean_tokens": 58.4,
+      "n": 180
+    },
+    {
+      "weights": {
+        "relevance": 0.5,
+        "freshness": 0.25,
+        "importance": 0.25,
+        "state": 0.0
+      },
+      "recall": 1.0,
+      "recall_current_block": 1.0,
+      "recall_earlier_block": 1.0,
+      "mean_tokens": 76.42777777777778,
+      "n": 180
+    },
+    {
+      "weights": {
+        "relevance": 0.75,
+        "freshness": 0.25,
+        "importance": 0.0,
+        "state": 0.0
+      },
+      "recall": 1.0,
+      "recall_current_block": 1.0,
+      "recall_earlier_block": 1.0,
+      "mean_tokens": 86.8,
+      "n": 180
+    }
+  ]
+}

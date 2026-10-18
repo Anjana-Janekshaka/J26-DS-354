@@ -27,7 +27,8 @@ Benchmarks (each writes `results/summary.json` next to it):
 python -m eval.synthetic.retrieval.run        # contradiction-flag P/R/F1 + calibration
 python -m eval.synthetic.summarization.run    # structured+merge vs naive, loss / SRR / stale leakage
 python -m eval.synthetic.sliding_window.run   # DSW vs recency baselines + 35-point weight ablation
-python -m eval.synthetic.controller.run       # strategy-selection macro-F1 + adaptive vs fixed
+python -m eval.synthetic.controller.tune_rules  # tune rule thresholds on train/val -> frozen_rule_config.json
+python -m eval.synthetic.controller.run       # held-out test split: macro-F1 + adaptive vs fixed, 95% CIs
 python -m eval.locomo.run [--no-nli]          # primary benchmark (LoCoMo, 10 conversations, 1,986 QA)
 ```
 
@@ -80,11 +81,24 @@ Hard rule enforced by `tests/test_import_boundaries.py`: a package under `packag
 `contracts` and itself. Leakage-freedom of the controller is structural: `RuleBasedController.decide`
 receives only the `TurnSignal` (`tests/test_controller.py::test_decide_signature_has_no_access_to_module_outputs`).
 
-## Results (2026-10-06, CPU, no LLM credentials)
+## Final results (2026-10-15): see [`results/RESULTS.md`](results/RESULTS.md)
 
-All numbers below are reproducible with the commands above; each is read from the matching
-`results/summary.json`. No LLM was called anywhere: the LLM-backed paths (LLM tier generator,
-LLM-judge oracle, LoCoMo QA token-F1) are implemented and report themselves as **not run**.
+The configuration was frozen on dev data, then each test split was run once. The sheet is
+generated from `results/final/*.json` by `python scripts/build_results.py --colab <results folder>`.
+
+| headline (test split) | result |
+|---|---|
+| Controller, mixed-workload switch set | adaptive **0.986** evidence hit vs best single strategy 0.874 (**+0.112**, 95% CI [+0.093, +0.129]); vs always-hybrid **+0.060** with fewer tokens |
+| Coding demo | adaptive **2/2** traps caught vs fixed window **0/2** |
+| LoCoMo (966 questions) | adaptive ties the best strategy (RAG): 0.654 vs 0.656. The RAG read path went from 0.391 to **0.655** on the same conversations |
+| Summarization | stale-fact leakage **0.00** vs 0.50 naive; signature retention 0.90 vs 0 |
+| Contradiction flags | precision 0.82, recall 0.73 |
+| Sliding window | 59 wins / 0 losses vs recency-only |
+
+## Earlier results (2026-10-06, CPU, no LLM credentials; development history)
+
+These were the first numbers, from before the RAG read-path changes and the frozen controller
+configuration. They are kept for history; the results above supersede them.
 
 ### Integration — coding-session demo (`python -m demo.coding_session.run_demo`, budget 700 tokens)
 
@@ -111,6 +125,36 @@ questions to RAG and ties it. An always-on hybrid ties adaptive on the synthetic
 −0.085 below it on LoCoMo. Macro-F1 is against the *cheapest* hitting strategy; the controller
 always picks *a* hitting strategy on the synthetic set but often not the cheapest one. The LLM-judge
 half of the dual-source oracle has not been run (needs `--judge` + credentials).
+
+### Controller evaluation protocol (Phase 1, 2026-10-12)
+
+The table above comes from the original 30-conversation set, whose wording the rules were written
+against, with no train/test split. It is kept reproducible as `run --split legacy`. The protocol now
+used for reporting:
+
+- **Phrasing families** (`eval/synthetic/controller/families.py`) share one conversation structure
+  and the same objective evidence. Their user wording differs:
+  - **A:** the canonical wording the rules were written against.
+  - **B:** paraphrases.
+  - **C:** held-out paraphrases.
+- **Varied structure**: 0–3 early exchanges and a 2–12 exchange detour, so turn count and token
+  pressure vary between conversations.
+- **Fixed split** (`splits.json`, owned by the controller component):
+  - **train:** A (60) + B (50)
+  - **val:** B (20)
+  - **test:** C (70), never used for tuning.
+- **Rule thresholds** are tuned on train/val only (`tune_rules.py`) and frozen before the test split
+  is run.
+- **Record once, replay many** (`trace.py`): the pipeline runs once per conversation. Any controller
+  is then evaluated by replaying the trace. `tests/test_controller_eval.py` checks that replay
+  equals a live run.
+- **Baselines:** each fixed strategy, always-hybrid, random, majority class (from train), and the
+  oracle upper bound. Every comparison carries a 95% CI that resamples whole conversations.
+
+Held-out numbers: _to be filled from `results/test/summary.json` after running with the real models._
+`--offline` (hashing embedder, no NLI) only checks that the code runs; its numbers are not results.
+Controller results produced with NLI enabled before the 2026-10-12 probe fix (probes no longer mark
+contradiction flags as reported, `integration/pipeline.py`) should be re-run.
 
 ### Component 1 — Dynamic Sliding Window (40 topic-shift conversations, 360 probes)
 

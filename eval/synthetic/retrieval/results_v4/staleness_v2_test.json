@@ -1,0 +1,24 @@
+{
+  "split": "test",
+  "threshold": 0.4666,
+  "v1_test": {
+    "precision": 0.8222222222222222,
+    "recall": 0.7254901960784313,
+    "f1": 0.7708333333333334,
+    "tp": 37,
+    "fp": 8,
+    "fn": 14,
+    "stale_fact_leak_rate": 0.27450980392156865,
+    "false_supersession_rate": 0.22857142857142856
+  },
+  "v2_test": {
+    "precision": 1.0,
+    "recall": 0.6862745098039216,
+    "f1": 0.813953488372093,
+    "tp": 35,
+    "fp": 0,
+    "fn": 16,
+    "stale_fact_leak_rate": 0.3137254901960784,
+    "false_supersession_rate": 0.0
+  }
+}

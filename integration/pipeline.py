@@ -36,7 +36,7 @@ from conversation_manager import ClassifierConfig, ConversationManager, SignalBu
 from decision_logger import DecisionLogger, OverrideInbox
 from retrieval import NLIScorer, RetrievalConfig, RetrievalEngine
 from sliding_window import DynamicSlidingWindow, SlidingWindowConfig
-from summarization import HierarchicalSummarizer, LLMGenerator, SummarizationConfig
+from summarization import AssistedGenerator, HierarchicalSummarizer, LLMGenerator, SummarizationConfig
 
 from .llm_interface import AssembledPrompt, assemble_prompt
 
@@ -72,6 +72,7 @@ class MemoryPipeline:
         controller: RuleBasedController | None = None,
         llm=None,
         summarize_with_llm: bool = False,
+        llm_policy: str = "strict",
         sw_config: SlidingWindowConfig | None = None,
         summarization_config: SummarizationConfig | None = None,
         retrieval_config: RetrievalConfig | None = None,
@@ -84,7 +85,15 @@ class MemoryPipeline:
         self.bus = SignalBus()
         self.manager = ConversationManager(conversation_id, token_budget, self.bus, self.embedder, classifier_config)
         if modules is None:
-            generator = LLMGenerator(llm) if (summarize_with_llm and llm is not None) else None
+            # llm_policy: "strict" (default) = no LLM anywhere in the memory path; "assisted" = the LLM
+            # writes only the L2/L3 summary tiers. It changes what the summarizer writes, never which
+            # strategy the controller picks (the controller never sees it).
+            if llm_policy not in ("strict", "assisted"):
+                raise ValueError(f"llm_policy must be 'strict' or 'assisted', not {llm_policy!r}")
+            if llm_policy == "assisted" and llm is None:
+                raise ValueError("llm_policy='assisted' needs an llm")
+            generator = (AssistedGenerator(llm) if llm_policy == "assisted" else
+                         LLMGenerator(llm) if (summarize_with_llm and llm is not None) else None)
             modules = {
                 "sliding_window": DynamicSlidingWindow(self.embedder, sw_config),
                 "summarization": HierarchicalSummarizer(generator, summarization_config),
@@ -121,9 +130,28 @@ class MemoryPipeline:
     def _ingest(self, turn: ConversationTurn) -> None:
         for m in self.modules.values():
             m.ingest(turn)
+        self._feed_observations(turn)
+
+    _OBSERVATION_KINDS = ("statement", "user_state", "constraint", "decision")
+
+    def _feed_observations(self, turn: ConversationTurn) -> None:
+        """v3 option: pass the summarizer's verbatim fact sentences for this turn to RAG as short
+        retrievable observations. Integration wires the two packages; neither imports the other."""
+        rag = self.modules.get("rag")
+        if rag is None or not getattr(getattr(rag, "config", None), "observations", False):
+            return
+        from summarization.extract import extract_facts
+
+        seq = getattr(self, "_obs_seq", [0])
+        self._obs_seq = seq
+        facts, _ = extract_facts(turn, seq)
+        for f in facts:
+            if f.kind in self._OBSERVATION_KINDS and len(f.value.split()) >= 4:
+                rag.add_observation(f.value, turn)
 
     # ------------------------------------------------------------------ escalations (Tier 2, next turn)
-    def _escalations(self, signal: TurnSignal, outputs: dict[str, StrategyModuleOutput]) -> list[EscalationEvent]:
+    def _escalations(self, signal: TurnSignal, outputs: dict[str, StrategyModuleOutput], commit: bool = True) -> list[EscalationEvent]:
+        """``commit=False`` (evaluation probes) builds the events without marking flags as reported."""
         events: list[EscalationEvent] = []
         summ = outputs.get("summarization")
         if summ is not None and summ.quality.loss_threshold_exceeded:  # type: ignore[union-attr]
@@ -143,7 +171,8 @@ class MemoryPipeline:
         if rag is not None:
             new = [f for f in rag.quality.contradiction_flags if (f.chunk_id, f.superseded_by) not in self._reported_flags]  # type: ignore[union-attr]
             if new:
-                self._reported_flags |= {(f.chunk_id, f.superseded_by) for f in new}
+                if commit:
+                    self._reported_flags |= {(f.chunk_id, f.superseded_by) for f in new}
                 events.append(
                     EscalationEvent(
                         event_id=uuid.uuid4().hex[:12],
@@ -184,7 +213,7 @@ class MemoryPipeline:
                     logged_at=utcnow(),
                 )
             )
-        events = self._escalations(signal, outputs)
+        events = self._escalations(signal, outputs, commit=remember)
         for ev in events:
             if remember:
                 self.controller.register_escalation(ev)

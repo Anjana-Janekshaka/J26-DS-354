@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import statistics
 import time
 import warnings
@@ -34,8 +35,12 @@ from contracts import ControllerDecision, OverrideInfo
 from contracts.text import CachingEmbedder
 from eval.metrics import answer_in_context, evidence_hit, macro_f1, ndcg_at_k, oracle_label, token_f1
 from integration import MemoryPipeline, assemble_prompt
+from eval.frozen import frozen_controller, system_name, system_retrieval
 from eval.judge import GRADES, grade
-from integration.llm_client import describe, get_llm
+from concurrent.futures import ThreadPoolExecutor
+
+from integration.llm_client import concurrency, describe, get_llm, stats as llm_stats
+from retrieval.rerank import DEFAULT_RERANKER
 from retrieval import CrossEncoderNLI, RetrievalConfig, RetrievalEngine, SentenceTransformerEmbedder
 
 from .loader import CATEGORY_NAMES, load
@@ -43,7 +48,11 @@ from .loader import CATEGORY_NAMES, load
 HERE = Path(__file__).parent
 STRATEGIES = ["sliding_window", "summarization", "rag", "hybrid"]
 PREFERENCE = {s: i for i, s in enumerate(STRATEGIES)}
-QA_SYSTEM = "Answer the question using only the memory context. Reply with a short phrase, no explanation."
+QA_SYSTEM = (
+    "Answer the question using only the memory context. Each memory line starts with the date of that "
+    "conversation session in [brackets]; resolve relative times ('yesterday', 'last week', 'next month') "
+    "against that date and answer with an absolute date. Reply with a short phrase, no explanation."
+)
 
 
 def forced(tid: str, s: str) -> ControllerDecision:
@@ -54,8 +63,11 @@ def forced(tid: str, s: str) -> ControllerDecision:
 def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict], dict]:
     t0 = time.time()
     pipe = MemoryPipeline(conv.sample_id, token_budget=args.budget, embedder=emb, nli=nli,
+                          controller=None if args.default_rules else frozen_controller(),
                           llm=llm if args.llm_summaries else None, summarize_with_llm=args.llm_summaries,
-                          retrieval_config=RetrievalConfig(check_contradictions=nli is not None))
+                          retrieval_config=RetrievalConfig(**system_retrieval(
+                              check_contradictions=nli is not None, compact_headers=not args.full_headers,
+                              reranker=args.reranker, neighbors=args.neighbors, hybrid=args.hybrid, mmr_lambda=args.mmr)))
     gran = {m: RetrievalEngine(emb, None, RetrievalConfig(mode=m, check_contradictions=False)) for m in ("turn", "segment", "adaptive")}
     dia_to_tid: dict[str, str] = {}
     text_of: dict[str, str] = {}
@@ -68,7 +80,14 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
     ingest_s = time.time() - t0
 
     rows = []
-    for q in conv.qa[: args.max_questions]:
+    questions = conv.qa
+    if args.max_questions and args.max_questions < len(questions):
+        # Seeded random sample, kept in original order. LoCoMo lists questions grouped by category,
+        # so taking the first N would over-sample some categories and skip others entirely.
+        rng = random.Random(f"{args.sample_seed}:{conv.sample_id}")
+        keep = set(rng.sample(range(len(questions)), args.max_questions))
+        questions = [q for i, q in enumerate(questions) if i in keep]
+    for q in questions:
         ev_texts = [text_of[e] for e in q.evidence if e in text_of]
         r = pipe.user_turn(q.question, remember=False, respond=False)
         budget = r.signal.token_usage.budget
@@ -107,17 +126,29 @@ def run_conversation(conv, args, emb, nli, llm, judge=None) -> tuple[list[dict],
             }
         if args.llm and llm is not None and q.answer is not None and q.category != 5:
             row["question"], row["gold_answer"] = q.question, str(q.answer)
-            for s in ("adaptive", "rag", "sliding_window", "summarization", "hybrid"):
-                pred = llm(QA_SYSTEM, f"[Memory context]\n{ctx[s].context}\n\nQuestion: {q.question}")
+            names = ("adaptive", "rag", "sliding_window", "summarization", "hybrid")
+            # Identical contexts (adaptive always equals one fixed strategy) are answered once, and the
+            # distinct calls go out in parallel (the server batches them).
+            unique_ctx = list(dict.fromkeys(ctx[s].context for s in names))
+            with ThreadPoolExecutor(concurrency()) as pool:
+                answers = dict(zip(unique_ctx, pool.map(
+                    lambda c: llm(QA_SYSTEM, f"[Memory context]\n{c}\n\nQuestion: {q.question}"), unique_ctx)))
+                grades: dict[str, str | None] = {}
+                if judge is not None:
+                    preds = list(dict.fromkeys(answers.values()))
+                    grades = dict(zip(preds, pool.map(lambda a: grade(judge, q.question, str(q.answer), a), preds)))
+            for s in names:
+                pred = answers[ctx[s].context]
                 row[s]["answer"] = pred
                 row[s]["qa_f1"] = token_f1(pred, str(q.answer))
                 if judge is not None:
-                    g = grade(judge, q.question, str(q.answer), pred)
+                    g = grades[pred]
                     row[s]["judge_grade"] = g
                     row[s]["judge_score"] = GRADES.get(g) if g else None
         rows.append(row)
     stats = {"conv": conv.sample_id, "turns": len(conv.turns), "questions": len(conv.qa), "ingest_s": ingest_s,
              "total_s": time.time() - t0, "nli_pairs": getattr(nli, "calls", 0),
+             "llm": llm_stats(llm) if llm is not None else None, "judge": llm_stats(judge) if judge is not None else None,
              "chunk_granularity_adaptive": dict(Counter(c.granularity for c in gran["adaptive"].chunks.values() if c.active))}
     pipe.close()
     return rows, stats
@@ -173,11 +204,21 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=1024)
     ap.add_argument("--conversations", type=int, default=10)
+    ap.add_argument("--split", choices=["dev", "test", "all"], default="all",
+                    help="dev = conversations 1,3,5,7,9 (even index), test = 2,4,6,8,10; tune on dev only")
+    ap.add_argument("--reranker", default=DEFAULT_RERANKER, help="cross-encoder that reranks RAG candidates (selected on the dev split)")
+    ap.add_argument("--no-reranker", dest="reranker", action="store_const", const=None, help="plain FAISS ranking (ablation)")
+    ap.add_argument("--neighbors", type=int, default=0, help="adjacent turns added around each retrieved RAG turn")
+    ap.add_argument("--hybrid", action="store_true", help="v2: fuse dense + BM25 rankings (RRF)")
+    ap.add_argument("--mmr", type=float, default=None, help="v2: MMR lambda for redundancy-aware ordering")
+    ap.add_argument("--full-headers", action="store_true", help="old verbose RAG chunk headers (ablation)")
+    ap.add_argument("--default-rules", action="store_true", help="RuleConfig() defaults instead of the frozen controller config")
     ap.add_argument("--word-budget", type=int, default=400, help="equal-cost budget (words) for the granularity comparison")
     ap.add_argument("--no-nli", action="store_true", help="skip the NLI contradiction stage (much faster on CPU)")
     ap.add_argument("--llm", action="store_true", help="also answer questions with the configured LLM and score token-F1")
     ap.add_argument("--judge-answers", action="store_true", help="grade LLM answers with the judge model (correct/partial/wrong)")
-    ap.add_argument("--max-questions", type=int, default=None, help="cap questions per conversation (sampled plan)")
+    ap.add_argument("--max-questions", type=int, default=None, help="random sample of N questions per conversation")
+    ap.add_argument("--sample-seed", type=int, default=0, help="seed for --max-questions sampling")
     ap.add_argument("--llm-summaries", action="store_true", help="build L1/L2/L3 with the configured LLM instead of the rule-based generator")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
@@ -185,6 +226,8 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     convs = load()[: args.conversations]
+    if args.split != "all":
+        convs = [c for i, c in enumerate(convs) if i % 2 == (0 if args.split == "dev" else 1)]
     emb = CachingEmbedder(SentenceTransformerEmbedder())
     nli = None if args.no_nli else CrossEncoderNLI()
     llm = get_llm(out / "llm_cache.jsonl") if (args.llm or args.llm_summaries) else None
@@ -198,12 +241,15 @@ def main() -> None:
         rows, stats = run_conversation(conv, args, emb, nli, llm, judge)
         all_rows += rows
         all_stats.append(stats)
-        print(f"{conv.sample_id}: {stats['turns']} turns, {stats['questions']} questions, {stats['total_s']:.0f}s", flush=True)
+        print(f"{conv.sample_id}: {stats['turns']} turns, {stats['questions']} questions, {stats['total_s']:.0f}s"
+              + (f", LLM {stats['llm']['calls']} calls @ {stats['llm']['s_per_call']} s/call" if stats.get('llm') and stats['llm']['calls'] else ""), flush=True)
         with open(out / "questions.jsonl", "a" if len(all_stats) > 1 else "w", encoding="utf-8") as f:
             f.write("\n".join(json.dumps(r) for r in rows) + "\n")
 
     summary = aggregate(all_rows)
-    summary["config"] = {"budget": args.budget, "conversations": len(convs), "nli": nli is not None,
+    summary["config"] = {"system": system_name(), "budget": args.budget, "conversations": len(convs), "nli": nli is not None, "split": args.split,
+                         "rag": {"compact_headers": not args.full_headers, "reranker": args.reranker, "neighbors": args.neighbors,
+                                 "hybrid": args.hybrid, "mmr_lambda": args.mmr},
                          "qa_llm": f"run with {describe(llm)}" if (llm is not None and args.llm) else "not run (pass --llm with an LLM configured)",
                          "summary_generator": f"llm ({describe(llm)})" if args.llm_summaries else "rule_based",
                          "answer_judge": describe(judge) if judge is not None else "not run",

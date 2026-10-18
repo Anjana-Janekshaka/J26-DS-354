@@ -1,0 +1,39 @@
+{
+  "split": "val",
+  "rules": "frozen (frozen_rule_config.json, tuned on train+val (selected on val macro-F1, then acceptable accuracy, then tokens))",
+  "n_train_rows": 660,
+  "train_label_counts": {
+    "sliding_window": 216,
+    "summarization": 25,
+    "rag": 385,
+    "hybrid": 34
+  },
+  "results": {
+    "rules (frozen)": {
+      "evidence_hit": 0.9916666666666667,
+      "mean_tokens": 226.96666666666667,
+      "macro_f1": 0.3265229668674699,
+      "n": 120
+    },
+    "logistic_regression": {
+      "evidence_hit": 0.9333333333333333,
+      "mean_tokens": 192.64166666666668,
+      "macro_f1": 0.3961943069306931,
+      "n": 120
+    },
+    "random_forest": {
+      "evidence_hit": 0.9166666666666666,
+      "mean_tokens": 192.65,
+      "macro_f1": 0.4499227053140097,
+      "n": 120
+    },
+    "gbdt": {
+      "evidence_hit": 0.9166666666666666,
+      "mean_tokens": 192.925,
+      "macro_f1": 0.42873470199051594,
+      "n": 120
+    }
+  },
+  "selected": "logistic_regression",
+  "gate_passed": false
+}

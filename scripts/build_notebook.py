@@ -50,17 +50,44 @@ sample (3 conversations × 100 questions) is about 1–2 hours end to end.
     code("""
 # ---- configuration ------------------------------------------------------------------------
 ANSWER_MODEL = "qwen2.5:7b-instruct"    # answers questions / writes summaries
-JUDGE_MODEL = "qwen2.5:14b-instruct"    # grades answers; keep it larger than the answer model
-CONVERSATIONS = 3                       # LoCoMo conversations (10 = full set)
-MAX_QUESTIONS = 100                     # questions per conversation (None = all)
+JUDGE_MODEL = "qwen2.5:7b-instruct"     # grades answers; 14B is better but crowds a free T4 (OK on Kaggle 2xT4)
+CONVERSATIONS = 2                       # LoCoMo conversations (10 = full set)
+MAX_QUESTIONS = 50                      # questions per conversation (None = all)
+PARALLEL = 4                            # requests sent at once; Ollama batches them on the GPU
 REPO_URL = ""                           # git URL if the repo is pushed; otherwise upload the zip
+QA_TEST_QUESTIONS = 60                  # random LoCoMo test questions per test conversation for answer accuracy
 RUN = {
-    "locomo_qa": True,                  # answers + token-F1 + judge grades
-    "locomo_llm_summaries": False,      # evidence metrics with LLM-written L1/L2/L3 (slower)
-    "controller_judge": True,           # LLM-judge oracle on the synthetic controller set
-    "locomo_plus": False,               # deterministic; slow on CPU-bound hosts
-    "labelling_sheets": True,           # needs locomo_qa
+    # FINAL RUN (frozen configuration). The val check gates everything after it: if the frozen system
+    # scores below its own recorded val result, the notebook stops before touching any test split.
+    # v2 hybrid, PRE-REGISTERED (docs/v2_hybrid_preregistration.md): dev/val gates, then each test split once
+    # External baselines under identical conditions (docs/baselines_protocol.md):
+    "baselines": False,                 # run 1 done 2026-10-16 (results/final/baselines)
+    "mem0_fixed": False,                # done 2026-10-16 (results/final/baselines_mem0_fixed)
+    # v4 jobs that need an LLM (pre-registered 2026-10-17; the CPU-only v4 items run locally):
+    "llm_policy_dev": True,             # docs/llm_policy_preregistration.md: strict vs assisted, 20 LoCoMo-Plus dev items (amended from 60)
+    "mem0_coding_traps": True,          # docs/mem0_coding_preregistration.md: the coding traps on Mem0
+    # v3, PRE-REGISTERED (docs/v3_preregistration.md): gates G2-G4 on dev/val, then each test split once
+    "v3_preregistered": False,          # done 2026-10-16: gate G3 failed, so no v3 test runs (must stay off)
+    "v2_preregistered": False,          # done 2026-10-15: gate G3 failed, so no v2 test runs (must stay off)
+    # v2 retrieval options on the LoCoMo DEV split (done 2026-10-16):
+    "v2_dev_retrieval": False,
+    # FINAL RUN - already done on 2026-10-15 and frozen; leave off (results live in ceai_runs/final):
+    "val_check": False,                 # synthetic controller val with the final code (re-records traces)
+    "final_test": False,                # every test split, once: LoCoMo, in-stream LoCoMo, LoCoMo-Plus, controller
+    "locomo_qa_test": False,            # answer accuracy (LLM + judge) on a random LoCoMo test sample
+    "labelling_sheets": False,          # blind sheets from the test answers, for the human-agreement check
+    # Development jobs (already done - leave off; tuning would overwrite the frozen config):
+    "controller_tuning": False,
+    "locomo_plus_routing_dev": False,
+    "locomo_qa": False,                 # pilot: first conversations, not the test split
+    "locomo_llm_summaries": False,
+    "controller_judge": False,          # 7B judge is not usable for strategy labels (CLAUDE.md 12.3)
+    "locomo_plus": False,
 }
+NEED_LLM = (RUN["locomo_qa"] or RUN["locomo_qa_test"] or RUN["locomo_llm_summaries"] or RUN["controller_judge"]
+            or RUN["v2_preregistered"] or RUN["baselines"] or RUN["mem0_fixed"] or RUN["v3_preregistered"]
+            or RUN["llm_policy_dev"] or RUN["mem0_coding_traps"])
+
 """),
     code("""
 import os, sys, glob, json, time, shutil, pathlib, subprocess, urllib.request
@@ -84,53 +111,103 @@ print("results directory:", WORK)
     code("""
 # ---- get the code ---------------------------------------------------------------------------
 CODE = pathlib.Path("/tmp/ceai-memory-middleware")
-if not CODE.exists():
-    if REPO_URL:
-        subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
+# Always start from a fresh copy: a code folder left over from an earlier session would silently run old code.
+os.chdir("/tmp")
+shutil.rmtree(CODE, ignore_errors=True)
+if REPO_URL:
+    subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(CODE)], check=True)
+else:
+    # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
+    # /kaggle/input is read-only, so copy to /tmp before the editable install.
+    dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
+    zips = (glob.glob("/kaggle/input/**/ceai-memory-middleware*.zip", recursive=True)
+            + glob.glob("/content/ceai-memory-middleware*.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware*.zip"))
+    if dirs:
+        shutil.copytree(dirs[0], CODE)
+    elif zips:
+        newest = max(zips, key=os.path.getmtime)  # re-uploads can leave older copies next to the new one
+        print("using", newest, "of", len(zips), "zip(s) found")
+        shutil.unpack_archive(newest, "/tmp")
     else:
-        # Kaggle unzips uploaded datasets, so accept the extracted folder as well as the zip itself.
-        # /kaggle/input is read-only, so copy to /tmp before the editable install.
-        dirs = [pathlib.Path(p).parent for p in glob.glob("/kaggle/input/**/ceai-memory-middleware/pyproject.toml", recursive=True)]
-        zips = glob.glob("/kaggle/input/**/ceai-memory-middleware.zip", recursive=True) + glob.glob("/content/ceai-memory-middleware.zip") + glob.glob("/content/drive/MyDrive/ceai-memory-middleware.zip")
-        if dirs:
-            shutil.copytree(dirs[0], CODE)
-        elif zips:
-            shutil.unpack_archive(zips[0], "/tmp")
-        else:
-            raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
+        raise FileNotFoundError("attach the ceai-memory-middleware dataset / upload the zip (or set REPO_URL)")
+info = CODE / "BUILD_INFO.txt"
+print("CODE VERSION:", info.read_text().strip() if info.exists() else "unknown (zip built before build stamps)")
 os.chdir(CODE)
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
 print("code ready at", CODE)
+import torch
+print("torch sees GPU:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "- switch the runtime to T4 GPU")
 """),
     code("""
 # ---- install and start Ollama, pull the models ---------------------------------------------
-subprocess.run("apt-get install -y -qq zstd pciutils > /dev/null 2>&1 || true", shell=True)
-if shutil.which("ollama") is None:
-    subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
-env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": "2"}
-server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "w"), stderr=subprocess.STDOUT, env=env)
-for _ in range(120):
-    try:
-        urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2)
-        break
-    except Exception:
-        time.sleep(1)
+if not NEED_LLM:
+    print("no LLM job selected - skipping Ollama")
 else:
-    raise RuntimeError("ollama did not start; see " + str(WORK / "ollama.log"))
-for model in {ANSWER_MODEL, JUDGE_MODEL}:
-    subprocess.run(["ollama", "pull", model], check=True)
-print("ollama ready")
+    subprocess.run("apt-get install -y -qq zstd pciutils > /dev/null 2>&1 || true", shell=True)
+    if shutil.which("ollama") is None:
+        subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
+    server = None
+
+    def start_ollama(context=4096, parallel=PARALLEL):
+        # (Re)start the Ollama server. A large context with several slots can push the model partly onto
+        # the CPU on a T4 and stall every request, so long-context jobs restart it with one slot.
+        global server
+        if server is not None:
+            server.terminate()
+            server.wait(timeout=60)
+        subprocess.run("pkill -f 'ollama serve' || true", shell=True)
+        time.sleep(3)
+        env = {**os.environ, "OLLAMA_KEEP_ALIVE": "-1", "OLLAMA_NUM_PARALLEL": str(parallel),
+               "OLLAMA_CONTEXT_LENGTH": str(context)}  # controller-judge prompts exceed Ollama's small default context
+        server = subprocess.Popen(["ollama", "serve"], stdout=open(WORK / "ollama.log", "a"), stderr=subprocess.STDOUT, env=env)
+        for _ in range(120):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2)
+                print(f"ollama running: context {context}, parallel {parallel}")
+                return
+            except Exception:
+                time.sleep(1)
+        raise RuntimeError("ollama did not start; see " + str(WORK / "ollama.log"))
+
+    start_ollama()
+    for model in {ANSWER_MODEL, JUDGE_MODEL}:
+        subprocess.run(["ollama", "pull", model], check=True)
+    # The single most common cause of very slow runs: Ollama silently running on the CPU.
+    print(subprocess.run("nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv", shell=True,
+                         capture_output=True, text=True).stdout or "NO GPU VISIBLE - switch the runtime to T4 GPU")
+    print("ollama ready")
 """),
     code("""
 # ---- point the harnesses at the local endpoint and smoke-test ------------------------------
-os.environ["CEAI_LLM_BASE_URL"] = "http://127.0.0.1:11434/v1"
-os.environ["CEAI_LLM_MODEL"] = ANSWER_MODEL
-os.environ["CEAI_JUDGE_MODEL"] = JUDGE_MODEL
-sys.path[:0] = [str(CODE), str(CODE / "packages")]
-from integration.llm_client import get_llm
-from eval.judge import grade
-print("answer model:", get_llm()("Reply with exactly: OK", "ping"))
-print("judge check (expect CORRECT):", grade(get_llm(role="judge"), "When did she move?", "7 May 2023", "She moved on May 7, 2023."))
+if not NEED_LLM:
+    print("no LLM job selected - skipping Ollama")
+else:
+    os.environ["CEAI_LLM_BASE_URL"] = "http://127.0.0.1:11434/v1"
+    os.environ["CEAI_LLM_MODEL"] = ANSWER_MODEL
+    os.environ["CEAI_JUDGE_MODEL"] = JUDGE_MODEL
+    os.environ["CEAI_LLM_CONCURRENCY"] = str(PARALLEL)
+    sys.path[:0] = [str(CODE), str(CODE / "packages")]
+    from concurrent.futures import ThreadPoolExecutor
+    from integration.llm_client import get_llm
+    from eval.judge import grade
+    answer, judge = get_llm(), get_llm(role="judge")
+    print("answer model:", answer("Reply with exactly: OK", "ping"))
+    print("judge check (expect CORRECT):", grade(judge, "When did she move?", "7 May 2023", "She moved on May 7, 2023."))
+    print(subprocess.run("ollama ps", shell=True, capture_output=True, text=True).stdout)  # PROCESSOR column should say GPU
+
+    # ---- timing test: estimate the whole run before committing hours to it ----------------------
+    context = "[Memory context] " + ("Caroline said she went to a support group on 7 May 2023 and felt welcomed. " * 60)
+    t = time.time()
+    with ThreadPoolExecutor(PARALLEL) as pool:
+        list(pool.map(lambda i: answer("Answer with a short phrase.", f"{context} Question {i}: When did Caroline go to the group?"),
+                      range(2 * PARALLEL)))
+    per_call = (time.time() - t) / (2 * PARALLEL)
+    n_q = 5 * QA_TEST_QUESTIONS if RUN["locomo_qa_test"] else CONVERSATIONS * (MAX_QUESTIONS or 200)
+    n_answer = n_q * 0.8 * 4      # ~80% answerable, ~4 distinct contexts each
+    estimate_h = (n_answer * per_call * 1.3 + 180 * per_call * 1.5) / 3600
+    print(f"~{per_call:.1f} s per answer call (with {PARALLEL} in parallel) -> estimated run time ~{estimate_h:.1f} h")
+    if per_call > 4:
+        print("SLOW: check the GPU line above. If 'ollama ps' says CPU, restart the runtime with a T4 GPU.")
 """),
     code("""
 def run(args, name):
@@ -157,10 +234,225 @@ if RUN["locomo_plus"]:
     run(["eval.locomo_plus.run", "--out", str(WORK / "locomo_plus")], "locomo_plus")
 """),
     code("""
+# ---- v2 retrieval options on the LoCoMo DEV split (dev previews; the frozen test results are untouched)
+if RUN["v2_dev_retrieval"]:
+    V2 = WORK / "dev_v2"
+    for name, flags in {"V2_rerank_hybrid": ["--hybrid"],
+                        "V3_rerank_mmr07": ["--mmr", "0.7"],
+                        "V4_rerank_hybrid_mmr07": ["--hybrid", "--mmr", "0.7"],
+                        "D_frozen_reference": []}.items():
+        if (V2 / name / "summary.json").exists():
+            print("already done:", name)
+            continue
+        run(["eval.locomo.run", "--split", "dev", "--no-nli", *flags, "--out", str(V2 / name)], f"dev_v2_{name}")
+
+# ---- FINAL RUN: val gate, then every test split exactly once ---------------------------------
+FINAL = WORK / "final"
+if RUN["val_check"]:
+    run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200",
+         "--cache-dir", str(WORK / "controller_traces"), "--out", str(FINAL / "controller")], "final_val_check")
+    got = json.load(open(FINAL / "controller" / "val" / "summary.json"))["evidence_hit_rate"]["adaptive"]["estimate"]
+    want = json.load(open(CODE / "eval/synthetic/controller/frozen_rule_config.json"))["selected"]["val"]["hit"]
+    print(f"VAL CHECK: adaptive evidence hit {got:.4f} (recorded when frozen: {want:.4f})")
+    if got < want - 1e-9:
+        raise RuntimeError("VAL CHECK FAILED - stop here and send the results folder; do not run the test splits")
+    print("VAL CHECK PASSED - running the test splits")
+
+def once(name, args):
+    # Each test split runs exactly once: a finished result is never recomputed.
+    if (FINAL / name / "summary.json").exists() or (FINAL / name / "test" / "summary.json").exists():
+        print("already done:", name)
+        return
+    run([*args, "--out", str(FINAL / name)], f"final_{name}")
+
+if RUN["final_test"]:
+    once("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (FINAL / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(FINAL / "controller")], "final_controller_test")
+if RUN["locomo_qa_test"]:
+    once("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                       "--max-questions", str(QA_TEST_QUESTIONS)])
+
+# ---- external baselines on the LoCoMo test questions CEAI answered (resumes after a disconnect) ---
+if RUN["baselines"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    # CEAI's frozen test answers ship in the code zip; the Drive copy is only a fallback.
+    ceai_q = CODE / "results" / "final" / "locomo_qa_test_questions.jsonl"
+    if not ceai_q.exists():
+        ceai_q = WORK / "final" / "locomo_qa" / "questions.jsonl"
+    assert ceai_q.exists(), f"missing {ceai_q}: CEAI's frozen test answers are needed for the paired comparison"
+    print("CEAI frozen answers:", ceai_q)
+    # Phase 1: memory baselines at the normal server settings.
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,summary_buffer,mem0",
+         "--out", str(WORK / "baselines")], "baselines_phase1")
+    # Phase 2: the full-context ceiling alone, with a 32k context, one slot and a long request timeout.
+    start_ollama(context=32768, parallel=1)
+    os.environ["CEAI_LLM_TIMEOUT"], os.environ["CEAI_LLM_CONCURRENCY"] = "1200", "1"
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "fixed_chunk_rag,summary_buffer,mem0,full_context",
+         "--out", str(WORK / "baselines")], "baselines_phase2")
+    os.environ["CEAI_LLM_TIMEOUT"], os.environ["CEAI_LLM_CONCURRENCY"] = "300", str(PARALLEL)
+    start_ollama()
+
+# ---- corrected Mem0 run (docs/baselines_protocol.md, amendment) ----------------------------------
+if RUN["mem0_fixed"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    ceai_q = CODE / "results" / "final" / "locomo_qa_test_questions.jsonl"
+    start_ollama(context=16384, parallel=1)
+    os.environ["CEAI_MEM0_MAX_TOKENS"], os.environ["CEAI_LLM_TIMEOUT"] = "8000", "1200"
+    run(["eval.baselines.run", "--ceai-questions", str(ceai_q), "--systems", "mem0",
+         "--out", str(WORK / "baselines_mem0_fixed")], "baselines_mem0_fixed")
+    os.environ["CEAI_LLM_TIMEOUT"] = "300"
+    start_ollama()
+
+# ---- v4 LLM jobs (pre-registered 2026-10-17) -----------------------------------------------------
+if RUN["mem0_coding_traps"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "mem0ai", "ollama"], check=False)
+    start_ollama(context=16384, parallel=1)
+    os.environ["CEAI_MEM0_MAX_TOKENS"], os.environ["CEAI_LLM_TIMEOUT"] = "8000", "1200"
+    run(["demo.coding_session.run_mem0", "--out", str(WORK / "demo_mem0")], "demo_mem0")
+    os.environ["CEAI_LLM_TIMEOUT"] = "300"
+    start_ollama()
+
+
+if RUN["llm_policy_dev"]:
+    # Same 20 seeded LoCoMo-Plus dev items under both policies; skipped if already done (resumes).
+    for pol in ("strict", "assisted"):
+        os.environ["CEAI_LLM_POLICY"] = pol
+        out = WORK / "llm_policy" / pol
+        if not (out / "summary.json").exists():
+            run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--sample", "20",
+                 "--out", str(out)], f"llm_policy_{pol}")
+    os.environ["CEAI_LLM_POLICY"] = "strict"
+
+# ---- v3, pre-registered: gates G2-G4 on dev/val, then every test split exactly once -------------
+if RUN["v3_preregistered"]:
+    V3W = WORK / "v3"
+    G3D = V3W / "gates"
+    V3 = "v3_qa_hybrid_obs"
+
+    def as_system3(name):
+        os.environ["CEAI_SYSTEM"] = name
+
+    def gate_run(args, out, name):
+        if not ((out / "summary.json").exists() or (out / "val" / "summary.json").exists()):
+            run([*args, "--out", str(out)], name)
+
+    # Frozen references on the same dev/val items.
+    as_system3("frozen")
+    gate_run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces")],
+             G3D / "frozen_val", "v3_gate_frozen_val")
+    gate_run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10"], G3D / "plus_frozen", "v3_gate_plus_frozen")
+    gate_run(["eval.locomo.run", "--split", "dev", "--no-nli", "--llm", "--judge-answers", "--max-questions", "60"],
+             G3D / "qa_frozen", "v3_gate_qa_frozen")
+    # v3 on the same items.
+    as_system3(V3)
+    gate_run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces")],
+             G3D / "v3_val", "v3_gate_v3_val")
+    gate_run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10"], G3D / "plus_v3", "v3_gate_plus_v3")
+    gate_run(["eval.locomo.run", "--split", "dev", "--no-nli", "--llm", "--judge-answers", "--max-questions", "60"],
+             G3D / "qa_v3", "v3_gate_qa_v3")
+    gate = subprocess.run([sys.executable, "-m", "eval.v2_gate", "--frozen-val", str(G3D / "frozen_val" / "val"),
+                           "--v2-val", str(G3D / "v3_val" / "val"), "--frozen-plus", str(G3D / "plus_frozen"),
+                           "--v2-plus", str(G3D / "plus_v3"), "--frozen-qa", str(G3D / "qa_frozen"), "--v2-qa", str(G3D / "qa_v3"),
+                           "--out", str(G3D / "gates.json")], cwd=CODE, capture_output=True, text=True)
+    print(gate.stdout)
+    if gate.returncode != 0:
+        as_system3("frozen")
+        raise RuntimeError("v3 GATE FAILED - stop here and send the results folder; the v3 test splits must not be run")
+
+    def once_v3(name, args):
+        if (V3W / "final" / name / "summary.json").exists() or (V3W / "final" / name / "test" / "summary.json").exists():
+            print("already done:", name)
+            return
+        run([*args, "--out", str(V3W / "final" / name)], f"v3_final_{name}")
+
+    once_v3("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                          "--max-questions", str(QA_TEST_QUESTIONS)])
+    once_v3("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once_v3("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once_v3("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (V3W / "final" / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(V3W / "final" / "controller")], "v3_final_controller_test")
+    as_system3("frozen")
+    print("v3 pre-registered runs complete:", V3W)
+
+# ---- v2 hybrid, pre-registered: gates on dev/val, then every test split exactly once -------------
+if RUN["v2_preregistered"]:
+    V2W = WORK / "v2_hybrid"
+    G = V2W / "gates"
+
+    def as_system(name):
+        os.environ["CEAI_SYSTEM"] = name
+
+    # Frozen references for the paired gates (frozen val reuses the final run when present).
+    as_system("frozen")
+    frozen_val = FINAL / "controller" / "val" if (WORK / "final" / "controller" / "val" / "probes.jsonl").exists() else G / "frozen_val" / "val"
+    if not (frozen_val / "probes.jsonl").exists():
+        run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(G / "frozen_val")], "v2_gate_frozen_val")
+    if not (G / "plus_frozen" / "summary.json").exists():
+        run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--out", str(G / "plus_frozen")], "v2_gate_plus_frozen")
+    # v2 on the same dev/val items.
+    as_system("v2_hybrid")
+    if not (G / "v2_val" / "val" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "val", "--n-boot", "200", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(G / "v2_val")], "v2_gate_v2_val")
+    if not (G / "plus_v2" / "summary.json").exists():
+        run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", "--out", str(G / "plus_v2")], "v2_gate_plus_v2")
+    gate = subprocess.run([sys.executable, "-m", "eval.v2_gate", "--frozen-val", str(frozen_val), "--v2-val", str(G / "v2_val" / "val"),
+                           "--frozen-plus", str(G / "plus_frozen"), "--v2-plus", str(G / "plus_v2"), "--out", str(G / "gates.json")],
+                          cwd=CODE, capture_output=True, text=True)
+    print(gate.stdout)
+    if gate.returncode != 0:
+        as_system("frozen")
+        raise RuntimeError("v2 GATE FAILED - stop here and send the results folder; the v2 test splits must not be run")
+
+    # Each test split exactly once (finished results are never recomputed).
+    def once_v2(name, args):
+        if (V2W / "final" / name / "summary.json").exists() or (V2W / "final" / name / "test" / "summary.json").exists():
+            print("already done:", name)
+            return
+        run([*args, "--out", str(V2W / "final" / name)], f"v2_final_{name}")
+
+    once_v2("locomo", ["eval.locomo.run", "--split", "test", "--no-nli"])
+    once_v2("locomo_stream", ["eval.locomo.stream", "--split", "test"])
+    once_v2("locomo_plus", ["eval.locomo_plus.run", "--split", "test", "--warmup-turns", "10"])
+    if not (V2W / "final" / "controller" / "test" / "summary.json").exists():
+        run(["eval.synthetic.controller.run", "--split", "test", "--cache-dir", str(WORK / "controller_traces"),
+             "--out", str(V2W / "final" / "controller")], "v2_final_controller_test")
+    once_v2("locomo_qa", ["eval.locomo.run", "--split", "test", "--no-nli", "--llm", "--judge-answers",
+                          "--max-questions", str(QA_TEST_QUESTIONS)])
+    as_system("frozen")
+    print("v2 pre-registered runs complete:", V2W)
+
+"""),
+    code("""
+# ---- GPU jobs without an LLM: controller tuning and LoCoMo-Plus dev routing -------------------
+if RUN["controller_tuning"]:
+    # Traces are cached in Drive and saved after every conversation, so a disconnect resumes.
+    run(["eval.synthetic.controller.tune_rules", "--cache-dir", str(WORK / "controller_traces")], "controller_tuning")
+    shutil.copy(CODE / "eval/synthetic/controller/frozen_rule_config.json", WORK / "frozen_rule_config.json")
+    print("tuned rules saved to", WORK / "frozen_rule_config.json")
+if RUN["locomo_plus_routing_dev"]:
+    variants = {"R0_current": [], "R1_loss_to_hybrid": ["--loss-target", "hybrid"],
+                "R2_chat_hybrid": ["--long-chat", "hybrid"], "R3_both": ["--loss-target", "hybrid", "--long-chat", "hybrid"]}
+    for name, flags in variants.items():
+        if (WORK / "locomo_plus_dev" / name / "summary.json").exists():
+            print("already done:", name)
+            continue
+        run(["eval.locomo_plus.run", "--split", "dev", "--warmup-turns", "10", *flags,
+             "--out", str(WORK / "locomo_plus_dev" / name)], f"locomo_plus_dev_{name}")
+"""),
+    code("""
 # ---- blind labelling sheets for the human-vs-judge check -----------------------------------
 if RUN["labelling_sheets"]:
-    run(["eval.human_agreement.make_sheets", "--questions", str(WORK / "locomo_qa" / "questions.jsonl"),
-         "--out", str(WORK / "human_agreement")], "labelling_sheets")
+    qa_dir = WORK / "final" / "locomo_qa" if RUN["locomo_qa_test"] else WORK / "locomo_qa"
+    run(["eval.human_agreement.make_sheets", "--questions", str(qa_dir / "questions.jsonl"),
+         "--out", str(qa_dir.parent / "human_agreement")], "labelling_sheets")
     print("Send each annotator their annotator_N.csv + eval/human_agreement/LABELLING_GUIDE.md.")
     print("Keep key.json private. Score later with: python -m eval.human_agreement.score --sheets <folder>")
 """),
