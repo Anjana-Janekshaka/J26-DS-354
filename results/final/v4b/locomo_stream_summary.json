@@ -1,0 +1,125 @@
+{
+  "n_questions": 964,
+  "strategies": {
+    "sliding_window": {
+      "evidence_hit_rate": 0.42946058091286304,
+      "mean_tokens": 888.844398340249
+    },
+    "summarization": {
+      "evidence_hit_rate": 0.1690871369294606,
+      "mean_tokens": 998.2759336099585
+    },
+    "rag": {
+      "evidence_hit_rate": 0.7821576763485477,
+      "mean_tokens": 981.3091286307053
+    },
+    "hybrid": {
+      "evidence_hit_rate": 0.7728215767634855,
+      "mean_tokens": 961.4336099585062
+    },
+    "adaptive": {
+      "evidence_hit_rate": 0.7821576763485477,
+      "mean_tokens": 982.4844398340249
+    }
+  },
+  "by_position": {
+    "fresh": {
+      "sliding_window": 0.7584745762711864,
+      "summarization": 0.2944915254237288,
+      "rag": 0.8220338983050848,
+      "hybrid": 0.8432203389830508,
+      "adaptive": 0.8220338983050848,
+      "n": 472
+    },
+    "late": {
+      "sliding_window": 0.11382113821138211,
+      "summarization": 0.04878048780487805,
+      "rag": 0.7439024390243902,
+      "hybrid": 0.7052845528455285,
+      "adaptive": 0.7439024390243902,
+      "n": 492
+    }
+  },
+  "by_category": {
+    "multi_hop": {
+      "sliding_window": 0.04580152671755725,
+      "summarization": 0.0,
+      "rag": 0.29770992366412213,
+      "hybrid": 0.1984732824427481,
+      "adaptive": 0.29770992366412213,
+      "n": 131
+    },
+    "temporal": {
+      "sliding_window": 0.5060975609756098,
+      "summarization": 0.13414634146341464,
+      "rag": 0.8048780487804879,
+      "hybrid": 0.823170731707317,
+      "adaptive": 0.8048780487804879,
+      "n": 164
+    },
+    "open_domain": {
+      "sliding_window": 0.30303030303030304,
+      "summarization": 0.12121212121212122,
+      "rag": 0.42424242424242425,
+      "hybrid": 0.36363636363636365,
+      "adaptive": 0.42424242424242425,
+      "n": 33
+    },
+    "single_hop": {
+      "sliding_window": 0.4881516587677725,
+      "summarization": 0.21800947867298578,
+      "rag": 0.9075829383886256,
+      "hybrid": 0.9028436018957346,
+      "adaptive": 0.9075829383886256,
+      "n": 422
+    },
+    "adversarial": {
+      "sliding_window": 0.5093457943925234,
+      "summarization": 0.2102803738317757,
+      "rag": 0.8691588785046729,
+      "hybrid": 0.8925233644859814,
+      "adaptive": 0.8691588785046729,
+      "n": 214
+    }
+  },
+  "controller": {
+    "choices": {
+      "rag": 956,
+      "sliding_window": 8
+    },
+    "choices_by_position": {
+      "fresh": {
+        "rag": 464,
+        "sliding_window": 8
+      },
+      "late": {
+        "rag": 492
+      }
+    },
+    "oracle": {
+      "rag": 418,
+      "sliding_window": 291,
+      "none": 161,
+      "hybrid": 50,
+      "summarization": 44
+    },
+    "macro_f1_vs_objective_oracle": 0.1773402410342802
+  },
+  "best_single_fixed": "rag",
+  "adaptive_minus_best_single": 0.0,
+  "adaptive_minus_always_hybrid": 0.009336099585062207,
+  "config": {
+    "system": "v4b",
+    "budget": 1024,
+    "split": "test",
+    "conversations": 10,
+    "decision_turns": 2,
+    "seed": 0,
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "neighbors": 0,
+    "full_headers": false,
+    "long_chat": null,
+    "loss_target": null,
+    "qa_strategy": null
+  }
+}

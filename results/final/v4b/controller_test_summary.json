@@ -1,0 +1,282 @@
+{
+  "n_probes": 420,
+  "n_conversations": 70,
+  "n_with_oracle_label": 420,
+  "oracle_label_distribution": {
+    "sliding_window": 157,
+    "rag": 227,
+    "summarization": 24,
+    "hybrid": 12
+  },
+  "selection": {
+    "adaptive_macro_f1": {
+      "estimate": 0.31242064902747446,
+      "ci_low": 0.29244267198404783,
+      "ci_high": 0.33181834013368977,
+      "n_groups": 70
+    },
+    "adaptive_acceptable_choice_accuracy": {
+      "estimate": 0.9833333333333333,
+      "ci_low": 0.9714285714285714,
+      "ci_high": 0.9928571428571429,
+      "n_groups": 70
+    },
+    "per_class": {
+      "sliding_window": {
+        "precision": 0.6390977443609023,
+        "recall": 0.5414012738853503,
+        "f1": 0.5862068965517241,
+        "support": 157
+      },
+      "summarization": {
+        "precision": 0.0136986301369863,
+        "recall": 0.041666666666666664,
+        "f1": 0.020618556701030927,
+        "support": 24
+      },
+      "rag": {
+        "precision": 0.6994818652849741,
+        "recall": 0.5947136563876652,
+        "f1": 0.6428571428571428,
+        "support": 227
+      },
+      "hybrid": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 12
+      }
+    },
+    "majority_macro_f1": 0.17542503863987635,
+    "majority_acceptable_choice_accuracy": 0.8714285714285714,
+    "random_macro_f1_mean_of_20": 0.1961481266361429
+  },
+  "evidence_hit_rate": {
+    "adaptive": {
+      "estimate": 0.9833333333333333,
+      "ci_low": 0.9714285714285714,
+      "ci_high": 0.9928571428571429,
+      "n_groups": 70
+    },
+    "sliding_window": {
+      "estimate": 0.6976190476190476,
+      "ci_low": 0.6714285714285714,
+      "ci_high": 0.7214285714285714,
+      "n_groups": 70
+    },
+    "summarization": {
+      "estimate": 0.85,
+      "ci_low": 0.8166666666666667,
+      "ci_high": 0.8833333333333333,
+      "n_groups": 70
+    },
+    "rag": {
+      "estimate": 0.8714285714285714,
+      "ci_low": 0.85,
+      "ci_high": 0.8928571428571429,
+      "n_groups": 70
+    },
+    "hybrid": {
+      "estimate": 0.8833333333333333,
+      "ci_low": 0.8523809523809524,
+      "ci_high": 0.9142857142857143,
+      "n_groups": 70
+    },
+    "oracle_upper_bound": 1.0,
+    "random_expected": 0.825595238095238,
+    "majority (rag)": 0.8714285714285714
+  },
+  "mean_context_tokens": {
+    "adaptive": 250.85714285714286,
+    "sliding_window": 277.5833333333333,
+    "summarization": 325.9714285714286,
+    "rag": 177.0547619047619,
+    "hybrid": 279.1142857142857,
+    "oracle_choice": 198.90952380952382
+  },
+  "best_single_fixed_baseline": "rag",
+  "differences": {
+    "hit: adaptive - best single fixed (rag)": {
+      "estimate": 0.11190476190476191,
+      "ci_low": 0.09285714285714286,
+      "ci_high": 0.13333333333333333,
+      "n_groups": 70
+    },
+    "hit: adaptive - always_hybrid": {
+      "estimate": 0.1,
+      "ci_low": 0.06904761904761905,
+      "ci_high": 0.13095238095238096,
+      "n_groups": 70
+    },
+    "tokens: adaptive - always_hybrid": {
+      "estimate": -28.257142857142856,
+      "ci_low": -36.07380952380952,
+      "ci_high": -19.785714285714285,
+      "n_groups": 70
+    },
+    "tokens: adaptive - best single fixed (rag)": {
+      "estimate": 73.80238095238096,
+      "ci_low": 66.8452380952381,
+      "ci_high": 80.94761904761904,
+      "n_groups": 70
+    }
+  },
+  "by_probe_kind": {
+    "debug_followup": {
+      "n": 70,
+      "adaptive_choice": {
+        "sliding_window": 33,
+        "summarization": 33,
+        "hybrid": 4
+      },
+      "task_type": {
+        "debugging": 70
+      },
+      "oracle": {
+        "rag": 59,
+        "sliding_window": 11
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 0.9857142857142858,
+      "hybrid_hit": 1.0,
+      "adaptive_tokens": 307.7142857142857
+    },
+    "duplicate_build": {
+      "n": 70,
+      "adaptive_choice": {
+        "summarization": 3,
+        "rag": 63,
+        "hybrid": 2,
+        "sliding_window": 2
+      },
+      "task_type": {
+        "chat": 70
+      },
+      "oracle": {
+        "rag": 44,
+        "sliding_window": 18,
+        "hybrid": 5,
+        "summarization": 3
+      },
+      "adaptive_hit": 0.9857142857142858,
+      "sliding_window_hit": 0.6428571428571429,
+      "summarization_hit": 0.42857142857142855,
+      "rag_hit": 1.0,
+      "hybrid_hit": 0.6714285714285714,
+      "adaptive_tokens": 356.7857142857143
+    },
+    "early_recall": {
+      "n": 70,
+      "adaptive_choice": {
+        "sliding_window": 70
+      },
+      "task_type": {
+        "chat": 70
+      },
+      "oracle": {
+        "sliding_window": 65,
+        "rag": 5
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 1.0,
+      "hybrid_hit": 1.0,
+      "adaptive_tokens": 47.7
+    },
+    "implicit_followup": {
+      "n": 70,
+      "adaptive_choice": {
+        "sliding_window": 26,
+        "hybrid": 13,
+        "summarization": 31
+      },
+      "task_type": {
+        "chat": 43,
+        "debugging": 13,
+        "exploration": 14
+      },
+      "oracle": {
+        "rag": 21,
+        "sliding_window": 49
+      },
+      "adaptive_hit": 1.0,
+      "sliding_window_hit": 1.0,
+      "summarization_hit": 1.0,
+      "rag_hit": 0.3,
+      "hybrid_hit": 1.0,
+      "adaptive_tokens": 317.37142857142857
+    },
+    "late_recall": {
+      "n": 70,
+      "adaptive_choice": {
+        "summarization": 3,
+        "rag": 67
+      },
+      "task_type": {
+        "chat": 22,
+        "qa": 48
+      },
+      "oracle": {
+        "rag": 66,
+        "summarization": 4
+      },
+      "adaptive_hit": 0.9428571428571428,
+      "sliding_window_hit": 0.014285714285714285,
+      "summarization_hit": 1.0,
+      "rag_hit": 0.9428571428571428,
+      "hybrid_hit": 0.9428571428571428,
+      "adaptive_tokens": 101.61428571428571
+    },
+    "renamed_call": {
+      "n": 70,
+      "adaptive_choice": {
+        "summarization": 3,
+        "rag": 63,
+        "hybrid": 2,
+        "sliding_window": 2
+      },
+      "task_type": {
+        "chat": 68,
+        "debugging": 2
+      },
+      "oracle": {
+        "rag": 32,
+        "sliding_window": 14,
+        "summarization": 17,
+        "hybrid": 7
+      },
+      "adaptive_hit": 0.9714285714285714,
+      "sliding_window_hit": 0.5285714285714286,
+      "summarization_hit": 0.6714285714285714,
+      "rag_hit": 1.0,
+      "hybrid_hit": 0.6857142857142857,
+      "adaptive_tokens": 373.95714285714286
+    }
+  },
+  "_check": {
+    "macro_f1_point": 0.31242064902747446,
+    "acceptable_point": 0.9833333333333333
+  },
+  "system": "v4b",
+  "split": "test",
+  "budget_tokens": 400,
+  "embedder": "minilm",
+  "nli": true,
+  "rule_config": {
+    "low_pressure": 0.9,
+    "high_pressure": 0.9,
+    "min_dwell_turns": 3,
+    "long_chat_strategy": "summarization",
+    "loss_escalation_target": "rag",
+    "qa_strategy": "rag",
+    "default_strategy": "sliding_window"
+  },
+  "rule_config_source": "frozen (frozen_rule_config.json, tuned on train+val (selected on val macro-F1, then acceptable accuracy, then tokens))",
+  "majority_label_from_train": "rag",
+  "llm_judge_oracle": {
+    "status": "not run (pass --judge with an LLM configured)"
+  }
+}
