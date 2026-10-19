@@ -410,7 +410,17 @@ long ones.
 - The version without the window change (**v4b**) passed every gate. On the dev data:
   - it nearly doubled the implied-clue score (0.134 → 0.264);
   - it raised the main benchmark from 0.709 to 0.785.
-- Its final test runs are being completed. The official results remain those of the frozen system.
+- **On the unseen test data**, v4b was better on all three LoCoMo tests:
+  - main benchmark 0.653 → 0.761;
+  - in-stream 0.704 → 0.782;
+  - implied clues 0.140 → 0.215.
+
+  But it was **worse on BEAM** (0.347 → 0.248). Its chunking was tuned on short chat messages, and
+  BEAM has long coding answers.
+- **Decision:** the original (frozen) system stays the default. v4b is shown as an improvement for
+  chat-style conversations.
+- **The lesson:** settings tuned for one kind of conversation do not carry over to another. That is
+  exactly why memory should adapt.
 
 ## Part 11: Why it matters (who would use it)
 

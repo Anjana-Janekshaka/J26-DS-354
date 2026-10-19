@@ -484,13 +484,29 @@ those files by a script, so no number is typed by hand.
 - **What changed:** `strict` stays the default. Whether a stronger model helps is open, and needs a
   free 70B model key.
 
-### G13. v4b test runs (each once), in progress
+### G13. v4b test runs (each once)
 
 - **How:** Each v4b test set is run once by `eval/v4_test.py` and compared item by item with the frozen system's recorded test outputs, with confidence intervals.
-- **Outcome so far:** controller test **0.983 vs frozen 0.986, a tie**. LoCoMo, in-stream LoCoMo,
-  LoCoMo-Plus and BEAM are still running.
-- **What changes next:** if v4b holds on test, it is presented as a pre-registered improvement next to
-  the frozen system's official numbers.
+- **Outcome:**
+
+  | Test | Frozen | v4b | Difference |
+  |---|---|---|---|
+  | LoCoMo | 0.653 | **0.761** | **+0.108**, significant |
+  | In-stream LoCoMo | 0.704 | **0.782** | **+0.078**, significant |
+  | LoCoMo-Plus | 0.140 | **0.215** | **+0.075**, significant (now above the naive summary's 0.185) |
+  | Controller (mixed conversations) | 0.986 | 0.983 | no real change |
+  | **BEAM** (independent) | 0.347 | **0.248** | **−0.099, significantly worse** |
+
+  - The BEAM loss is entirely in search (RAG 0.445 → 0.318); the window and summary are unchanged.
+  - The only v4b change active in that harness is the tuned chunking. Its weights were tuned on
+    LoCoMo's short chat messages, and BEAM's messages are long coding answers.
+- **What changed:**
+  - **The frozen system stays the default.**
+  - v4b is presented as a pre-registered improvement for chat-style conversations, with its measured
+    cost on long coding conversations.
+  - Lesson: settings tuned on one kind of conversation do not transfer to another, which is itself
+    an argument for adaptive memory.
+  - Choosing the chunking per conversation type is a future, separately pre-registered step.
 
 ---
 
@@ -518,3 +534,4 @@ those files by a script, so no number is typed by hand.
 | BEAM (G10) | Request-phrased routing is the top future-work item |
 | Mem0 traps (G11) | Main comparison slide |
 | `llm_policy` (G12) | Zero-AI default confirmed |
+| v4b test (G13) | Frozen stays the default; v4b is a chat-style improvement; per-type chunking is future work |

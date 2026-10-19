@@ -532,10 +532,12 @@ what was built and measured, and the decisions later work must respect. **In a n
   - Original demo: CEAI **2/2**, Mem0 **0/2**.
   - Adaptive advantage over the window **grows with conversation length** (+0.28 → +0.42).
   - **v4b** (staleness ensemble + tuned chunking) passed every dev gate: LoCoMo-Plus dev
-    0.134 → 0.264, LoCoMo dev 0.709 → 0.785. Its test runs are in progress.
+    0.134 → 0.264, LoCoMo dev 0.709 → 0.785. **On test (run once): LoCoMo +0.108, in-stream
+    +0.078, LoCoMo-Plus +0.075 (all significant), but BEAM −0.099**: the tuned chunking does not
+    transfer to long coding turns. The frozen system stays the default.
   - **Honest negatives:** BEAM (independent) adaptive 0.346 vs always-RAG 0.445; the learned
     controller lost to the rules; LLM-assisted summaries gave no gain with a 7B model.
-- **Left before Wednesday:** fill in the v4b test numbers when they finish, rehearse the demo
+- **Left before Wednesday:** rehearse the demo
   (`docs/DEMO_GUIDE.md`), the teammates' labelling sheets.
 - **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
   `docs/zero_cost_improvement_roadmap.md`.
@@ -782,7 +784,7 @@ to it as a pre-registered improvement once its test runs finish.
 | **Component improvements** (each tested alone, test run once) | Staleness ensemble: precision **1.00** / recall 0.69 (was 0.82 / 0.73); wrongly retired current facts **0%** (was 23%); stale leak 0.31 (was 0.27). Dev-tuned chunking: recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355). Sliding-window weights chosen on dev: recall 1.000 vs 0.706 with equal weights | `docs/v4_preregistration.md` |
 | **v4 = all three improvements together** | **Failed its system gate:** synthetic val 0.992 → 0.800. Cause: the new sliding-window weights drop turns even when the whole history fits. Not adopted | same |
 | **v4b = staleness ensemble + chunking only** (pre-registered after the v4 failure, disclosed) | **Passed every gate** on dev: coding scenarios 17/26 (frozen 16); controller val 0.992 = 0.992; **LoCoMo-Plus dev 0.134 → 0.264** (+0.129 [+0.075, +0.189]); **LoCoMo dev 0.709 → 0.785** (+0.076 [+0.059, +0.095]) | same |
-| **v4b test runs** (each once) | Controller test: 0.983 vs frozen 0.986 (−0.002 [−0.007, 0.000], a tie). **LoCoMo, in-stream LoCoMo, LoCoMo-Plus and BEAM test: still running (2026-10-18)**; fill in from `runs/v4b_test/comparison.json` | `eval/v4_test.py` |
+| **v4b test runs** (each once, 2026-10-18) | **LoCoMo 0.653 → 0.761 (+0.108 [+0.051, +0.153])**; **in-stream LoCoMo 0.704 → 0.782 (+0.078)**; **LoCoMo-Plus 0.140 → 0.215 (+0.075 [+0.030, +0.120])**, all significant; controller test 0.986 → 0.983 (no real change); **BEAM 0.347 → 0.248 (−0.099 [−0.147, −0.056], significantly worse)**. The BEAM loss is all in retrieval: the chunking tuned on LoCoMo's short chat turns does not transfer to BEAM's long coding answers. **Decision: the frozen system stays the default**; v4b is a pre-registered improvement for chat-style conversations, with its measured cost on long coding conversations | `docs/v4_preregistration.md`, `results/final/v4b/` |
 | **Learned controller** (LR / RF / GBDT on recorded traces) | Val evidence hit 0.93 / 0.92 / 0.92 vs rules **0.99**: gate failed, rules stay | `docs/v4_preregistration.md` §4 |
 | **`llm_policy` assisted** (LLM writes L2/L3 summaries; 20 LoCoMo-Plus dev items, Qwen2.5-7B) | **No gain:** identical cue hit (0.10 vs 0.10); 86 LLM calls and ~90× the time per conversation; 56% of the 7B model's outputs invalid. `strict` (zero LLM calls) stays the default | `docs/llm_policy_preregistration.md` |
 
@@ -798,7 +800,7 @@ to it as a pre-registered improvement once its test runs finish.
 - The system gates did their job: they stopped v4, whose sliding-window weights won alone but broke
   the full system.
 
-**Still open:** the v4b test numbers (running); human-agreement labelling (team); a stronger free
+**Still open:** human-agreement labelling (team); a stronger free
 judge (needs the user's Groq/OpenRouter key).
 
 ### 12.12 Presentation brief (for building the slides)
@@ -820,7 +822,7 @@ in LLM calls, and wins when the conversation changes type.
 | 4 | Architecture | §2 diagram; the no-leakage rule (§5): the controller sees only the turn signal; quality signals act on the next turn | LO3 design |
 | 5 | Requirements | 4 users; key FRs (adaptive switching, stale-fact handling, override, audit log) and NFRs (0 LLM calls, ~0.1 ms decision, offline), all traced to tests | LO3 requirements |
 | 6 | Live demo | `python -m demo.coding_session.present`: traps caught live (2/2 vs 0/2), rationale per turn, live override | LO1 proof of concept |
-| 7–10 | One slide per component (each member) | Claim, closest system, one number (§12.5 + §12.11). Window: 59 wins / 0 losses vs recency. Summarization: live loss score (Spearman 0.91) drives a switch; stale-fact leakage 0.00 vs 0.50. RAG: LLM-free staleness flagging, precision 0.82 → **1.00** with the v4b ensemble, wrongly retired facts 23% → **0%**; tuned chunking 0.399 vs 0.376. Controller: +0.112 over the best single strategy on mixed conversations; ties RAG on LoCoMo; ~0.1 ms | LO2, LO3 |
+| 7–10 | One slide per component (each member) | Claim, closest system, one number (§12.5 + §12.11). Window: 59 wins / 0 losses vs recency. Summarization: live loss score (Spearman 0.91) drives a switch; stale-fact leakage 0.00 vs 0.50. RAG: LLM-free staleness flagging, precision 0.82 → **1.00** with the v4b ensemble, wrongly retired facts 23% → **0%**; v4b lifts LoCoMo evidence hit 0.653 → 0.761 on test, but costs −0.099 on BEAM (tuned chunking does not transfer to long coding turns). Controller: +0.112 over the best single strategy on mixed conversations; ties RAG on LoCoMo; ~0.1 ms | LO2, LO3 |
 | 11 | Results vs others | Coding traps: CEAI 16/26 vs Mem0 5/26 vs fixed window 3/26; Mem0 on LoCoMo: same judged accuracy, +0.129 exact-answer F1, 0 vs ~54 LLM calls | LO1, LO5 |
 | 12 | Cost chart | `results/figures/memory_build_time.png`: 6 s vs 972 s per conversation | LO5 |
 | 13 | Length chart | `results/figures/length_advantage.png`: lead over the window grows +0.28 → +0.42 | LO1 |
@@ -833,4 +835,6 @@ in LLM calls, and wins when the conversation changes type.
 **Do not claim:** "beats Mem0 on accuracy" (not significant); "adaptive beats every fixed strategy
 everywhere" (it ties RAG on LoCoMo, loses on BEAM, and always-hybrid catches 18/26 traps vs 16);
 "the learned controller works". **Do say:** the frozen system's numbers are the official results,
-and v4b is a pre-registered improvement shown next to them.
+and v4b is a pre-registered improvement shown next to them: better on every LoCoMo-family test
+(+0.075 to +0.108), worse on BEAM (−0.099). This is a strong honest slide: "settings tuned on one kind of
+conversation do not transfer to another, which is exactly why memory should adapt".

@@ -210,7 +210,8 @@ signature retention 0.90 vs 0, correlation with real loss 0.91.
 
 - **Claim 1:** **withdrawn** as a performance claim (2026-10-15), then **dropped from the novelty
   slide** entirely (2026-10-17), rather than kept with a caveat. After the boundary weights were
-  tuned on dev, it beat fixed segments on test (**0.399 vs 0.376**, v4b). It is presented as an
+  tuned on dev, it beat fixed segments on LoCoMo test (**0.399 vs 0.376**, v4b), but it caused v4b's
+  drop on BEAM (−0.099), where messages are long coding answers. It is presented as an
   **engineering result**, not a novelty claim.
 - **Claim 2:** sharpened into the component's whole story: **"extraction-free, AI-free staleness
   flagging on raw conversation: an exact structural check for code, calibrated NLI otherwise"**.
@@ -229,7 +230,7 @@ signature retention 0.90 vs 0, correlation with real loss 0.91.
 | Reranker **skipped for code turns** | It ranks prose above code; the demo fell to 1/2 |
 | Neighbour turns, keyword search (v2), MMR, fact "observations" (v3) | All tested; **none adopted** (worse answers, or failed gates) |
 | **Staleness ensemble** (both NLI directions + similarity + change words, weights fitted on dev) | Reduce wrong retirements: precision **1.00**, false retirements **0%** (recall 0.73 → 0.69) |
-| **Dev-tuned chunk boundaries** | Brought granularity back as an engineering result (0.399) |
+| **Dev-tuned chunk boundaries** | Brought granularity back as an engineering result (0.399 on LoCoMo); it does not transfer to BEAM (−0.099), so the frozen chunking stays the default |
 
 **Final claims:**
 - **Staleness flagging:** precision 0.82 / recall 0.73 in the frozen system; **1.00 / 0.69 with 0%

@@ -3,7 +3,7 @@
 **What this document is:** how the system is built, what every directory and file does, the main
 ideas in the code, and how the project changed between 2026-10-06 and 2026-10-17.
 
-**Latest (2026-10-18):** the v4 round is done except the v4b test runs. §12 at the end of this file
+**Latest (2026-10-19):** the v4 round is complete, including the v4b test runs. §12 at the end of this file
 lists every new result; §13 lists the documents written for the PP1 mark sheet.
 
 **How it relates to the other documents:**
@@ -333,7 +333,7 @@ system of record** for the numbers in CLAUDE.md §12.2; v4b is reported next to 
 | **Component improvements** (each tested alone, test run once) | Staleness ensemble: precision **1.00** / recall 0.69 (was 0.82 / 0.73); wrongly retired current facts **0%** (was 23%); stale leak 0.31 (was 0.27). Dev-tuned chunking: recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355). Sliding-window weights chosen on dev: recall 1.000 vs 0.706 with equal weights | `docs/v4_preregistration.md` |
 | **v4 = all three improvements together** | **Failed its system gate:** synthetic val 0.992 → 0.800. Cause: the new sliding-window weights drop turns even when the whole history fits. Not adopted | same |
 | **v4b = staleness ensemble + chunking only** (pre-registered after the v4 failure, disclosed) | **Passed every gate** on dev: coding scenarios 17/26 (frozen 16); controller val 0.992 = 0.992; **LoCoMo-Plus dev 0.134 → 0.264** (+0.129 [+0.075, +0.189]); **LoCoMo dev 0.709 → 0.785** (+0.076 [+0.059, +0.095]) | same |
-| **v4b test runs** (each once) | Controller test: 0.983 vs frozen 0.986 (−0.002 [−0.007, 0.000], a tie). **LoCoMo, in-stream LoCoMo, LoCoMo-Plus and BEAM test: still running (2026-10-18)**; fill in from `runs/v4b_test/comparison.json` | `eval/v4_test.py` |
+| **v4b test runs** (each once, 2026-10-18) | **LoCoMo 0.653 → 0.761 (+0.108 [+0.051, +0.153])**; **in-stream LoCoMo 0.704 → 0.782 (+0.078)**; **LoCoMo-Plus 0.140 → 0.215 (+0.075 [+0.030, +0.120])**, all significant; controller test 0.986 → 0.983 (no real change); **BEAM 0.347 → 0.248 (−0.099 [−0.147, −0.056], significantly worse)**. The BEAM loss is all in retrieval: the chunking tuned on LoCoMo's short chat turns does not transfer to BEAM's long coding answers. **Decision: the frozen system stays the default**; v4b is a pre-registered improvement for chat-style conversations, with its measured cost on long coding conversations | `docs/v4_preregistration.md`, `results/final/v4b/` |
 | **Learned controller** (LR / RF / GBDT on recorded traces) | Val evidence hit 0.93 / 0.92 / 0.92 vs rules **0.99**: gate failed, rules stay | `docs/v4_preregistration.md` §4 |
 | **`llm_policy` assisted** (LLM writes L2/L3 summaries; 20 LoCoMo-Plus dev items, Qwen2.5-7B) | **No gain:** identical cue hit (0.10 vs 0.10); 86 LLM calls and ~90× the time per conversation; 56% of the 7B model's outputs invalid. `strict` (zero LLM calls) stays the default | `docs/llm_policy_preregistration.md` |
 
