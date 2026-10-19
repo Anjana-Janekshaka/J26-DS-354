@@ -100,4 +100,4 @@ intervals over conversations:
   calls per conversation).
 - Against full context, the judged accuracy is not significantly different on its subset, while CEAI
   uses about 24× fewer context tokens.
-- Judge scores are citable only after the human-agreement check.
+- Judge scores are citable: the human-agreement check passed on 2026-10-19 (Cohen's kappa 0.650).

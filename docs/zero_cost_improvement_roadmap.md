@@ -288,6 +288,6 @@ force a binary choice between the clean claim and the better score.
 | 6.2–6.5 Claim reframing | **Done** as CLAUDE.md §6.6 (presentation framing). The numbers are unchanged |
 | 6.1 Ship the ablation-winning sliding-window weights | **Deferred, and needs pre-registration.** It changes the frozen system, and the sliding-window ablation set has no dev/test split, so the weights would be chosen on the same data that reports them. First split that set, then pre-register |
 | 1.1 / 1.2 Stronger free-tier model and judge | **Needs the user:** a free Groq or OpenRouter API key, set as an environment variable and never pasted in chat. Free-tier daily token limits must be checked first; one full comparison is roughly 1–2M tokens |
-| 1.3 Human labelling | Needs the team (sheets ready) |
+| 1.3 Human labelling | **Done 2026-10-19:** judge kappa 0.650 (≥ 0.6), so judge scores are citable |
 | 2.1, 2.2, 2.3, 3.3 | After Monday, each pre-registered (they change system behaviour) |
 | 3.1, 3.2, 3.4, 3.6, 4.1, 5.1 | After Monday (Colab sessions, setup time or outside data) |

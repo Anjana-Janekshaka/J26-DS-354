@@ -54,5 +54,5 @@ Memory cost per conversation = (LLM calls to build memory) × (tokens per call) 
 
 - On one independent benchmark (BEAM), request-phrased recall questions are routed to the wrong
   strategy and CEAI scores below always-RAG. The fix is planned (`docs/RISKS_AND_PLAN.md`).
-- Answer-accuracy numbers so far use a 7B model as the judge; a stronger judge and the human
-  agreement check are in progress.
+- Answer-accuracy numbers use a 7B model as the judge. It agrees with human marking at kappa 0.650
+  (substantial); a stronger second judge, planned, would make them firmer.

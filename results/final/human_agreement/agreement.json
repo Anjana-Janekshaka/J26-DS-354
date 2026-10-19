@@ -1,0 +1,28 @@
+{
+  "n_items_scored": 60,
+  "judge_vs_human": {
+    "percent_agreement": 0.7666666666666667,
+    "cohen_kappa": 0.6499999999999999,
+    "cohen_kappa_linear_weighted": 0.7469879518072289,
+    "binary_correct_agreement": 0.8833333333333333,
+    "confusion_judge_rows_human_cols": {
+      "WRONG": {
+        "WRONG": 17,
+        "PARTIAL": 3,
+        "CORRECT": 0
+      },
+      "PARTIAL": {
+        "WRONG": 4,
+        "PARTIAL": 10,
+        "CORRECT": 6
+      },
+      "CORRECT": {
+        "WRONG": 0,
+        "PARTIAL": 1,
+        "CORRECT": 19
+      }
+    }
+  },
+  "human_vs_human_fleiss_kappa_shared": 1.0,
+  "problems": []
+}

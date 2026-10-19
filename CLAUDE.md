@@ -538,7 +538,7 @@ what was built and measured, and the decisions later work must respect. **In a n
   - **Honest negatives:** BEAM (independent) adaptive 0.346 vs always-RAG 0.445; the learned
     controller lost to the rules; LLM-assisted summaries gave no gain with a 7B model.
 - **Left before Wednesday:** rehearse the demo
-  (`docs/DEMO_GUIDE.md`), the teammates' labelling sheets.
+  (`docs/DEMO_GUIDE.md`). The labelling is done: judge kappa 0.650, so judged accuracy is citable.
 - **Presentation framing** (how to state the results; 2026-10-17): §6.6. **Post-Monday improvement plan:**
   `docs/zero_cost_improvement_roadmap.md`.
 - **Assessment compliance** (IT4010 PP1 mark sheet, `docs/PP1 Assessment Criteria.pdf`): criterion →
@@ -647,8 +647,8 @@ context is a ceiling run on 60 of the questions. Paired as CEAI − system:
   extractions. The **corrected run** (limit 8,000, declared as a protocol amendment before running)
   is the headline. **Do not claim "CEAI beats Mem0 on accuracy".** Claim instead: *"same judged
   accuracy, higher exact-answer F1, zero write-time LLM calls"*.
-- **Judge scores become citable only after the human-agreement check;** until then, lead with
-  token-F1.
+- **Judge scores are citable:** the human-agreement check passed (kappa 0.650 ≥ 0.6, 2026-10-19).
+  Report token-F1 alongside.
 - Not run (setup too heavy for free Colab before the deadline): Zep, LangMem, Letta/MemGPT and A-Mem.
   They are cited only as related work, never as numbers next to ours.
 
@@ -724,7 +724,7 @@ conversations, costs nothing on uniform ones, and every decision is explainable.
    `docs/DEMO_GUIDE.md`). Still to write:
    - Slide text: four component slides per §11, the integration (CAUGHT/MISSED) slide, the Pareto
      and baselines slides, and Q&A answers.
-2. **Human-agreement labelling:**
+2. **Human-agreement labelling: done 2026-10-19.** Human-agreement check done (2026-10-19): 4 annotators, 60 test answers, blind. Judge vs humans: **Cohen's kappa 0.650** (above the 0.6 bar; weighted 0.747), agreement 76.7%, correct-vs-not agreement 88.3%. The 7B judge's answer-accuracy scores are therefore **citable**. Where it disagrees, it is mostly stricter or looser on PARTIAL; it never called a human-WRONG answer CORRECT (`results/final/human_agreement/agreement.json`).
    - The sheets for the test answers are in Colab output `ceai_runs/final/human_agreement/` (local copy:
      `runs/colab3/final/human_agreement/`, which is git-ignored; keep `key.json` private). If
      they are lost, regenerate them from `results/final/locomo_qa_test_questions.jsonl` with
@@ -800,7 +800,9 @@ to it as a pre-registered improvement once its test runs finish.
 - The system gates did their job: they stopped v4, whose sliding-window weights won alone but broke
   the full system.
 
-**Still open:** human-agreement labelling (team); a stronger free
+**Done 2026-10-19:** Human-agreement check done (2026-10-19): 4 annotators, 60 test answers, blind. Judge vs humans: **Cohen's kappa 0.650** (above the 0.6 bar; weighted 0.747), agreement 76.7%, correct-vs-not agreement 88.3%. The 7B judge's answer-accuracy scores are therefore **citable**. Where it disagrees, it is mostly stricter or looser on PARTIAL; it never called a human-WRONG answer CORRECT (`results/final/human_agreement/agreement.json`).
+
+**Still open:** a stronger free
 judge (needs the user's Groq/OpenRouter key).
 
 ### 12.12 Presentation brief (for building the slides)

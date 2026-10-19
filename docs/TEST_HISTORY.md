@@ -58,8 +58,8 @@ brackets the first time they appear (see also the glossary in `docs/PANEL_EXPLAI
   but our own design. The independent BEAM benchmark did not show a gain.
 - **The coding traps are few** (2 + 26), so they are a stress test, not a statistical benchmark.
   The check needs exact text, which favours systems that keep original messages.
-- **AI-judged accuracy uses a 7B judge.** It is citable only after the human-agreement check, which
-  the team is finishing. Token-F1 is reported alongside.
+- **AI-judged accuracy uses a 7B judge.** It passed the human-agreement check (kappa 0.650, just above
+  the 0.6 bar), on 60 answers; a stronger second judge would make it firmer. Token-F1 is reported alongside.
 - **Some test sets are small** (5 LoCoMo test conversations; 20 items for the AI-summary pilot), so
   intervals are wide.
 - **v4b was defined after v4 failed.** This is disclosed, and v4b had to pass the same gates on dev
@@ -213,7 +213,16 @@ brackets the first time they appear (see also the glossary in `docs/PANEL_EXPLAI
   kappa 0.11** (agreement beyond chance; 0 = chance, 1 = perfect). It is unusable for this.
 - **What changed:** strategy labels use only the objective check. For answer grading, we built
   **human-agreement sheets**: four people mark the same answers blind, and judge scores are cited
-  only if kappa ≥ 0.6. This labelling is still being done by the team.
+  only if kappa ≥ 0.6.
+- **Human-agreement result (2026-10-19):**
+  - **How:** 4 team members marked 60 of the test answers blind (without knowing which system wrote
+    each one), using the same correct / partial / wrong rules as the judge. Shared items use the
+    majority human label.
+  - **Outcome:** the judge agrees with the humans **76.7%** of the time, **Cohen's kappa 0.650**
+    (above 0.6, "substantial"), and 88.3% on correct-vs-not. It never marked an answer the humans
+    called wrong as correct.
+  - **What changed:** judged accuracy (e.g. CEAI 0.507 vs Mem0 0.467) is now citable, with token-F1
+    reported alongside.
 
 ---
 

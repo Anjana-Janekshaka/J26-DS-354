@@ -346,8 +346,10 @@ Each team member owns one.
 
 - **Evidence hit**: did the needed information reach the model? This is objective.
 - **Answer accuracy**: an AI model answers from the memory provided; another AI model, the
-  **judge**, marks it correct, partly correct or wrong. We check a sample against human marking
-  using **Cohen's kappa** (a standard score of how much two markers agree beyond chance).
+  **judge**, marks it correct, partly correct or wrong. To check the judge, four people marked 60 answers blind (without knowing which system wrote them),
+  and we measured agreement with **Cohen's kappa** (a standard score of how much two markers agree
+  beyond chance; 0 = chance, 1 = perfect). The judge scored **0.650**, above the 0.6 bar for
+  "substantial" agreement, so its marks can be trusted.
 - **F1 score**: how closely the answer's words match the correct answer (0 to 1).
 
 **Fairness rules:**
