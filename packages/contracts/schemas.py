@@ -90,6 +90,9 @@ class TurnSignal(_Contract):
     token_usage: TokenUsage
     conversation_state: str
     timestamp: datetime
+    # Tier 0 phrasing cue: the message asks to recall earlier conversation content, whatever its
+    # surface form ("Can you list what I ...", "remind me ..."). Optional; older records omit it.
+    recall_request: bool = False
 
     @property
     def shift_detected(self) -> bool:

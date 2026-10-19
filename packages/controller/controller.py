@@ -21,7 +21,7 @@ from contracts import (
     TurnSignal,
 )
 
-from .rules import RULES, RuleConfig, RuleHit, apply_escalations
+from .rules import RULES, RuleConfig, RuleHit, TurnCues, apply_escalations
 
 
 class RuleBasedController:
@@ -63,9 +63,9 @@ class RuleBasedController:
         )
 
     # ------------------------------------------------------------------ decision
-    def _rule(self, fv: ControllerFeatureVector, shift: bool = False) -> RuleHit:
+    def _rule(self, fv: ControllerFeatureVector, cues: TurnCues = TurnCues()) -> RuleHit:
         for rule in RULES:
-            hit = rule(fv, self.config, shift)
+            hit = rule(fv, self.config, cues)
             if hit is not None:
                 return hit
         if fv.prior_strategy is not None:
@@ -85,7 +85,7 @@ class RuleBasedController:
                     self._override = None
 
         fv = self.feature_vector(signal)
-        hit = self._rule(fv, signal.shift_detected)
+        hit = self._rule(fv, TurnCues(shift=signal.shift_detected, recall_request=signal.recall_request))
         strategy = hit.strategy
         parts = [f"[{hit.rule}] {hit.reason}"]
 

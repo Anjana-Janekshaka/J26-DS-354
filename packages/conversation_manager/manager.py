@@ -97,6 +97,7 @@ class ConversationManager:
             token_usage=TokenUsage(used=self.tokens_used, budget=self.token_budget),
             conversation_state=TurnSignal.SHIFT_DETECTED if cls.shift_detected else self.active_task_id,
             timestamp=timestamp or utcnow(),
+            recall_request=cls.recall_request,
         )
         if publish:
             self.bus.publish(signal)

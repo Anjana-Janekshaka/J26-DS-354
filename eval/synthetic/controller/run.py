@@ -35,7 +35,7 @@ from pathlib import Path
 from controller import RuleBasedController, RuleConfig
 from eval.metrics import cluster_bootstrap_ci, macro_f1
 
-from eval.frozen import system_name
+from eval.frozen import SYSTEM_RULES, system_name
 
 from .generate import GENERATOR_VERSION, load_split
 from .trace import SINGLES, STRATEGIES, build_traces, replay
@@ -63,7 +63,8 @@ def load_rule_config(use_default: bool) -> tuple[RuleConfig, str, str]:
     """(config, default_strategy, description). Uses the frozen config unless told not to."""
     if not use_default and FROZEN_RULES.exists():
         data = json.loads(FROZEN_RULES.read_text(encoding="utf-8"))
-        return (RuleConfig(**data["config"]), data.get("default_strategy", "sliding_window"),
+        cfg = RuleConfig(**data["config"]).model_copy(update=SYSTEM_RULES.get(system_name(), {}))
+        return (cfg, data.get("default_strategy", "sliding_window"),
                 f"frozen ({FROZEN_RULES.name}, tuned on {data.get('tuned_on', '?')})")
     return RuleConfig(), "sliding_window", "default RuleConfig()"
 

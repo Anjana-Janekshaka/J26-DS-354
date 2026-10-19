@@ -1,7 +1,7 @@
 """Rule table for the rule-based ASSE controller.
 
-Inputs are ONLY the Tier 0/1 ``ControllerFeatureVector`` plus escalation events raised on
-*earlier* turns (section 5). Rules are evaluated in order; each returns a strategy and a
+Inputs are ONLY the Tier 0/1 ``ControllerFeatureVector``, two Tier 0 phrasing/topic cues from the
+``TurnSignal`` (``TurnCues``) and escalation events raised on *earlier* turns (section 5). Rules are evaluated in order; each returns a strategy and a
 human-readable reason. ``hard`` rules switch immediately; soft rules respect the minimum dwell
 time (``time_since_last_switch``) to avoid flapping.
 """
@@ -27,6 +27,9 @@ class RuleConfig(BaseModel):
     # Recall questions over budget: always RAG, always hybrid, or hybrid unless the conversation
     # manager flagged a topic shift (a question about the current topic keeps the recent window).
     qa_strategy: Literal["rag", "hybrid", "hybrid_unless_shift"] = "rag"
+    # Treat a chat/exploration message flagged as a recall request (TurnSignal.recall_request) like a
+    # qa turn once the history is over budget, with the same qa_strategy. Off in the frozen system.
+    recall_requests_as_qa: bool = False
 
 
 @dataclass
@@ -37,12 +40,18 @@ class RuleHit:
     hard: bool
 
 
-# Rules see the Tier 0/1 feature vector plus one more pre-decision Tier 0 signal from the
-# conversation manager's TurnSignal: whether this message was flagged as a topic shift.
-Rule = Callable[[ControllerFeatureVector, RuleConfig, bool], RuleHit | None]
+@dataclass(frozen=True)
+class TurnCues:
+    """Pre-decision Tier 0 cues from the conversation manager's TurnSignal, next to the feature vector."""
+
+    shift: bool = False  # the message was flagged as a topic shift
+    recall_request: bool = False  # the message asks to recall earlier conversation content
 
 
-def _fits(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+Rule = Callable[[ControllerFeatureVector, RuleConfig, TurnCues], RuleHit | None]
+
+
+def _fits(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.token_budget_pressure < cfg.low_pressure:
         return RuleHit(
             "history_fits",
@@ -53,12 +62,12 @@ def _fits(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> 
     return None
 
 
-def _qa(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+def _qa(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.task_type != "qa":
         return None
     mode = cfg.qa_strategy
     if mode == "hybrid_unless_shift":
-        mode = "rag" if shift else "hybrid"
+        mode = "rag" if cues.shift else "hybrid"
     if mode == "rag":
         why = " (topic shift detected)" if cfg.qa_strategy == "hybrid_unless_shift" else ""
         return RuleHit("recall_question", "rag", f"task_type=qa (recall of earlier facts){why} with history over budget -> RAG retrieves the specific turns", hard=True)
@@ -66,7 +75,7 @@ def _qa(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> Ru
                    "task_type=qa on the current topic (no shift) with history over budget -> hybrid: recent window plus retrieved earlier turns", hard=True)
 
 
-def _build(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+def _build(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.task_type == "code_generation":
         return RuleHit(
             "build_request",
@@ -77,7 +86,7 @@ def _build(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) ->
     return None
 
 
-def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.task_type == "code_refactor":
         return RuleHit(
             "refactor_request",
@@ -88,7 +97,7 @@ def _refactor(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False)
     return None
 
 
-def _debug(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+def _debug(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.task_type == "debugging":
         return RuleHit("debugging", "sliding_window", "task_type=debugging -> sliding window: latest edits and traces are local and recent", hard=False)
     return None
@@ -101,7 +110,18 @@ _LONG_CHAT_REASON = {
 }
 
 
-def _long_open(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False) -> RuleHit | None:
+def _recall_request(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
+    if not (cfg.recall_requests_as_qa and cues.recall_request and fv.task_type in ("chat", "exploration")):
+        return None
+    if fv.token_budget_pressure < cfg.low_pressure:
+        return None
+    hit = _qa(fv.model_copy(update={"task_type": "qa"}), cfg, cues)
+    return RuleHit("recall_request", hit.strategy,
+                   f"task_type={fv.task_type} but phrased as a recall request (refers back to earlier conversation) "
+                   f"with history over budget -> handled like task_type=qa: {hit.strategy}", hard=True)
+
+
+def _long_open(fv: ControllerFeatureVector, cfg: RuleConfig, cues: TurnCues = TurnCues()) -> RuleHit | None:
     if fv.task_type in ("chat", "exploration") and fv.token_budget_pressure >= cfg.low_pressure:
         s = cfg.long_chat_strategy
         return RuleHit(
@@ -113,7 +133,7 @@ def _long_open(fv: ControllerFeatureVector, cfg: RuleConfig, shift: bool = False
     return None
 
 
-RULES: list[Rule] = [_fits, _qa, _build, _refactor, _debug, _long_open]
+RULES: list[Rule] = [_fits, _qa, _build, _refactor, _debug, _recall_request, _long_open]
 
 
 def apply_escalations(

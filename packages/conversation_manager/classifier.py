@@ -67,6 +67,38 @@ _EXPLICIT_SHIFT = re.compile(
     re.I,
 )
 
+# Recall request (Tier 0 cue, independent of task type): a request or question that points back at
+# earlier conversation content. Explicit memory phrasing counts on its own; a back-reference counts
+# only inside a request or question, so statements ("I told my boss ...") are not flagged.
+_RECALL_EXPLICIT = re.compile(
+    r"\b(remind me|do you (still )?remember|can you recall|go back to what)\b",
+    re.I,
+)
+_RECALL_BACKREF = re.compile(
+    r"\b((i|we)( had| have|'ve|'d)? (told|mentioned|said|shared|asked|described|listed|discussed|talked about|went over|"
+    r"covered|decided|agreed|planned|brought up|noted|explained|showed|gave|wrote|chose|picked)|"
+    r"you (told|said|mentioned|suggested|recommended|gave|showed|explained|wrote)( me| us)?|"
+    r"did (i|we|you) (tell|mention|say|share|ask|describe|list|discuss|talk about|go over|cover|decide|agree|plan|"
+    r"bring up|note|explain|show|give|write|choose|pick|suggest|recommend)|"
+    r"(earlier|previously|before|so far|up to now) (in|during|throughout) (this|our) (conversation|chat|discussion|session)s?|"
+    r"in (our|this) (previous|earlier|last|past|first) (conversation|chat|discussion|session)s?|"
+    r"(throughout|over|across) (the course of )?(our|this) (conversation|chat|discussion|session)s?|"
+    r"(my|our) (earlier|previous|original|initial|first) (message|question|request|plan|idea|choice|preference|answer)s?)\b",
+    re.I,
+)
+_REQUEST = re.compile(
+    r"^\s*(please\s+)?(can|could|would|will) you\b|^\s*(please\s+)?(list|tell|show|give|remind|walk|"
+    r"go over|repeat|name|describe|outline|explain)\b",
+    re.I,
+)
+
+
+def is_recall_request(text: str) -> bool:
+    if _RECALL_EXPLICIT.search(text):
+        return True
+    return bool(_RECALL_BACKREF.search(text)) and (text.rstrip().endswith("?") or bool(_REQUEST.search(text)))
+
+
 _ENTITY = re.compile(r"(?<!^)(?<![.!?]\s)\b([A-Z][a-z]{2,})\b")
 _ENTITY_STOP = {"what", "when", "where", "which", "who", "why", "how", "the", "this", "that", "did", "does", "can", "could",
                 "would", "should", "is", "are", "was", "were", "have", "has", "also", "now", "okay", "thanks", "yes", "and"}
@@ -87,6 +119,7 @@ class Classification:
     shift_detected: bool
     matched_rule: str
     topic_similarity: float | None
+    recall_request: bool = False
 
 
 @dataclass
@@ -146,4 +179,5 @@ class TaskTypeClassifier:
             self._recent.append(vec)
             self._recent = self._recent[-self.config.centroid_window :]
         self._seen += 1
-        return Classification(task_type=task, shift_detected=shift, matched_rule=rule, topic_similarity=sim)
+        return Classification(task_type=task, shift_detected=shift, matched_rule=rule, topic_similarity=sim,
+                              recall_request=decision_point and is_recall_request(text))
