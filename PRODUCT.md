@@ -8,12 +8,12 @@ web
 
 ## Users
 
-- **Presentation panel** (primary moment: Progress Presentation 1, Wednesday 2026-10-21). Examiners watch the chat live on a projector and need to see, in seconds, which memory method CEAI picked for each message and why.
+- **Presentation panel** (primary moment: Progress Presentation 1, Wednesday 2026-10-21). Examiners watch the chat live on a projector and need to see, in seconds, which memory method Syno picked for each message and why.
 - **Everyday users** of the chat after the presentation: people chatting with an assistant (mostly about code) who should not have to understand memory internals to use it.
 
 ## Product Purpose
 
-CEAI is adaptive memory middleware for multi-turn LLM chat. The chat app (`console/chat.html`, served by `console/chat.py`) is a normal AI chat where CEAI manages the memory. Success: a person chats as usual, and every reply shows, at a glance, which memory method was used and which earlier messages it drew on, with the full reason one click away.
+Syno is adaptive memory middleware for multi-turn LLM chat. The chat app (`console/chat.html`, served by `console/chat.py`) is a normal AI chat where Syno manages the memory. Success: a person chats as usual, and every reply shows, at a glance, which memory method was used and which earlier messages it drew on, with the full reason one click away.
 
 ## Positioning
 

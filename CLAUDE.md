@@ -6,6 +6,8 @@ build, where it lives, what makes each piece novel, and how each piece proves it
 any conflicting detail in the four individual proposal PDFs for interfaces, ownership, and build
 order — those stay the source for literature review and write-up language only.
 
+**Product name: Syno** (renamed from CEAI on 2026-10-20 in every user-facing UI, doc and chart). Internal identifiers keep the old name on purpose: `CEAI_*` env vars, the `ceai-memory-middleware` package, storage keys, JSON keys in results files, and the dated pre-registration docs.
+
 Project: J26-DS-354, "Adaptive Memory Middleware for Multi-Turn Conversational LLM Applications"
 (IT4010, SLIIT, CoEAI). Team: Liyanagamage A.J. (Sliding Window + Conversation Manager) · Nethmini
 S.H.S. (Summarization) · Wijewardane D.M.R. (Retrieval/RAG) · Amarathunga A.A.N.N. (Controller/ASSE).

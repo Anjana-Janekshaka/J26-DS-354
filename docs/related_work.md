@@ -1,14 +1,14 @@
 # Related work and novelty positioning (reviewed 2026-10-15)
 
 This file reviews the 22 unique papers in the team's reading folder (`RAG model/Papers`; three files
-were duplicates). For each paper it records what the paper does, which CEAI claim it touches, and
-what CEAI takes from it. The narrowed claims are in CLAUDE.md §6.5. Numbers quoted are the papers'
+were duplicates). For each paper it records what the paper does, which Syno claim it touches, and
+what Syno takes from it. The narrowed claims are in CLAUDE.md §6.5. Numbers quoted are the papers'
 own and are not reproduced here. The only exception is MemStrata's staleness metrics, which we
 computed on our own data (§3).
 
 ## 1. Paper by paper
 
-| Paper | What it does | Touches | Threat | What CEAI takes |
+| Paper | What it does | Touches | Threat | What Syno takes |
 |---|---|---|---|---|
 | **MemStrata**, Temporal Validity in Retrieval Memory (arXiv 2606.26511) | Deterministic (subject, relation) supersession in a bi-temporal ledger. Reports that cosine separates contradictions from duplicates at AUROC 0.59, and that LLM/NLI judges leak stale facts 25–60% | RAG claim 2; summarization merge | **High** | The stale-fact leak metric, structural checks first, and reporting false supersession. Our version is in §3 |
 | **Zep / Graphiti** (arXiv 2501.13956) | Temporal knowledge graph. An LLM compares new edges with similar existing ones and invalidates them. Search mixes cosine, BM25 and BFS, with RRF / MMR / cross-encoder reranking | RAG claim 2; RAG retrieval | **Medium** | A neighbour for two-stage staleness: theirs works on LLM-extracted edges with an LLM verifier. Hybrid lexical + dense retrieval and MMR (v2 options, §4) |
@@ -31,7 +31,7 @@ computed on our own data (§3).
 | **RAG** (Lewis et al., arXiv 2005.11401) | Parametric + non-parametric generation over a dense index | Background | — | Foundational citation |
 | **DPR** (EMNLP 2020) | Dense passage retrieval; BM25 + DPR hybrids help keyword-heavy sets | RAG retrieval | — | Hybrid lexical + dense (v2 option) |
 | **Survey: Evaluation of RAG** (arXiv 2405.07437) | Retrieval and generation metrics (relevance, accuracy, faithfulness) | Evaluation | — | Metric vocabulary; we report retrieval (evidence hit, NDCG) and generation (judge, token-F1) separately |
-| **Survey: Memory mechanisms of LLM agents** (arXiv 2404.13501) | Taxonomy of memory sources, forms and operations (write, manage, read) | Framing | — | Positions CEAI as a *read-path* controller over three management strategies |
+| **Survey: Memory mechanisms of LLM agents** (arXiv 2404.13501) | Taxonomy of memory sources, forms and operations (write, manage, read) | Framing | — | Positions Syno as a *read-path* controller over three management strategies |
 | **Review: RAG-driven memory architectures** (IEEE Access 2025) | Limits of vector stores; hybrid vector + knowledge graph + finite-state-machine designs | Framing | — | Supports hybrid, orchestrated memory designs |
 
 ## 2. What changes in the claims (summary; full text in CLAUDE.md §6.5)

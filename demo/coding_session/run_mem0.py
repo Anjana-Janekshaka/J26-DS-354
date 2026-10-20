@@ -5,13 +5,13 @@
 Needs an LLM for Mem0's extraction (CEAI_LLM_BASE_URL + CEAI_LLM_MODEL, Ollama on Colab) and
 ``pip install mem0ai ollama``. Mem0 sees the session the way a chat app feeds it: one ``add()`` per
 completed exchange (user message + reply). At each trap the context is built two ways under the same
-token budget as CEAI's demo:
+token budget as Syno's demo:
 
   mem0               Mem0's retrieved memories for the trap message
   mem0_plus_window   the same memories plus the last 6 exchanges (the usual app pattern),
                      memories first, recent turns filling the rest of the budget
 
-and checked with the same trap check as the CEAI arms (required text present, any stale form marked).
+and checked with the same trap check as the Syno arms (required text present, any stale form marked).
 """
 
 from __future__ import annotations

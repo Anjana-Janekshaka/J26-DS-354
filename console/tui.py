@@ -1,4 +1,4 @@
-"""CEAI in the terminal: a chat where CEAI manages the memory, laid out like the Hermes agent CLI.
+"""Syno in the terminal: a chat where Syno manages the memory, laid out like the Hermes agent CLI.
 
     python -m console.tui                     # new chat
     python -m console.tui -c                  # continue the most recent chat
@@ -44,13 +44,15 @@ from console.chat import NAME, PERSONALITIES, STRATEGIES, ChatSession, stream_ai
 from contracts import count_tokens
 
 VERSION = "0.2"
-COLOR = {"sliding_window": "cyan", "summarization": "magenta", "rag": "yellow", "hybrid": "green"}
-HEX = {"sliding_window": "#56b6c2", "summarization": "#c678dd", "rag": "#e5c07b", "hybrid": "#98c379"}
+# Same line colours as the web chat and dashboard (their dark-theme values): Recent blue,
+# Summary amber, Search green, Recent + search violet.
+HEX = {"sliding_window": "#6ea6ff", "summarization": "#f2a33a", "rag": "#3cc993", "hybrid": "#b49bff"}
+COLOR = dict(HEX)
 SHORT = {"recent": "sliding_window", "summary": "summarization", "search": "rag", "both": "hybrid"}
-SHORT_HELP = {"auto": "let CEAI choose (default)", "recent": "Recent messages", "summary": "Summary",
+SHORT_HELP = {"auto": "let Syno choose (default)", "recent": "Recent messages", "summary": "Summary",
               "search": "Search earlier messages", "both": "Recent + search"}
 SKINS = {
-    "ceai": {"accent": "green", "hex": "#98c379", "bar": "#202020"},
+    "syno": {"accent": "green", "hex": "#98c379", "bar": "#202020"},
     "ocean": {"accent": "bright_blue", "hex": "#61afef", "bar": "#1b2230"},
     "amber": {"accent": "dark_orange", "hex": "#d19a66", "bar": "#2a2018"},
     "mono": {"accent": "white", "hex": "#dddddd", "bar": "#262626"},
@@ -69,7 +71,7 @@ THINK = re.compile(r"\s*<think>(.*?)(</think>|$)(.*)", re.S)
 EXAMPLES = [
     "/sample, then: Write a helper that formats a task's due date for the email digest.",
     "/sample, then: Call get_user_tasks for the current user in the new endpoint.",
-    "Or just start chatting. CEAI remembers as the conversation grows.",
+    "Or just start chatting. Syno remembers as the conversation grows.",
 ]
 
 console = Console(highlight=False)
@@ -189,7 +191,7 @@ class App:
     # ---------------------------------------------------------------- settings and sessions
     @property
     def accent(self) -> str:
-        return SKINS.get(self.settings["skin"], SKINS["ceai"])["accent"]
+        return SKINS.get(self.settings["skin"], SKINS["syno"])["accent"]
 
     def set(self, key: str, value) -> None:
         self.settings[key] = value
@@ -229,7 +231,7 @@ class App:
     # ---------------------------------------------------------------- screen parts
     def banner(self) -> None:
         ai = self.chat.ai
-        logo = Text.assemble(("◈ CEAI", f"bold {self.accent}"), ("  memory that changes method, message by message", "dim"))
+        logo = Text.assemble(("◈ Syno", f"bold {self.accent}"), ("  memory that changes method, message by message", "dim"))
         rows = Table.grid(padding=(0, 2))
         rows.add_column(style="dim", no_wrap=True)
         rows.add_column()
@@ -589,8 +591,8 @@ class App:
                 console.print(Text.assemble(("      ◈ " if self.settings["timestamps"] else "    ◈ ", COLOR[s]), (reply, "dim")))
 
     def c_save(self, arg: str) -> None:
-        path = Path(arg or f"ceai_chat_{self.session['id']}.md")
-        lines = [f"# {self.session.get('title') or 'CEAI chat'}", "",
+        path = Path(arg or f"syno_chat_{self.session['id']}.md")
+        lines = [f"# {self.session.get('title') or 'Syno chat'}", "",
                  f"AI: {self.chat.ai.get('model') or 'off'}. Memory budget: {self.chat.budget} tokens.", ""]
         for m in self.chat.messages:
             if m["role"] == "user":
@@ -708,11 +710,11 @@ class App:
             console.print(f"Next message uses: [bold]{now}[/]. Choose with /memory auto | recent | summary | search | both")
         elif arg == "auto":
             self.next_memory = "auto"
-            console.print("[dim]Next message: CEAI chooses.[/]")
+            console.print("[dim]Next message: Syno chooses.[/]")
         elif arg in SHORT or arg in STRATEGIES:
             self.next_memory = SHORT.get(arg, arg)
             console.print(f"[dim]Next message only:[/] [{COLOR[self.next_memory]}]{NAME[self.next_memory]}[/]"
-                          "[dim]. Afterwards CEAI chooses again.[/]")
+                          "[dim]. Afterwards Syno chooses again.[/]")
         else:
             console.print(f"[red]Unknown method {arg!r}.[/] Use auto, recent, summary, search or both.")
 
@@ -902,7 +904,7 @@ class App:
             core = version("ceai-memory-middleware")
         except Exception:
             core = "?"
-        console.print(f"CEAI terminal {VERSION}  [dim]│[/]  memory middleware {core}  [dim]│[/]  {self.chat.state()['system']} system  "
+        console.print(f"Syno terminal {VERSION}  [dim]│[/]  memory middleware {core}  [dim]│[/]  {self.chat.state()['system']} system  "
                       f"[dim]│[/]  Python {platform.python_version()} on {platform.system()}")
 
     def c_quit(self, arg: str) -> bool:
@@ -995,7 +997,7 @@ class App:
     def style(self):
         from prompt_toolkit.styles import Style
 
-        skin = SKINS.get(self.settings["skin"], SKINS["ceai"])
+        skin = SKINS.get(self.settings["skin"], SKINS["syno"])
         return Style.from_dict({
             "prompt": f"{skin['hex']} bold", "bottom-toolbar": f"noreverse bg:{skin['bar']} #c8c8c8",
             "tb": "#c8c8c8", "tb.dim": "#7f7f7f", "tb.sep": "#4a4a4a", "tb.logo": f"{skin['hex']} bold",

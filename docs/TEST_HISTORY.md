@@ -34,7 +34,7 @@ brackets the first time they appear (see also the glossary in `docs/PANEL_EXPLAI
 5. **Comparisons are fair and paired.**
    - Every method or system gets the same conversations, the same questions, the same memory budget,
      the same answering model and the same judge.
-   - Inside CEAI, all methods build their context from the same stored memory at the same moment.
+   - Inside Syno, all methods build their context from the same stored memory at the same moment.
    - Results are compared question by question.
    - When we found our harness had handicapped Mem0, we declared the fix first and re-ran.
 6. **Objective checks first.** The main measures (evidence hit, trap check, cue hit) are
@@ -221,7 +221,7 @@ brackets the first time they appear (see also the glossary in `docs/PANEL_EXPLAI
   - **Outcome:** the judge agrees with the humans **76.7%** of the time, **Cohen's kappa 0.650**
     (above 0.6, "substantial"), and 88.3% on correct-vs-not. It never marked an answer the humans
     called wrong as correct.
-  - **What changed:** judged accuracy (e.g. CEAI 0.507 vs Mem0 0.467) is now citable, with token-F1
+  - **What changed:** judged accuracy (e.g. Syno 0.507 vs Mem0 0.467) is now citable, with token-F1
     reported alongside.
 
 ---
@@ -343,14 +343,14 @@ those files by a script, so no number is typed by hand.
 
 ### F1. External baselines, run 1
 
-- **Why:** prove CEAI against systems people actually use, under identical conditions (same 230
+- **Why:** prove Syno against systems people actually use, under identical conditions (same 230
   questions, model, judge and memory budget). The systems:
   - fixed-chunk RAG;
   - a LangChain-style summary buffer;
   - **Mem0** (a popular memory product, run with its real software);
   - full context (sending everything).
-- **How:** The protocol (`docs/baselines_protocol.md`) was written first: the same 230 randomly sampled LoCoMo test questions CEAI had already answered, the same answering model, judge, answer prompt and 1,024-token memory budget for every system. Mem0 is the real `mem0ai` software run locally, not a re-implementation. CEAI and each system are compared question by question (*paired*).
-- **Outcome:** CEAI was clearly ahead. But checking Mem0's logs showed **our** harness had cut off
+- **How:** The protocol (`docs/baselines_protocol.md`) was written first: the same 230 randomly sampled LoCoMo test questions Syno had already answered, the same answering model, judge, answer prompt and 1,024-token memory budget for every system. Mem0 is the real `mem0ai` software run locally, not a re-implementation. Syno and each system are compared question by question (*paired*).
+- **Outcome:** Syno was clearly ahead. But checking Mem0's logs showed **our** harness had cut off
   8.8% of Mem0's memory-extraction replies (our output limit was too low for it).
 - **What changed:** we declared a **correction before re-running** (raise the limit to 8,000 tokens)
   and re-ran Mem0.
@@ -359,10 +359,10 @@ those files by a script, so no number is typed by hand.
 
 - **How:** Only the declared change (Mem0's output limit raised to 8,000 tokens) was made; everything else identical to F1.
 - **Outcome:**
-  - Judged accuracy CEAI 0.507 vs Mem0 0.467: **not significantly different**, so we call it equal.
-  - **Exact-answer F1** (how closely the answer's words match the correct answer) **+0.129 for CEAI,
+  - Judged accuracy Syno 0.507 vs Mem0 0.467: **not significantly different**, so we call it equal.
+  - **Exact-answer F1** (how closely the answer's words match the correct answer) **+0.129 for Syno,
     significant**.
-  - CEAI is significantly better than fixed-chunk RAG and the summary buffer.
+  - Syno is significantly better than fixed-chunk RAG and the summary buffer.
 - **What changed:** the claim became "same judged accuracy, higher exact-answer F1, zero memory-building
   AI calls" and **never** "beats Mem0 on accuracy".
 
@@ -370,7 +370,7 @@ those files by a script, so no number is typed by hand.
 
 - **Why:** "zero AI calls" is abstract; time is concrete.
 - **How:** No new run: build times and AI-call counts were read from the logs the baseline runs had already written (`scripts/cost_latency.py`), on the same hardware for every system.
-- **Outcome:** memory for one LoCoMo conversation: **CEAI ~6 s with 0 AI calls**; Mem0 ~972 s with
+- **Outcome:** memory for one LoCoMo conversation: **Syno ~6 s with 0 AI calls**; Mem0 ~972 s with
   ~54 calls (**162× slower**); summary buffer ~704 s.
 - **What changed:** this became the lead claim: "the whole memory layer makes no AI calls".
 
@@ -477,9 +477,9 @@ those files by a script, so no number is typed by hand.
 ### G11. Mem0 on our coding traps (Colab)
 
 - **Why:** "we beat our own fixed window" is weaker than "we beat a real product".
-- **How:** Pre-registered (`docs/mem0_coding_preregistration.md`). Mem0 receives each exchange as a chat app would feed it; at each trap, its retrieved memories (and, in a second variant, the last 6 exchanges too) are checked with exactly the same trap check and budget as CEAI. Its top memories are saved so anyone can read them.
-- **Outcome:** original demo **Mem0 0/2** vs CEAI 2/2. Unseen sessions **Mem0 5/26** (6/26 with
-  recent messages added) vs CEAI 16/26. Mem0 remembers that a function exists, not its exact code.
+- **How:** Pre-registered (`docs/mem0_coding_preregistration.md`). Mem0 receives each exchange as a chat app would feed it; at each trap, its retrieved memories (and, in a second variant, the last 6 exchanges too) are checked with exactly the same trap check and budget as Syno. Its top memories are saved so anyone can read them.
+- **Outcome:** original demo **Mem0 0/2** vs Syno 2/2. Unseen sessions **Mem0 5/26** (6/26 with
+  recent messages added) vs Syno 16/26. Mem0 remembers that a function exists, not its exact code.
   It does better on project decisions (3/3 vs 2/3).
 - **What changed:** this became a main results slide. We say plainly that the check needs exact text.
 

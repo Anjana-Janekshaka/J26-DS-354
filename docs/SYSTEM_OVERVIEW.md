@@ -1,4 +1,4 @@
-# CEAI Adaptive Memory Middleware: system overview
+# Syno Adaptive Memory Middleware: system overview
 
 **What this document is:** how the system is built, what every directory and file does, the main
 ideas in the code, and how the project changed between 2026-10-06 and 2026-10-17.
@@ -24,7 +24,7 @@ systems pick **one** way of choosing that context at design time:
 - search the history for relevant pieces (**retrieval, RAG**).
 
 Conversations change character as they go: a coding session moves between debugging, building
-something new and chatting. **CEAI decides, at every turn, which of the three strategies (or a
+something new and chatting. **Syno decides, at every turn, which of the three strategies (or a
 window + RAG hybrid) to use.** It decides from cheap signals available before any strategy runs,
 and every decision is logged with a human-readable reason and can be overridden by a person. No
 LLM is involved in the decision.
@@ -191,7 +191,7 @@ tangling.
   - **Duplicate function:** the user asks for a helper that already exists.
   - **Renamed API:** a function parameter was renamed earlier.
 - **`run_demo.py`:** runs the session through the real pipeline and checks, deterministically,
-  whether each trap's evidence reaches the model's context. It does this for adaptive CEAI, each
+  whether each trap's evidence reaches the model's context. It does this for adaptive Syno, each
   fixed strategy and a fixed 6-exchange window.
   - Output: a CAUGHT/MISSED table, the decision log and a dashboard HTML.
   - **Result: adaptive 2/2, fixed window 0/2.**
@@ -263,10 +263,10 @@ tangling.
 | 10-15 | 22-paper literature review; narrowed claims (CLAUDE.md §6.5); Pareto charts; MemStrata-style staleness metrics | Defensible novelty. Adaptive chunking was withdrawn as a claim (it did not beat segments on test) |
 | 10-15 | **v2 (hybrid BM25)**, pre-registered with gates | It helped LoCoMo dev (+0.052) but failed the LoCoMo-Plus gate (−0.040), so it was not adopted |
 | 10-15 → 10-16 | **External baselines:** fixed-chunk RAG, summary buffer, Mem0, full context | A fair comparison with existing memory systems |
-| 10-16 | **Corrected Mem0 run**, declared before running | Run 1 had cut off 8.8% of Mem0's extractions (our output limit). Corrected, Mem0 ties CEAI on judged accuracy |
+| 10-16 | **Corrected Mem0 run**, declared before running | Run 1 had cut off 8.8% of Mem0's extractions (our output limit). Corrected, Mem0 ties Syno on judged accuracy |
 | 10-16 | **v3 (hybrid for questions + summarizer facts as observations)**, pre-registered | It failed the LoCoMo-Plus gate (0.134 → 0.020), and the dev answer gain was within noise, so it was not adopted |
 | 10-17 | CLAUDE.md §12 rewritten as a self-contained status; this overview | Handover and closure |
-| 10-17 | Roadmap items: manual override verified live; cost/latency chart (CEAI 6 s / 0 LLM calls vs Mem0 972 s / 54 per conversation); presentation framing (CLAUDE.md §6.6) | `docs/zero_cost_improvement_roadmap.md` |
+| 10-17 | Roadmap items: manual override verified live; cost/latency chart (Syno 6 s / 0 LLM calls vs Mem0 972 s / 54 per conversation); presentation framing (CLAUDE.md §6.6) | `docs/zero_cost_improvement_roadmap.md` |
 | 10-17 | **12 held-out coding sessions**, pre-registered | One hand-built demo invites "was it built to pass?". Result 16/26 vs 3/26 |
 | 10-17 | **v4 candidates**, pre-registered (`docs/v4_preregistration.md`): sliding-window weights, staleness ensemble, dev-tuned chunking, learned controller | Fix the known weak points. Three passed dev and test; the learned controller failed its gate |
 | 10-17 | `llm_policy` toggle; live presenter mode; BEAM; length test | See §12 |
@@ -286,7 +286,7 @@ tangling.
    pulls in the newer one. Code uses exact signature comparison, because NLI cannot tell
    identifiers apart.
 4. **No LLM in the memory path.** Summaries, staleness flags and routing are rule-based or small
-   pretrained models. LLMs are used only to *evaluate* (answering and judging). That is CEAI's
+   pretrained models. LLMs are used only to *evaluate* (answering and judging). That is Syno's
    cost advantage over Mem0 (0 vs about 54 write-time LLM calls per conversation).
 5. **Evaluation discipline is part of the system.**
    - Dev/test splits, and a frozen configuration.
@@ -326,10 +326,10 @@ system of record** for the numbers in CLAUDE.md §12.2; v4b is reported next to 
 | Result | Numbers | Source |
 |---|---|---|
 | **12 held-out coding sessions** (26 traps, written before running; Python, TypeScript, Go, SQL) | Adaptive **16/26**; fixed 6-exchange window **3/26**; always-hybrid 18/26; every duplicate-function trap caught (7/7) | `docs/demo_scenarios_preregistration.md` |
-| **Mem0 on the same coding traps** | Original demo: Mem0 **0/2**, CEAI **2/2**. Held-out: Mem0 **5/26** (6/26 with the last 6 exchanges added), CEAI **16/26**. Mem0 is better only on project decisions (3/3 vs 2/3). Its memories keep a function's *name* but not its exact signature | `docs/mem0_coding_preregistration.md`, `results/final/demo_mem0/` |
+| **Mem0 on the same coding traps** | Original demo: Mem0 **0/2**, Syno **2/2**. Held-out: Mem0 **5/26** (6/26 with the last 6 exchanges added), Syno **16/26**. Mem0 is better only on project decisions (3/3 vs 2/3). Its memories keep a function's *name* but not its exact signature | `docs/mem0_coding_preregistration.md`, `results/final/demo_mem0/` |
 | **Length test** (60 new conversations, frozen system) | Adaptive stays **0.96–1.00** at every length. Lead over the sliding window grows **+0.28 → +0.42** (detour of 2 → 50 exchanges); over always-hybrid +0.04 to +0.08 from 10 exchanges on (hybrid slightly ahead at the shortest, n.s.); over always-RAG roughly constant +0.09 to +0.16 | `docs/v4_preregistration.md` (length outcome), `results/figures/length_advantage.png` |
 | **BEAM** (independent benchmark by other authors, never tuned on; frozen system) | **Negative:** evidence hit adaptive 0.346 vs always-RAG **0.445** (−0.099 [−0.135, −0.065]). Cause: about a third of BEAM's questions are phrased as requests, get classified as chat and go to the summarizer (0.03 vs 0.29 on those). On questions recognised as recall, adaptive = RAG (0.54) | `docs/beam_preregistration.md`, `results/final/beam/summary.json` |
-| **Cost and latency** (recorded timings) | Memory build per LoCoMo conversation: CEAI **~6 s, 0 LLM calls**; Mem0 ~972 s, ~54 calls (**162× slower**); summary buffer ~704 s, ~69 calls | `results/final/cost_latency.json`, `results/figures/memory_build_time.png` |
+| **Cost and latency** (recorded timings) | Memory build per LoCoMo conversation: Syno **~6 s, 0 LLM calls**; Mem0 ~972 s, ~54 calls (**162× slower**); summary buffer ~704 s, ~69 calls | `results/final/cost_latency.json`, `results/figures/memory_build_time.png` |
 | **Component improvements** (each tested alone, test run once) | Staleness ensemble: precision **1.00** / recall 0.69 (was 0.82 / 0.73); wrongly retired current facts **0%** (was 23%); stale leak 0.31 (was 0.27). Dev-tuned chunking: recall at 400 words **0.399** vs fixed segments 0.376 (hand-set 0.355). Sliding-window weights chosen on dev: recall 1.000 vs 0.706 with equal weights | `docs/v4_preregistration.md` |
 | **v4 = all three improvements together** | **Failed its system gate:** synthetic val 0.992 → 0.800. Cause: the new sliding-window weights drop turns even when the whole history fits. Not adopted | same |
 | **v4b = staleness ensemble + chunking only** (pre-registered after the v4 failure, disclosed) | **Passed every gate** on dev: coding scenarios 17/26 (frozen 16); controller val 0.992 = 0.992; **LoCoMo-Plus dev 0.134 → 0.264** (+0.129 [+0.075, +0.189]); **LoCoMo dev 0.709 → 0.785** (+0.076 [+0.059, +0.095]) | same |

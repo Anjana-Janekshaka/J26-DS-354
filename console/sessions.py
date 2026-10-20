@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 DEFAULT_SETTINGS = {
-    "skin": "ceai", "indicator": "unicode", "verbose": "all", "focus": False, "timestamps": False, "footer": True,
+    "skin": "syno", "indicator": "unicode", "verbose": "all", "focus": False, "timestamps": False, "footer": True,
     "bell": False, "statusbar": True, "reasoning": "hide", "personality": None,
 }
 

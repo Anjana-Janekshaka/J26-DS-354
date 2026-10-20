@@ -31,7 +31,7 @@ claim** we present (CLAUDE.md §6.5–6.6). Unusual words are explained in brack
 
 ### Initial claim (original plan)
 
-> "Every existing memory system locks in one strategy at design time. CEAI switches between all
+> "Every existing memory system locks in one strategy at design time. Syno switches between all
 > three at runtime." Planned proof: macro-F1 of strategy choice (a score of how often the chosen
 > strategy matches the correct one, averaged over strategies), and the answer-accuracy gain over the
 > best fixed strategy.
@@ -258,7 +258,7 @@ Each component argued "no AI model" separately. Measuring build time and AI call
 
 ### The Mem0 comparison claim
 
-- **Initially:** "CEAI beats Mem0". Run 1 looked strong, but our harness had cut off 8.8% of Mem0's
+- **Initially:** "Syno beats Mem0". Run 1 looked strong, but our harness had cut off 8.8% of Mem0's
   replies.
 - **After the declared fix and re-run:** **"same judged accuracy (0.507 vs 0.467, not significant),
   higher exact-answer F1 (+0.129, significant), zero memory-building AI calls."** We never say
@@ -273,14 +273,14 @@ Each component argued "no AI model" separately. Measuring build time and AI call
 | Plan | Adaptive catches both traps (2/2); a fixed 6-exchange window catches neither (0/2) |
 | After the reranker test | Still 2/2, but only with the reranker skipped for code (with it on, 1/2) |
 | After 12 unseen sessions (pre-registered) | Adaptive 16/26 vs fixed window 3/26; every duplicate-function trap caught (7/7). **Always-hybrid caught 18/26**, so the claim is "far better than a fixed window", not "better than every method" |
-| After running Mem0 on the same traps | Mem0 **0/2** and **5/26** vs CEAI **2/2** and **16/26**. Mem0 keeps that a function exists, not its exact code; it is better on project decisions (3/3 vs 2/3) |
+| After running Mem0 on the same traps | Mem0 **0/2** and **5/26** vs Syno **2/2** and **16/26**. Mem0 keeps that a function exists, not its exact code; it is better on project decisions (3/3 vs 2/3) |
 
 ---
 
 ## 7. What we explicitly do **not** claim
 
 - That nobody switches memory at runtime (FluxMem and MemCon do, in narrower ways).
-- That CEAI beats Mem0 on judged accuracy (the difference is not significant).
+- That Syno beats Mem0 on judged accuracy (the difference is not significant).
 - That adaptive beats every fixed method everywhere: it ties RAG on LoCoMo, loses on BEAM, and
   always-hybrid caught slightly more unseen traps.
 - That adaptive chunking is a novelty (withdrawn; engineering result only).

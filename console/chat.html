@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>CEAI Chat</title>
+<title>Syno Chat</title>
 <script>
   // Apply the saved theme before first paint.
   try { const t = localStorage.getItem("ceai-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
@@ -257,7 +257,7 @@ textarea::placeholder { color: var(--ink-3); }
         <path d="M21 4v6l-8 8" fill="none" stroke="var(--l-search)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="13" cy="18" r="3.2" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
       </svg>
-      <b>CEAI</b><span>Chat with adaptive memory</span>
+      <b>Syno</b><span>Chat with adaptive memory</span>
     </div>
     <div class="top-actions">
       <span class="status-pill" id="pill"><i class="light"></i><span>Connecting…</span></span>
@@ -297,7 +297,7 @@ textarea::placeholder { color: var(--ink-3); }
     <section class="panel-sec" aria-labelledby="spaceTitle">
       <div class="space-row"><h2 id="spaceTitle">Memory space</h2><b id="spacePct">0%</b></div>
       <div class="meter" id="meter"><i style="width:0"></i></div>
-      <p class="sub" style="margin:0">When it fills, CEAI uses the summary or a search instead of sending everything.</p>
+      <p class="sub" style="margin:0">When it fills, Syno uses the summary or a search instead of sending everything.</p>
       <ul class="legend" id="legend"></ul>
     </section>
     <div class="panel-sec panel-actions">
@@ -419,7 +419,7 @@ textarea::placeholder { color: var(--ink-3); }
         <dl class="facts">
           <div><dt>Memory shown to the AI</dt><dd class="num">${mem.tokens} of ${mem.budget} tokens</dd><div class="bar"><i style="width:${pct}%"></i></div></div>
           <div><dt>Decided in</dt><dd class="num">${Number(mem.ms || 0).toFixed(2)} ms, no AI call</dd></div>
-          <div><dt>Chosen by</dt><dd>${mem.chosen_by === "you" ? "You" : "CEAI, automatically"}</dd></div>
+          <div><dt>Chosen by</dt><dd>${mem.chosen_by === "you" ? "You" : "Syno, automatically"}</dd></div>
         </dl>
         <details><summary>What the assistant was shown</summary><pre>${esc(mem.context || "(nothing yet)")}</pre></details>
         ${mem.rationale ? `<details><summary>Controller decision log</summary><pre>${esc(mem.rationale)}</pre></details>` : ""}
@@ -439,7 +439,7 @@ textarea::placeholder { color: var(--ink-3); }
   function emptyState() {
     return `<div class="empty">
       <h1>Chat as usual. See what the assistant remembers.</h1>
-      <p>For every message, CEAI picks one of four ways to remember the conversation, so long chats stay accurate without sending everything. Each reply shows the method it used and the earlier messages it drew on.</p>
+      <p>For every message, Syno picks one of four ways to remember the conversation, so long chats stay accurate without sending everything. Each reply shows the method it used and the earlier messages it drew on.</p>
       <ul class="lines">${LANES.map((k) => `<li class="l-${k}"><span class="bullet">${LINES[k].name}</span><span>${LINES[k].desc}</span></li>`).join("")}</ul>
       <h2>Try one</h2>
       <div class="tries">${TRIES.map((t) => `<button type="button" class="try">${esc(t)}</button>`).join("")}</div>
@@ -450,11 +450,11 @@ textarea::placeholder { color: var(--ink-3); }
     const inner = $("inner");
     const top = notice ? `<div class="notice" role="alert">${esc(notice)}</div>` : "";
     if (offline) {
-      inner.innerHTML = `<div class="empty"><h1>CEAI is not running</h1><p>Start it with <code>python -m console.chat</code>, then reload this page.</p></div>`;
+      inner.innerHTML = `<div class="empty"><h1>Syno is not running</h1><p>Start it with <code>python -m console.chat</code>, then reload this page.</p></div>`;
       return;
     }
     if (loadingSample) {
-      inner.innerHTML = `<div class="loading-sample" role="status"><h1 style="font-size:1.25rem;margin-bottom:10px">Replaying a coding session through CEAI</h1><p class="num">15 messages, each routed through the real memory system. About 40 s. <span id="elapsed"></span></p></div>`;
+      inner.innerHTML = `<div class="loading-sample" role="status"><h1 style="font-size:1.25rem;margin-bottom:10px">Replaying a coding session through Syno</h1><p class="num">15 messages, each routed through the real memory system. About 40 s. <span id="elapsed"></span></p></div>`;
       return;
     }
     const ex = exchanges();
@@ -488,7 +488,7 @@ textarea::placeholder { color: var(--ink-3); }
     if (!stops.length && !waiting) {
       const h = 4 * 28;
       route.innerHTML = `<svg width="76" height="${h}" aria-hidden="true">${LANES.map((s) => `<line class="lane" x1="${laneX(s)}" x2="${laneX(s)}" y1="0" y2="${h}"/>`).join("")}</svg>
-        <p class="route-empty">Your route appears here: one stop per reply, on the memory line CEAI chose. Switches show as a change of line.</p>`;
+        <p class="route-empty">Your route appears here: one stop per reply, on the memory line Syno chose. Switches show as a change of line.</p>`;
       drawn = 0; return;
     }
     const n = stops.length + (waiting ? 1 : 0), H = n * ROW, y = (k) => k * ROW + ROW / 2;
@@ -546,7 +546,7 @@ textarea::placeholder { color: var(--ink-3); }
   function renderComposer() {
     const v = currentMemory();
     $("hint").innerHTML = v === "auto"
-      ? "Enter to send, Shift+Enter for a new line. CEAI picks the memory unless you choose one."
+      ? "Enter to send, Shift+Enter for a new line. Syno picks the memory unless you choose one."
       : `This message will use <b>${esc(LINES[v].name)}</b>. After it, memory goes back to Automatic.`;
     const lock = pending || busy || loadingSample || offline;
     $("seg").querySelectorAll("input").forEach((i) => { i.disabled = lock; });
@@ -589,7 +589,7 @@ textarea::placeholder { color: var(--ink-3); }
       state.ai = r.ai;
       state.messages.push(r.message);
     } catch (e) {
-      state.messages.push({ role: "assistant", n, text: null, ai_error: `Could not reach CEAI: ${e.message}. Is the chat server still running?`, memory: null });
+      state.messages.push({ role: "assistant", n, text: null, ai_error: `Could not reach Syno: ${e.message}. Is the chat server still running?`, memory: null });
     } finally {
       pending = false; tick(false);
       document.querySelector('input[name="memory"][value="auto"]').checked = true;

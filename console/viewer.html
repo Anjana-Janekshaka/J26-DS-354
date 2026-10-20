@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>CEAI Replay Console</title>
+<title>Syno Replay Console</title>
 <script>
   try { const t = localStorage.getItem("ceai.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
@@ -228,7 +228,7 @@ kbd { font: 600 .72rem/1 var(--mono); padding: 2px 5px; border-radius: 4px; bord
         <path d="M21 4v6l-8 8" fill="none" stroke="var(--l-search)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="13" cy="18" r="3.2" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
       </svg>
-      <b>CEAI</b><span>Replay console</span>
+      <b>Syno</b><span>Replay console</span>
     </div>
     <div class="tabs" role="tablist" aria-label="View">
       <button class="tab" role="tab" data-view="system" aria-selected="true" title="Key 1">Whole system</button>
@@ -270,7 +270,7 @@ kbd { font: 600 .72rem/1 var(--mono); padding: 2px 5px; border-radius: 4px; bord
       <ol class="steps" id="steps"></ol>
     </div>
     <div class="claim">
-      <p>Most memory systems use one method for the whole conversation. CEAI picks one of three for every message, explains why, lets a person
+      <p>Most memory systems use one method for the whole conversation. Syno picks one of three for every message, explains why, lets a person
         override it, and makes no AI calls to manage memory.</p>
       <p><span class="figure">0.986 vs 0.874</span><br>Correct evidence reached the AI 11 points more often than with the best single method, on conversations that change type (test split).</p>
     </div>
@@ -477,7 +477,7 @@ kbd { font: 600 .72rem/1 var(--mono); padding: 2px 5px; border-radius: 4px; bord
       const title = tr.description.split(";")[0].replace(/\bexchanges?\b/g, "message").replace(/->/g, "→");
       return `<section class="verdict"><div class="verdict-head">${ICON.trap}<h2>Trap: ${esc(title)}</h2></div>
         <p class="why">Set up at message ${tr.planted_at}. Did the memory sent to the AI contain the right code?</p>
-        <div class="vs">${box(a.caught, "CEAI", `using ${NAME[a.strategy]}`)}${box(f.caught, "A fixed window", "the last 6 exchanges, as most tools do")}</div>
+        <div class="vs">${box(a.caught, "Syno", `using ${NAME[a.strategy]}`)}${box(f.caught, "A fixed window", "the last 6 exchanges, as most tools do")}</div>
         ${showDetail ? `<div class="all-fixed">Using one method all the time: ${LANES.map((m) => `${NAME[m]} ${tr[m].caught ? "caught" : "missed"}`).join(", ")}.</div>` : ""}</section>`;
     }).join("");
   }

@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FINAL = ROOT / "results" / "final"
 OUT = ROOT / "results" / "figures"
 NAMES = {"sliding_window": "Always sliding window", "summarization": "Always summarization", "rag": "Always RAG",
-         "hybrid": "Always hybrid (window + RAG)", "adaptive": "Adaptive (CEAI)"}
+         "hybrid": "Always hybrid (window + RAG)", "adaptive": "Adaptive (Syno)"}
 INK, MUTED, GRID, HIGHLIGHT, BASE = "#0b0b0b", "#52514e", "#e1e0d9", "#2a78d6", "#898781"
 
 

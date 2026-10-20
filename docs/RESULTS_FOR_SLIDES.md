@@ -24,10 +24,10 @@ that every official test used; "v4b" is the improved version tested on 2026-10-1
 | Claim | Number | Source |
 |---|---|---|
 | Controller on conversations that change type | **0.986 vs 0.874** best single method: **+0.112 [+0.093, +0.129]** | `controller_test.json` |
-| Coding traps, original demo | CEAI **2/2**; fixed window **0/2**; Mem0 **0/2** | `demo.json`, `demo_mem0/` |
-| Coding traps, 12 unseen sessions | CEAI **16/26**; Mem0 **5/26**; fixed window **3/26** | `demo_scenarios/`, `demo_mem0/` |
-| AI calls to build memory, per conversation | CEAI **0** vs Mem0 **54.4** | `cost_latency.json` |
-| Time to build memory, one conversation | CEAI **6.0 s** vs Mem0 **971.8 s** (**162× faster**) | `cost_latency.json` |
+| Coding traps, original demo | Syno **2/2**; fixed window **0/2**; Mem0 **0/2** | `demo.json`, `demo_mem0/` |
+| Coding traps, 12 unseen sessions | Syno **16/26**; Mem0 **5/26**; fixed window **3/26** | `demo_scenarios/`, `demo_mem0/` |
+| AI calls to build memory, per conversation | Syno **0** vs Mem0 **54.4** | `cost_latency.json` |
+| Time to build memory, one conversation | Syno **6.0 s** vs Mem0 **971.8 s** (**162× faster**) | `cost_latency.json` |
 | LoCoMo answers vs Mem0 (same questions, model, judge) | Judge **0.507 vs 0.467** (equal: [−0.060, +0.127]); token-F1 **0.406 vs 0.278** (**+0.129**, significant) | `baselines_mem0_fixed/` |
 | Advantage grows with length | Lead over the sliding window **+0.28 → +0.42** (2 → 50 exchange detours) | `results/figures/length_advantage.png` |
 | AI judge is trustworthy | Cohen's kappa **0.650** vs 4 humans (60 answers) | `human_agreement/agreement.json` |
@@ -40,7 +40,7 @@ that every official test used; "v4b" is the improved version tested on 2026-10-1
 
 | Method | Evidence hit | Tokens sent |
 |---|---|---|
-| **Adaptive (CEAI)** | **0.986** | 249 |
+| **Adaptive (Syno)** | **0.986** | 249 |
 | Always hybrid | 0.926 | 278 |
 | Always RAG (best single) | 0.874 | 172 |
 | Always summarization | 0.850 | 326 |
@@ -74,11 +74,11 @@ that every official test used; "v4b" is the improved version tested on 2026-10-1
 
 | Window | Recall | Recall, earlier topic |
 |---|---|---|
-| **CEAI scored window** | **0.719** | 0.369 |
+| **Syno scored window** | **0.719** | 0.369 |
 | Fixed-token window | 0.567 | 0.025 |
 | Recency-only | 0.556 | 0.000 |
 
-- CEAI vs recency-only: **59 wins, 301 ties, 0 losses**.
+- Syno vs recency-only: **59 wins, 301 ties, 0 losses**.
 - Weight ablation (35 combinations): equal weights rank **15th**; relevance-heavy weights reach 1.000.
   The weights are a setting.
 
@@ -88,7 +88,7 @@ that every official test used; "v4b" is the improved version tested on 2026-10-1
 
 30 test conversations with facts deliberately changed or deleted, budget 1,000 tokens:
 
-| | CEAI structured + merge | Same without merge | Naive summary |
+| | Syno structured + merge | Same without merge | Naive summary |
 |---|---|---|---|
 | **Stale-fact leakage** (outdated fact shown as current) | **0.00** | 0.75 | 0.50 |
 | **Exact code signatures kept** | **0.90** | 1.00 | 0.00 |
@@ -133,7 +133,7 @@ Test split: 5 conversations, 963 questions with evidence.
 
 | Method | Evidence hit (frozen) | Evidence hit (v4b) |
 |---|---|---|
-| **Adaptive (CEAI)** | **0.653** | **0.761** (+0.108 [+0.051, +0.153]) |
+| **Adaptive (Syno)** | **0.653** | **0.761** (+0.108 [+0.051, +0.153]) |
 | Always RAG | 0.655 | — |
 | Always hybrid | 0.626 | — |
 | Always window | 0.081 | — |
@@ -148,7 +148,7 @@ Test split: 5 conversations, 963 questions with evidence.
 
 | Method | Judge score | Token-F1 |
 |---|---|---|
-| **Adaptive (CEAI)** | **0.507** | **0.406** |
+| **Adaptive (Syno)** | **0.507** | **0.406** |
 | Always RAG | 0.507 | 0.406 |
 | Always hybrid | 0.504 | 0.385 |
 | Always window | 0.124 | 0.089 |
@@ -163,27 +163,27 @@ Test split: 5 conversations, 963 questions with evidence.
 
 Same 230 LoCoMo test questions, same 7B model, same judge, same 1,024-token budget:
 
-| System | Judge score | CEAI − system (judge) | Token-F1 | CEAI − system (F1) | AI calls to build memory |
+| System | Judge score | Syno − system (judge) | Token-F1 | Syno − system (F1) | AI calls to build memory |
 |---|---|---|---|---|---|
-| **CEAI** | **0.507** | — | **0.406** | — | **0** |
+| **Syno** | **0.507** | — | **0.406** | — | **0** |
 | Mem0 (corrected run) | 0.467 | +0.039 [−0.060, +0.127] (equal) | 0.278 | **+0.129** [+0.038, +0.210] | 54.4 |
 | Fixed-chunk RAG | 0.433 | **+0.074** [+0.017, +0.132] | 0.343 | **+0.064** [+0.026, +0.103] | 0 |
 | LangChain-style summary buffer | 0.096 | **+0.411** [+0.310, +0.494] | 0.066 | **+0.340** [+0.240, +0.422] | 68.6 |
 | Full context (60 questions) | 0.417 | −0.067 [−0.183, +0.050] (equal) | 0.195 | **+0.182** [+0.064, +0.299] | 0 (≈24k tokens per question) |
 
-**Build cost per conversation:** CEAI 6.0 s / 0 calls; Mem0 971.8 s / 54.4 calls; summary buffer
+**Build cost per conversation:** Syno 6.0 s / 0 calls; Mem0 971.8 s / 54.4 calls; summary buffer
 704.4 s / 68.6 calls; fixed-chunk RAG 1.0 s / 0 calls (chart: `results/figures/memory_build_time.png`).
 
 **Coding traps on Mem0 (Colab):**
 
 | | Original demo | 12 unseen sessions |
 |---|---|---|
-| **CEAI** | **2/2** | **16/26** |
+| **Syno** | **2/2** | **16/26** |
 | Mem0 | 0/2 | 5/26 |
 | Mem0 + last 6 exchanges | 0/2 | 6/26 |
 | Fixed 6-exchange window | 0/2 | 3/26 |
 
-Per trap type (unseen sessions), CEAI vs Mem0: duplicate function **7/7 vs 1/7**; rename 3/7 vs 0/7;
+Per trap type (unseen sessions), Syno vs Mem0: duplicate function **7/7 vs 1/7**; rename 3/7 vs 0/7;
 signature change 3/4 vs 0/4; changed setting 1/5 vs 1/5; project decision 2/3 vs **3/3**.
 
 ---

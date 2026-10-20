@@ -1,4 +1,4 @@
-# CEAI: project plan, progress and risk management
+# Syno: project plan, progress and risk management
 
 ## 1. Plan vs actual (Progress Presentation 1)
 

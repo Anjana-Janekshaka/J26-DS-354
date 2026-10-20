@@ -1,4 +1,4 @@
-# CEAI explained from zero (for a panel with no background)
+# Syno explained from zero (for a panel with no background)
 
 Written to be read aloud. Every unusual word is explained in brackets the first time it appears,
 like this: *token (a small piece of a word)*. All terms are also collected in the glossary at the
@@ -67,7 +67,7 @@ live:
 
 ## Part 4: Our solution in one sentence
 
-**CEAI chooses the best memory method for every single message, automatically, writes down why,
+**Syno chooses the best memory method for every single message, automatically, writes down why,
 and lets a person override (overrule) the choice.** It is **middleware** (software that sits in the
 middle, here between the chat app and the AI model), so the app and the model do not need to change.
 
@@ -372,10 +372,10 @@ Each team member owns one.
 
 **Mem0** is a popular memory product. We ran the real Mem0 software under the same conditions.
 
-| | CEAI | Mem0 |
+| | Syno | Mem0 |
 |---|---|---|
 | Answer accuracy (judged) | 50.7% | 46.7% (difference not significant, so we call it equal) |
-| Exact-answer match (F1) | **0.406** | 0.278 (significantly better for CEAI) |
+| Exact-answer match (F1) | **0.406** | 0.278 (significantly better for Syno) |
 | Large-AI calls needed to build memory, per conversation | **0** | about 54 |
 | Time to build memory for one long conversation | **about 6 seconds** | about 16 minutes (162× slower) |
 | Coding traps, original demo | **2 of 2 caught** | 0 of 2 |
@@ -384,13 +384,13 @@ Each team member owns one.
 **Why Mem0 misses the traps:** it rewrites what it remembers into short notes. It remembers "a
 helper called `format_due_date` was added", not the exact code needed to reuse it.
 
-**Longer conversations:** CEAI stays at 96–100% at every length, while a simple window gets worse.
-CEAI's lead over the window grows from **+28 points** for short conversations to **+42 points** for
+**Longer conversations:** Syno stays at 96–100% at every length, while a simple window gets worse.
+Syno's lead over the window grows from **+28 points** for short conversations to **+42 points** for
 long ones.
 
 ## Part 9: What does not work yet (say it openly)
 
-- **On the independent BEAM benchmark, CEAI scored below "always search"** (34.6% vs 44.5%).
+- **On the independent BEAM benchmark, Syno scored below "always search"** (34.6% vs 44.5%).
   - The cause is found: many BEAM questions are phrased as requests ("Could you show me how…").
     The classifier (Step 1) labels them casual chat, so the controller picks the summary, which
     lacks the details.
@@ -444,7 +444,7 @@ long ones.
 
 > "AI assistants have no memory of their own: for every message, software must choose what past
 > conversation to send them. Today's memory products use one method for the whole conversation,
-> but conversations change: chatting, debugging, recalling, coding. CEAI chooses the right method
+> but conversations change: chatting, debugging, recalling, coding. Syno chooses the right method
 > for every message, explains why, and lets a person override it. It needs no extra AI calls, so it
 > builds memory 162 times faster than Mem0. When the conversation changes type, it finds the needed
 > information 98.6% of the time vs 87.4% for the best fixed method, and it catches coding mistakes

@@ -1,4 +1,4 @@
-"""External memory baselines, run inside the CEAI harness under identical conditions.
+"""External memory baselines, run inside the Syno harness under identical conditions.
 
 Settings are fixed in docs/baselines_protocol.md. Each system ingests a LoCoMo conversation once
 (``ingest``), then returns a memory context for each question (``context``). Every system counts

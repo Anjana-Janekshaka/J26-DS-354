@@ -1,4 +1,4 @@
-# CEAI: user and functional requirements
+# Syno: user and functional requirements
 
 Every requirement below is traced to the code that implements it and to the test or result that
 shows it works. "Test" names are in `tests/`; "Result" paths are in `results/final/`.

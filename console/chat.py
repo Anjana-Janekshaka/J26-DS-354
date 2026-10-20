@@ -1,4 +1,4 @@
-"""CEAI chat: the everyday-user app. A normal AI chat where CEAI manages the memory.
+"""Syno chat: the everyday-user app. A normal AI chat where Syno manages the memory.
 
     python -m console.chat                 # opens http://127.0.0.1:8800/
     python -m console.chat --port 8801 --no-browser
@@ -384,7 +384,7 @@ def main() -> None:
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(chat))
     url = f"http://127.0.0.1:{args.port}/"
     ai = chat.ai
-    print(f"CEAI chat: {url}")
+    print(f"Syno chat: {url}")
     print(f"AI replies: {ai['model']} ({ai['where']})" if ai["connected"] else
           "AI replies: off (memory-only). Start Ollama or set CEAI_LLM_BASE_URL, then press 'Check again' in the page.")
     if not args.no_browser:

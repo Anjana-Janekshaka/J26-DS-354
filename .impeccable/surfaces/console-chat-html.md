@@ -5,13 +5,13 @@ primary_target: "console/chat.html"
 related_targets: []
 ---
 
-# Surface: CEAI chat (console/chat.html)
+# Surface: Syno chat (console/chat.html)
 
 Mode: Operate. Audience: presentation panel on a projector, then everyday users. Job: chat normally and see, per reply, which memory method was used and which earlier messages it drew on; override for one message. Light and dark required. No hype, no gimmicks.
 
 ## Direction contract
 
-THESIS: The conversation is a journey on a four-line memory network; every reply is a station on the line CEAI chose. Refuses the default of a grey chat with a tiny text footnote and a decorative side chart.
+THESIS: The conversation is a journey on a four-line memory network; every reply is a station on the line Syno chose. Refuses the default of a grey chat with a tiny text footnote and a decorative side chart.
 
 OWN-WORLD: Transit network diagram grammar. Cool neutral ground, a tinted map panel; four committed line colours (Recent blue, Summary amber, Search green, Recent + search violet) used as line bullets, route strokes and citation highlights only. Stations are white-filled rings; switches are 45-degree interchanges. One workhorse sans, tabular numerals for message numbers.
 

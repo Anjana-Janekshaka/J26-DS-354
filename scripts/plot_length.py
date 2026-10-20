@@ -18,7 +18,7 @@ def main() -> None:
 
     d = json.loads((ROOT / "eval/synthetic/controller/results_v4/length.json").read_text(encoding="utf-8"))["length_set_by_detour_exchanges"]
     xs = sorted(int(k) for k in d)
-    series = [("adaptive", "Adaptive (CEAI)", "#2a78d6", 2.6), ("hybrid", "Always hybrid", "#898781", 1.6),
+    series = [("adaptive", "Adaptive (Syno)", "#2a78d6", 2.6), ("hybrid", "Always hybrid", "#898781", 1.6),
               ("rag", "Always RAG", "#b9b7b2", 1.6), ("sliding_window", "Always sliding window", "#d4a373", 1.6)]
     fig, ax = plt.subplots(figsize=(7.5, 4), dpi=180)
     for key, label, color, lw in series:
