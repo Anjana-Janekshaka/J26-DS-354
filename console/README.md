@@ -57,7 +57,7 @@ to the AI).
 |---|---|
 | Session | `/new [title]`, `/clear`, `/history`, `/save [file.md]`, `/retry`, `/undo`, `/title [name]`, `/sessions`, `/resume <n>`, `/branch [name]`, `/btw <question>` (uses memory, not remembered), `/queue <msg>\|list\|rm N\|clear`, `/copy [N]` |
 | Memory | `/memory <auto\|recent\|summary\|search\|both>` (next message only), `/why`, `/context [all]`, `/track`, `/sample`, `/status`, `/usage` |
-| AI and display | `/model [name]`, `/connect`, `/personality [name\|none]`, `/verbose [off\|new\|all\|verbose]`, `/focus`, `/reasoning [show\|hide]`, `/skin [ceai\|ocean\|amber\|mono]`, `/indicator [kaomoji\|emoji\|unicode\|ascii]`, `/statusbar`, `/timestamps`, `/footer`, `/bell`, `/config` |
+| AI and display | `/model [name]`, `/connect`, `/personality [name\|none]`, `/verbose [off\|new\|all\|verbose]`, `/focus`, `/reasoning [show\|hide]`, `/skin [syno\|ocean\|amber\|mono]`, `/indicator [kaomoji\|emoji\|unicode\|ascii]`, `/statusbar`, `/timestamps`, `/footer`, `/bell`, `/config` |
 | Info | `/help [word]`, `/version`, `/redraw`, `/quit [--delete]` |
 
 `/new`, `/clear`, `/undo` and `/quit --delete` ask first; add `-y` to skip. Chats, settings and
