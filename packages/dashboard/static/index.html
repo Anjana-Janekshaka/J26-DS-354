@@ -53,7 +53,18 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 /* Line colours: the memory method, as in the chat */
 .l-sliding_window { --line: var(--l-recent); } .l-summarization { --line: var(--l-summary); }
 .l-rag { --line: var(--l-search); } .l-hybrid { --line: var(--l-both); }
-.bullet { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; background: var(--line); color: var(--on-line); font-size: .8125rem; font-weight: 650; letter-spacing: .01em; white-space: nowrap; }
+/* Method tags: tinted chip + per-method icon (shape, not only colour, tells them apart). */
+.l-sliding_window { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
+.l-summarization { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h11M4 18h6'/%3E%3C/svg%3E"); }
+.l-rag { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m20 20-4.8-4.8'/%3E%3C/svg%3E"); }
+.l-hybrid { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.3' stroke-linecap='round'%3E%3Cpath d='M3 5h14M3 11h7M3 17h5'/%3E%3Ccircle cx='15.5' cy='15.5' r='4'/%3E%3Cpath d='m21 21-2.6-2.6'/%3E%3C/svg%3E"); }
+.bullet { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--line) 13%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--line) 38%, transparent);
+  color: color-mix(in srgb, var(--line) 72%, var(--ink));
+  font-size: .8125rem; font-weight: 650; letter-spacing: .005em; line-height: 1; white-space: nowrap; vertical-align: middle; }
+.bullet::before { content: ""; width: 15px; height: 15px; flex: none; background: var(--line);
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; display: inline-block; }
 
 /* ---------- top bar ---------- */
@@ -85,7 +96,7 @@ main { padding: 20px clamp(16px, 3vw, 32px) 48px; display: grid; gap: 16px; max-
 @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } .brand span { display: none; } }
 
 /* ---------- route timeline ---------- */
-.legend { display: flex; gap: 8px 16px; flex-wrap: wrap; font-size: .8125rem; color: var(--ink-2); margin-bottom: 6px; }
+.legend { display: flex; gap: 8px 18px; align-items: center; flex-wrap: wrap; font-size: .8125rem; color: var(--ink-2); margin-bottom: 6px; }
 .legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .timeline-wrap { overflow-x: auto; padding: 18px 2px 4px; background: var(--map); border-radius: 10px; margin-top: 10px; }
 .timeline { display: flex; gap: 3px; align-items: stretch; min-height: 64px; padding: 0 10px 8px; }
@@ -93,6 +104,7 @@ main { padding: 20px clamp(16px, 3vw, 32px) 48px; display: grid; gap: 16px; max-
   display: flex; align-items: flex-end; justify-content: center; background: var(--line); color: var(--on-line);
   font-size: .75rem; font-weight: 650; position: relative; transition: transform .15s; }
 .cell:hover { transform: translateY(-2px); }
+.cell .ci { width: 14px; height: 14px; background: var(--on-line); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
 .cell.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
 .cell .ov { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font-size: .6875rem; }
 .cell .esc { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); color: var(--warn); font-size: .75rem; }
@@ -224,7 +236,6 @@ svg text { fill: var(--ink-3); font-size: 11px; font-family: var(--sans); }
     ["rag", "R", "Search", "RAG"],
     ["hybrid", "H", "Recent + search", "hybrid"],
   ];
-  const LETTER = Object.fromEntries(STRATS.map(s => [s[0], s[1]]));
   const NAME = Object.fromEntries(STRATS.map(s => [s[0], s[2]]));
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
@@ -246,7 +257,7 @@ svg text { fill: var(--ink-3); font-size: 11px; font-family: var(--sans); }
   };
   $("tableToggle").onclick = () => $("tableView").classList.toggle("hidden");
   $("legend").innerHTML = STRATS.map(([k, l, name, tech]) =>
-    `<span class="l-${k}"><span class="dot"></span>${l} · ${esc(name)} <span class="empty">(${esc(tech)})</span></span>`).join("") +
+    `<span>${bullet(k)}<span class="empty">${esc(tech)}</span></span>`).join("") +
     `<span><span style="color:var(--warn)">&#9888;</span> escalation raised</span><span>&#9873; override</span>`;
 
   // ---- tooltip
@@ -272,7 +283,7 @@ svg text { fill: var(--ink-3); font-size: 11px; font-family: var(--sans); }
       b.type = "button"; b.className = `cell l-${s}` + (i === selected ? " sel" : "");
       b.setAttribute("role", "listitem");
       b.setAttribute("aria-label", `${r.turn_id}: ${NAME[s] || s}`);
-      b.innerHTML = `${LETTER[s]}` + (r.decision.override.applied ? `<span class="ov">&#9873;</span>` : "") +
+      b.innerHTML = `<i class="ci" aria-hidden="true"></i>` + (r.decision.override.applied ? `<span class="ov">&#9873;</span>` : "") +
         (em[r.turn_id] ? `<span class="esc">&#9888;</span>` : "");
       b.onmouseenter = e => showTip(e, `<b>${esc(r.turn_id)}</b> · ${esc(NAME[s] || s)}<br>task: ${esc(r.feature_vector.task_type)}` +
         `<br>memory space used: ${(r.feature_vector.token_budget_pressure * 100).toFixed(0)}%` +

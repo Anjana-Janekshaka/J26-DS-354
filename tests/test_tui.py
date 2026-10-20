@@ -177,3 +177,14 @@ def test_keys_in_the_input_box(app):
         with pytest.raises(EOFError):
             ask()
     assert app.prompt_session.bottom_toolbar is not None
+
+
+def test_banner_wide_and_narrow(app, monkeypatch):
+    app.banner()  # 120 columns: title, mark and the two-column panel
+    out = text(app)
+    assert "███████╗" in out and f"Syno v{tui.VERSION}" in out and "Memory methods" in out
+    assert "Available Commands" in out and f"Session: {app.session['id']}" in out and "AI is off" in out
+    narrow = Console(record=True, width=30, force_terminal=False)
+    monkeypatch.setattr(tui, "console", narrow)
+    app.banner()  # too narrow for the block title: falls back to one line, panel stacks
+    assert "◈ SYNO" in narrow.export_text() and "███████╗" not in narrow.export_text(clear=False)

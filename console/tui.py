@@ -74,6 +74,29 @@ EXAMPLES = [
     "Or just start chatting. Syno remembers as the conversation grows.",
 ]
 
+RELEASE = "2026.10.20"
+# The start screen, after the Hermes agent CLI: a block-letter title and a mark beside the session.
+TITLE = [
+    "███████╗██╗   ██╗███╗   ██╗ ██████╗ ",
+    "██╔════╝╚██╗ ██╔╝████╗  ██║██╔═══██╗",
+    "███████╗ ╚████╔╝ ██╔██╗ ██║██║   ██║",
+    "╚════██║  ╚██╔╝  ██║╚██╗██║██║   ██║",
+    "███████║   ██║   ██║ ╚████║╚██████╔╝",
+    "╚══════╝   ╚═╝   ╚═╝  ╚═══╝ ╚═════╝ ",
+]
+# A diamond (the ◈ of the logo) holding one dot per memory method, in the method's colour.
+MARK = [
+    "         ▄█▄         ",
+    "       ▄█▀ ▀█▄       ",
+    "     ▄█▀  ●  ▀█▄     ",
+    "   ▄█▀  ●   ●  ▀█▄   ",
+    "   ▀█▄    ●    ▄█▀   ",
+    "     ▀█▄     ▄█▀     ",
+    "       ▀█▄ ▄█▀       ",
+    "         ▀█▀         ",
+]
+MARK_DOTS = ["sliding_window", "summarization", "rag", "hybrid"]
+
 console = Console(highlight=False)
 
 
@@ -117,6 +140,20 @@ def gutter(mark: Text, body) -> Table:
     grid.add_column(ratio=1)
     grid.add_row(mark, body)
     return grid
+
+
+def shadow(hexc: str, f: float = 0.55) -> str:
+    """A darker shade of a #rrggbb colour, for the title's outline."""
+    r, g, b = (int(hexc[i:i + 2], 16) for i in (1, 3, 5))
+    return "#{:02x}{:02x}{:02x}".format(int(r * f), int(g * f), int(b * f))
+
+
+def mark_lines(hexc: str) -> list[Text]:
+    """MARK in the skin colour, its dots in the four method colours (top to bottom)."""
+    dots, out = iter(MARK_DOTS), []
+    for line in MARK:
+        out.append(Text.assemble(*[("●", COLOR[next(dots)]) if ch == "●" else (ch, hexc) for ch in line]))
+    return out
 
 
 def copy_to_clipboard(text: str) -> bool:
@@ -230,20 +267,64 @@ class App:
 
     # ---------------------------------------------------------------- screen parts
     def banner(self) -> None:
-        ai = self.chat.ai
-        logo = Text.assemble(("◈ Syno", f"bold {self.accent}"), ("  memory that changes method, message by message", "dim"))
-        rows = Table.grid(padding=(0, 2))
-        rows.add_column(style="dim", no_wrap=True)
-        rows.add_column()
-        rows.add_row("AI", f"{ai['model']}  [dim]{ai['where']}[/]" if ai["connected"] else
-                     "[yellow]off[/]  [dim]memory-only: start Ollama or set CEAI_LLM_*, then /connect[/]")
-        rows.add_row("Memory", f"{self.chat.state()['system']} system  [dim]│[/]  {self.chat.budget}-token budget  [dim]│[/]  "
-                     + "  ".join(f"[{COLOR[s]}]●[/] {NAME[s]}" for s in STRATEGIES))
+        """The Hermes-style start screen: a block-letter title, then one panel with the mark, model
+        and session on the left and the memory methods and commands on the right."""
+        ai, hexc = self.chat.ai, SKINS.get(self.settings["skin"], SKINS["syno"])["hex"]
+        width = console.width
+        if width >= len(TITLE[0]) + 2:
+            shade = shadow(hexc)
+            for line in TITLE:  # solid blocks in the skin colour, the box-drawing outline as its shadow
+                console.print(Text.assemble(*[(ch, f"bold {hexc}" if ch == "█" else shade) for ch in line]), no_wrap=True,
+                              overflow="crop")
+        else:
+            console.print(Text("◈ SYNO", style=f"bold {hexc}"))
+
+        left = Table.grid(expand=True)
+        left.add_column(justify="center")
+        for line in mark_lines(hexc):
+            left.add_row(line)
+        left.add_row("")
+        where = "Ollama" if (ai["where"] or "").startswith("Ollama") else "API"
+        left.add_row(Text.assemble((ai["model"], hexc), (f" · {self.chat.budget}-token memory · {where}", "dim"))
+                     if ai["connected"] else
+                     Text.assemble(("AI off", "yellow"), (f" · {self.chat.budget}-token memory", "dim")))
+        left.add_row(Text(f"{self.chat.state()['system']} system · 0 AI calls for memory", style="dim"))
+        cwd = str(Path.cwd())
+        home = str(Path.home())
+        left.add_row(Text("~" + cwd[len(home):] if cwd.startswith(home) else cwd, style="dim", overflow="ellipsis"))
+        left.add_row(Text(f"Session: {self.session['id']}", style="dim"))
+
+        right = Table.grid()
+        right.add_column(no_wrap=True, overflow="ellipsis")
+        right.add_row(Text("Memory methods", style=f"bold {hexc}"))
+        right.add_row(Text.assemble(("auto: ", "dim"), ("Syno chooses for every message (default)", "")))
+        for short, s in SHORT.items():
+            right.add_row(Text.assemble((f"{short}: ", "dim"), ("● ", COLOR[s]), (NAME[s], "")))
+        right.add_row("")
+        right.add_row(Text("Available Commands", style=f"bold {hexc}"))
+        groups: dict[str, list[str]] = {}
+        for c in self.commands:
+            groups.setdefault(c.group, []).append(c.name)
+        for g, names in groups.items():
+            shown = ", ".join(names[:6]) + (", ..." if len(names) > 6 else "")
+            right.add_row(Text.assemble((f"{g.lower()}: ", "dim"), (shown, "")))
         if self.chat.personality:
-            rows.add_row("Style", self.chat.personality)
-        rows.add_row("Folder", str(Path.cwd()))
-        rows.add_row("Keys", "[dim]Enter sends · Alt+Enter new line · / commands · Ctrl+P list · Ctrl+C stop · Ctrl+D quit[/]")
-        console.print(Panel(Group(logo, Text(), rows), border_style=self.accent, padding=(0, 1)))
+            right.add_row(Text.assemble(("style: ", "dim"), (self.chat.personality, "")))
+        right.add_row("")
+        right.add_row(Text(f"{len(SHORT)} memory methods · {len(self.commands)} commands · /help for commands", style="dim"))
+        if not ai["connected"]:
+            right.add_row(Text.assemble(("⚠ AI is off", "bold yellow"), (" — start Ollama or set CEAI_LLM_*, then ", "dim"),
+                                        ("/connect", f"bold {hexc}")))
+
+        if width >= 96:
+            body = Table.grid(padding=(0, 3))
+            body.add_column(width=max(len(MARK[0]) + 4, 40), vertical="middle")
+            body.add_column(ratio=1)
+            body.add_row(left, right)
+        else:
+            body = Group(left, Text(), right)
+        console.print(Panel(body, title=Text(f"Syno v{VERSION} ({RELEASE})", style=f"bold {hexc}"), title_align="right",
+                            border_style=hexc, padding=(1, 2)))
         if not self.chat.messages:
             console.print("[dim]Try:[/]")
             for e in EXAMPLES:
