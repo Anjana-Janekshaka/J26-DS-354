@@ -13,11 +13,13 @@ dependencies = [
   "faiss-cpu>=1.8",
   "sentence-transformers>=3.0",
   "tiktoken>=0.7",
+  "scikit-learn>=1.4",
 ]
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40"]
 dev = ["pytest>=8"]
+tui = ["rich>=13", "prompt_toolkit>=3.0"]
 
 [tool.setuptools.packages.find]
 where = ["packages"]

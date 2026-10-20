@@ -92,7 +92,7 @@ def serve(log_dir: str | Path, port: int = 8765, host: str = "127.0.0.1") -> Thr
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="CEAI runtime dashboard")
+    ap = argparse.ArgumentParser(description="Syno runtime dashboard")
     ap.add_argument("--log-dir", required=True)
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args()

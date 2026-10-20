@@ -1,0 +1,170 @@
+{
+  "n_questions": 400,
+  "system": "v4b",
+  "evidence_hit": {
+    "n": 355,
+    "per_strategy": {
+      "sliding_window": 0.08732394366197183,
+      "summarization": 0.022535211267605635,
+      "rag": 0.3183098591549296,
+      "hybrid": 0.16901408450704225,
+      "adaptive": 0.24788732394366197
+    },
+    "best_single": "rag",
+    "adaptive_minus_rag": {
+      "estimate": -0.07042253521126761,
+      "ci_low": -0.10277777777777777,
+      "ci_high": -0.04201680672268908,
+      "n_groups": 20
+    },
+    "adaptive_minus_hybrid": {
+      "estimate": 0.07887323943661972,
+      "ci_low": 0.03418803418803419,
+      "ci_high": 0.12324929971988796,
+      "n_groups": 20
+    },
+    "by_category": {
+      "contradiction_resolution": {
+        "sliding_window": 0.025,
+        "summarization": 0,
+        "rag": 0.4,
+        "hybrid": 0.125,
+        "adaptive": 0.4,
+        "n": 40
+      },
+      "event_ordering": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0.025,
+        "hybrid": 0,
+        "adaptive": 0,
+        "n": 40
+      },
+      "information_extraction": {
+        "sliding_window": 0.075,
+        "summarization": 0,
+        "rag": 0.45,
+        "hybrid": 0.175,
+        "adaptive": 0.45,
+        "n": 40
+      },
+      "instruction_following": {
+        "sliding_window": 0.35,
+        "summarization": 0.1,
+        "rag": 0.375,
+        "hybrid": 0.4,
+        "adaptive": 0.225,
+        "n": 40
+      },
+      "knowledge_update": {
+        "sliding_window": 0.125,
+        "summarization": 0.025,
+        "rag": 0.525,
+        "hybrid": 0.25,
+        "adaptive": 0.35,
+        "n": 40
+      },
+      "multi_session_reasoning": {
+        "sliding_window": 0.025,
+        "summarization": 0,
+        "rag": 0.1,
+        "hybrid": 0.05,
+        "adaptive": 0.1,
+        "n": 40
+      },
+      "preference_following": {
+        "sliding_window": 0.07692307692307693,
+        "summarization": 0.07692307692307693,
+        "rag": 0.5128205128205128,
+        "hybrid": 0.28205128205128205,
+        "adaptive": 0.23076923076923078,
+        "n": 39
+      },
+      "summarization": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0,
+        "hybrid": 0,
+        "adaptive": 0,
+        "n": 36
+      },
+      "temporal_reasoning": {
+        "sliding_window": 0.1,
+        "summarization": 0,
+        "rag": 0.45,
+        "hybrid": 0.225,
+        "adaptive": 0.45,
+        "n": 40
+      }
+    }
+  },
+  "answer_in_context": {
+    "n": 117,
+    "per_strategy": {
+      "sliding_window": 0.11965811965811966,
+      "summarization": 0.02564102564102564,
+      "rag": 0.23076923076923078,
+      "hybrid": 0.1282051282051282,
+      "adaptive": 0.1794871794871795
+    },
+    "best_single": "rag",
+    "adaptive_minus_rag": {
+      "estimate": -0.05128205128205128,
+      "ci_low": -0.10743801652892562,
+      "ci_high": -0.008620689655172414,
+      "n_groups": 20
+    },
+    "adaptive_minus_hybrid": {
+      "estimate": 0.05128205128205128,
+      "ci_low": -0.008547008547008548,
+      "ci_high": 0.11926605504587157,
+      "n_groups": 20
+    },
+    "by_category": {
+      "information_extraction": {
+        "sliding_window": 0.043478260869565216,
+        "summarization": 0,
+        "rag": 0.13043478260869565,
+        "hybrid": 0.08695652173913043,
+        "adaptive": 0.13043478260869565,
+        "n": 23
+      },
+      "knowledge_update": {
+        "sliding_window": 0.275,
+        "summarization": 0.075,
+        "rag": 0.525,
+        "hybrid": 0.3,
+        "adaptive": 0.4,
+        "n": 40
+      },
+      "multi_session_reasoning": {
+        "sliding_window": 0.07692307692307693,
+        "summarization": 0,
+        "rag": 0.11538461538461539,
+        "hybrid": 0.038461538461538464,
+        "adaptive": 0.07692307692307693,
+        "n": 26
+      },
+      "temporal_reasoning": {
+        "sliding_window": 0,
+        "summarization": 0,
+        "rag": 0,
+        "hybrid": 0,
+        "adaptive": 0,
+        "n": 28
+      }
+    }
+  },
+  "controller_choices": {
+    "rag": 255,
+    "summarization": 142,
+    "sliding_window": 3
+  },
+  "task_types": {
+    "qa": 255,
+    "exploration": 57,
+    "chat": 85,
+    "debugging": 3
+  },
+  "budget_tokens": 1024
+}

@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Callable
 
 CLAUDE_MODEL = os.environ.get("CEAI_CLAUDE_MODEL", "claude-opus-5-5")
+USER_AGENT = "syno-memory/0.1"
 _THINK = re.compile(r"<think>.*?</think>", re.S)
 
 
@@ -107,7 +108,8 @@ class OpenAICompatibleLLM:
                 "max_tokens": self.max_tokens,
             }
         ).encode()
-        headers = {"Content-Type": "application/json"}
+        # Hosted APIs behind Cloudflare (e.g. Groq) reject urllib's default User-Agent with 403 / 1010.
+        headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         delay = 2.0

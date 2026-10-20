@@ -1,4 +1,4 @@
-# CEAI — Adaptive Memory Middleware for Multi-Turn LLM Applications
+# Syno — Adaptive Memory Middleware for Multi-Turn LLM Applications
 
 A runtime controller (ASSE) picks, **per conversational turn**, between three architecturally
 distinct memory strategies — a dynamic sliding window, hierarchical summarization (L1/L2/L3) and

@@ -57,3 +57,12 @@ def test_probe_does_not_commit(embedder):
     assert len(seen) == 1  # probes are not broadcast
     nxt = cm.observe("user", "next real message")
     assert nxt.signal.turn_id == "t0002"
+
+
+def test_probe_does_not_leak_entities(embedder):
+    cm = ConversationManager("c1", token_budget=500, embedder=embedder)
+    cm.observe("user", "hello there friend")
+    cm.probe("When did Priya visit Lisbon?")
+    assert cm.classifier._entities == set()
+    # a later question naming the probed entity is not turned into recall by the probe
+    assert cm.classifier.classify_phrasing("Should I ask Priya about it?")[0] != "qa"

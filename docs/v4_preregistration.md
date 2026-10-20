@@ -219,3 +219,38 @@ The frozen reference values reproduce the recorded dev numbers (0.709, 0.134, 0.
   - The frozen numbers stay reported next to it.
   - Answer accuracy (LLM judge) was **not** re-run for v4b. Its answer-accuracy numbers remain the
     frozen system's.
+
+### v4b test outcome (each split run once, 2026-10-18; `results/final/v4b/`)
+
+| Test split | Frozen | v4b | v4b − frozen (paired 95% CI) |
+|---|---|---|---|
+| LoCoMo test (evidence hit, 966 questions) | 0.653 | **0.761** | **+0.108 [+0.051, +0.153]** |
+| In-stream LoCoMo test | 0.704 | **0.782** | **+0.078 [+0.037, +0.108]** |
+| LoCoMo-Plus test (cue hit, 200 items) | 0.140 | **0.215** | **+0.075 [+0.030, +0.120]** |
+| Synthetic controller test (420 probes) | 0.986 | 0.983 | −0.002 [−0.007, 0.000] (no real change) |
+| **BEAM 100K** (independent; 355 questions) | 0.347 | **0.248** | **−0.099 [−0.147, −0.056]** |
+
+**Reading:**
+
+- **On the LoCoMo family, v4b is significantly better on every test split.**
+  - LoCoMo-Plus, the frozen system's weakest benchmark, rises from 0.140 to 0.215.
+  - That beats the naive summary's 0.185.
+- **On BEAM, v4b is significantly worse.**
+  - The loss is entirely in retrieval: RAG falls from 0.445 to 0.318 and hybrid from 0.389 to 0.169.
+    The window and summarization are identical.
+  - The staleness check is off in the BEAM harness. So the cause is the dev-tuned chunking, the only
+    v4b change active there.
+  - Its weights were tuned on LoCoMo (short chat turns); BEAM's turns are long coding answers.
+  - **Hypothesis, not tested:** segments capped at 3 turns and 150 tokens split BEAM's evidence.
+- **Same lesson as §1:** settings tuned on one conversation family do not transfer to a very
+  different one. The independent benchmark is what showed it.
+
+**Decision (following the reporting rule):**
+
+- Both systems are reported.
+- **The frozen system stays the presented default.**
+- v4b is presented as a pre-registered improvement **for chat-style conversations** (+0.08 to +0.11
+  on LoCoMo, +0.075 on LoCoMo-Plus), with its measured cost on long coding conversations (−0.10 on
+  BEAM).
+- **The natural next step, not taken here:** choose the chunking configuration per conversation
+  type. That is itself an adaptive-memory decision, and it would need its own pre-registration.

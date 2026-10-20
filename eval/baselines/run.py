@@ -1,4 +1,4 @@
-"""External memory baselines on the LoCoMo test split, under identical conditions to CEAI.
+"""External memory baselines on the LoCoMo test split, under identical conditions to Syno.
 
     python -m eval.baselines.run --ceai-questions <final/locomo_qa/questions.jsonl> --out <dir>
         [--systems fixed_chunk_rag,summary_buffer,mem0,full_context] [--full-context-per-conv 12]
@@ -35,7 +35,7 @@ ALL = ["fixed_chunk_rag", "summary_buffer", "mem0", "full_context"]
 
 
 def sampled_questions(conv, n: int, seed: int):
-    """Exactly the sample used by CEAI's frozen answer-accuracy run (eval/locomo/run.py)."""
+    """Exactly the sample used by Syno's frozen answer-accuracy run (eval/locomo/run.py)."""
     qs = conv.qa
     if n and n < len(qs):
         rng = random.Random(f"{seed}:{conv.sample_id}")
@@ -59,7 +59,7 @@ def make_system(name: str, conv_id: str, emb, summarizer):
 def main() -> None:
     warnings.filterwarnings("ignore")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ceai-questions", required=True, help="questions.jsonl from CEAI's frozen test answer-accuracy run")
+    ap.add_argument("--ceai-questions", required=True, help="questions.jsonl from Syno's frozen test answer-accuracy run")
     ap.add_argument("--systems", default=",".join(ALL))
     ap.add_argument("--budget", type=int, default=1024)
     ap.add_argument("--max-questions", type=int, default=60)
@@ -95,7 +95,7 @@ def main() -> None:
         qs = sampled_questions(conv, a.max_questions, a.sample_seed)
         missing = [q.question for q in qs if (conv.sample_id, q.question) not in ceai]
         if missing:
-            raise SystemExit(f"{conv.sample_id}: {len(missing)} questions not in the CEAI file - the samples differ")
+            raise SystemExit(f"{conv.sample_id}: {len(missing)} questions not in the Syno file - the samples differ")
         for name in systems:
             if (conv.sample_id, name) in done:
                 print(f"{conv.sample_id} {name}: already done", flush=True)
@@ -160,7 +160,7 @@ def summarize(out: Path, ceai: dict, systems: list[str], answer_model: str, judg
             summary["systems"][name] = {"status": "not run or failed",
                                         "errors": [c.get("error") for c in costs if c["system"] == name and c.get("error")]}
             continue
-        # CEAI on exactly the same questions
+        # Syno on exactly the same questions
         paired = []
         for r in rs:
             c = ceai[(r["conv"], r["question"])]["adaptive"]
@@ -186,8 +186,8 @@ def summarize(out: Path, ceai: dict, systems: list[str], answer_model: str, judg
                               "write_llm_calls_per_conversation": 0, "n_questions": len(allq)}
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"\nBaselines (answers: {answer_model}; judge: {judge_model})")
-    print(f"{'system':<18}{'judge':>8}{'F1':>7}{'ctx tok':>8}{'write LLM calls/conv':>22}   CEAI - system [95% CI]")
-    print(f"{'CEAI (frozen)':<18}{summary['ceai_frozen']['judge_score']:>8.3f}{summary['ceai_frozen']['token_f1']:>7.3f}{'':>8}{0:>22}")
+    print(f"{'system':<18}{'judge':>8}{'F1':>7}{'ctx tok':>8}{'write LLM calls/conv':>22}   Syno - system [95% CI]")
+    print(f"{'Syno (frozen)':<18}{summary['ceai_frozen']['judge_score']:>8.3f}{summary['ceai_frozen']['token_f1']:>7.3f}{'':>8}{0:>22}")
     for name, v in summary["systems"].items():
         if "judge_score" not in v:
             print(f"{name:<18} {v['status']} {v.get('errors')}")

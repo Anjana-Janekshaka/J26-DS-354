@@ -39,6 +39,17 @@ from .scenarios import SCENARIOS
 
 GREEN, RED, DIM, BOLD, RESET = "\033[32m", "\033[31m", "\033[2m", "\033[1m", "\033[0m"
 
+# Same names and line colours as the web chat and the dashboard.
+NAME = {"sliding_window": "Recent messages", "summarization": "Summary", "rag": "Search", "hybrid": "Recent + search"}
+LINE = {"sliding_window": (110, 166, 255), "summarization": (242, 163, 58), "rag": (60, 201, 147), "hybrid": (180, 155, 255)}
+
+
+def method(s: str, width: int = 0) -> str:
+    """Coloured dot + plain name + internal name, e.g. '● Recent + search (hybrid)'."""
+    r, g, b = LINE.get(s, (200, 200, 200))
+    text = f"{NAME.get(s, s)} ({s})"
+    return f"\033[38;2;{r};{g};{b}m● {BOLD}{text:<{width}}{RESET}"
+
 
 def pause(delay: float | None) -> None:
     if delay is None:
@@ -51,7 +62,7 @@ def show_decision(ex, res) -> None:
     d = res.decision
     rule = d.rationale.split(" | ")[0]
     extra = [p for p in d.rationale.split(" | ")[1:] if p.startswith(("escalation", "OVERRIDE", "dwell"))]
-    print(f"{BOLD}{ex:>3} -> {d.selected_strategy:<15}{RESET} {res.feature_vector.task_type:<16} "
+    print(f"{BOLD}{ex:>3}{RESET} {method(d.selected_strategy, 34)} {res.feature_vector.task_type:<16} "
           f"pressure {res.feature_vector.token_budget_pressure:.2f}  {d.decision_latency_ms:.2f} ms")
     print(f"      {DIM}{rule}{RESET}")
     for e in extra:
@@ -62,6 +73,10 @@ def show_decision(ex, res) -> None:
 
 def main() -> None:
     warnings.filterwarnings("ignore")
+    try:  # Windows falls back to cp1252 when output is redirected; the method dot needs UTF-8
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenario", default=SCENARIOS[0].name, help="scenario name or slug (default: the original session)")
     ap.add_argument("--delay", type=float, default=None, help="auto-advance seconds (default: wait for Enter)")
@@ -107,7 +122,7 @@ def main() -> None:
             score["fixed"] += f_ok
             tag = lambda ok: f"{GREEN}CAUGHT{RESET}" if ok else f"{RED}MISSED{RESET}"  # noqa: E731
             print(f"\n   {BOLD}TRAP: {trap.name}{RESET} ({trap.description})")
-            print(f"   adaptive ({res.decision.selected_strategy}): {tag(a_ok)}  {a_why}")
+            print(f"   adaptive {method(res.decision.selected_strategy)}: {tag(a_ok)}  {a_why}")
             print(f"   fixed 6-exchange window:  {tag(f_ok)}  {f_why}\n")
         fixed6.ingest(res.turn)
         if reply:

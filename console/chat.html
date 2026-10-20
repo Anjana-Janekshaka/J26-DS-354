@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>CEAI Chat</title>
+<title>Syno Chat</title>
 <script>
   // Apply the saved theme before first paint.
   try { const t = localStorage.getItem("ceai-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
@@ -54,7 +54,18 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 /* Line bullets: the method's colour, the way a transit map names a line. */
 .l-sliding_window { --line: var(--l-recent); } .l-summarization { --line: var(--l-summary); }
 .l-rag { --line: var(--l-search); } .l-hybrid { --line: var(--l-both); }
-.bullet { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; background: var(--line); color: var(--on-line); font-size: .8125rem; font-weight: 650; letter-spacing: .01em; white-space: nowrap; }
+/* Method tags: tinted chip + per-method icon (shape, not only colour, tells them apart). */
+.l-sliding_window { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
+.l-summarization { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 12h11M4 18h6'/%3E%3C/svg%3E"); }
+.l-rag { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m20 20-4.8-4.8'/%3E%3C/svg%3E"); }
+.l-hybrid { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.3' stroke-linecap='round'%3E%3Cpath d='M3 5h14M3 11h7M3 17h5'/%3E%3Ccircle cx='15.5' cy='15.5' r='4'/%3E%3Cpath d='m21 21-2.6-2.6'/%3E%3C/svg%3E"); }
+.bullet { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--line) 13%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--line) 38%, transparent);
+  color: color-mix(in srgb, var(--line) 72%, var(--ink));
+  font-size: .8125rem; font-weight: 650; letter-spacing: .005em; line-height: 1; white-space: nowrap; vertical-align: middle; }
+.bullet::before { content: ""; width: 15px; height: 15px; flex: none; background: var(--line);
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
 
 /* ---------- shell ---------- */
@@ -68,6 +79,17 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .status-pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--wash); color: var(--ink-2); font-size: .8125rem; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 .status-pill .light { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
 .status-pill.on .light { background: var(--good); }
+/* AI model picker: the status pill as a menu */
+.model-pick { position: relative; display: inline-flex; align-items: center; height: 32px; border-radius: 16px; background: var(--wash); color: var(--ink-2); font-size: .8125rem; max-width: 300px; }
+.model-pick:hover { background: color-mix(in srgb, var(--ink) 8%, var(--wash)); }
+.model-pick .light { position: absolute; left: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); pointer-events: none; }
+.model-pick.on .light { background: var(--good); }
+.model-pick svg.i { position: absolute; right: 10px; width: 14px; height: 14px; pointer-events: none; }
+.model-select { appearance: none; -webkit-appearance: none; height: 100%; width: 100%; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; padding: 0 30px 0 28px; border-radius: 16px; cursor: pointer; text-overflow: ellipsis; }
+.model-select:disabled { cursor: progress; }
+.model-select option, .model-select optgroup { color: var(--ink); background: var(--surface); }
+.panel-model { margin-top: 10px; }
+.panel-model .model-pick { max-width: none; width: 100%; }
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font-size: .875rem; font-weight: 550; transition: background .15s, border-color .15s; }
 .btn:hover:not(:disabled) { background: var(--wash); border-color: var(--rule-2); }
 .btn:disabled { opacity: .5; }
@@ -228,7 +250,7 @@ textarea::placeholder { color: var(--ink-3); }
 @media (max-width: 960px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .only-narrow { display: inline-flex; }
-  .brand span, .status-pill { display: none; }
+  .brand span, .top .model-pick { display: none; }
   .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, calc(100vw - 48px)); z-index: 20; transform: translateX(100%); transition: transform .28s var(--ease); box-shadow: var(--shadow); visibility: hidden; }
   .app.drawer-open .panel { transform: none; visibility: visible; }
   .app.drawer-open .scrim { display: block; position: fixed; inset: 0; z-index: 15; background: rgba(8, 12, 18, .4); }
@@ -257,10 +279,10 @@ textarea::placeholder { color: var(--ink-3); }
         <path d="M21 4v6l-8 8" fill="none" stroke="var(--l-search)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="13" cy="18" r="3.2" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
       </svg>
-      <b>CEAI</b><span>Chat with adaptive memory</span>
+      <b>Syno</b><span>Chat with adaptive memory</span>
     </div>
     <div class="top-actions">
-      <span class="status-pill" id="pill"><i class="light"></i><span>Connecting…</span></span>
+      <label class="model-pick" id="pick" title="AI model"><i class="light"></i><span class="sr">AI model</span><select class="model-select" id="modelTop"><option>Connecting…</option></select><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label>
       <button class="btn ghost icon" id="theme" type="button" aria-label="Theme: system"></button>
       <button class="btn" id="newChat" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
       <button class="btn only-narrow icon" id="openRoute" type="button" aria-label="Show memory route" aria-expanded="false" aria-controls="panel">
@@ -297,7 +319,7 @@ textarea::placeholder { color: var(--ink-3); }
     <section class="panel-sec" aria-labelledby="spaceTitle">
       <div class="space-row"><h2 id="spaceTitle">Memory space</h2><b id="spacePct">0%</b></div>
       <div class="meter" id="meter"><i style="width:0"></i></div>
-      <p class="sub" style="margin:0">When it fills, CEAI uses the summary or a search instead of sending everything.</p>
+      <p class="sub" style="margin:0">When it fills, Syno uses the summary or a search instead of sending everything.</p>
       <ul class="legend" id="legend"></ul>
     </section>
     <div class="panel-sec panel-actions">
@@ -419,7 +441,7 @@ textarea::placeholder { color: var(--ink-3); }
         <dl class="facts">
           <div><dt>Memory shown to the AI</dt><dd class="num">${mem.tokens} of ${mem.budget} tokens</dd><div class="bar"><i style="width:${pct}%"></i></div></div>
           <div><dt>Decided in</dt><dd class="num">${Number(mem.ms || 0).toFixed(2)} ms, no AI call</dd></div>
-          <div><dt>Chosen by</dt><dd>${mem.chosen_by === "you" ? "You" : "CEAI, automatically"}</dd></div>
+          <div><dt>Chosen by</dt><dd>${mem.chosen_by === "you" ? "You" : "Syno, automatically"}</dd></div>
         </dl>
         <details><summary>What the assistant was shown</summary><pre>${esc(mem.context || "(nothing yet)")}</pre></details>
         ${mem.rationale ? `<details><summary>Controller decision log</summary><pre>${esc(mem.rationale)}</pre></details>` : ""}
@@ -439,7 +461,7 @@ textarea::placeholder { color: var(--ink-3); }
   function emptyState() {
     return `<div class="empty">
       <h1>Chat as usual. See what the assistant remembers.</h1>
-      <p>For every message, CEAI picks one of four ways to remember the conversation, so long chats stay accurate without sending everything. Each reply shows the method it used and the earlier messages it drew on.</p>
+      <p>For every message, Syno picks one of four ways to remember the conversation, so long chats stay accurate without sending everything. Each reply shows the method it used and the earlier messages it drew on.</p>
       <ul class="lines">${LANES.map((k) => `<li class="l-${k}"><span class="bullet">${LINES[k].name}</span><span>${LINES[k].desc}</span></li>`).join("")}</ul>
       <h2>Try one</h2>
       <div class="tries">${TRIES.map((t) => `<button type="button" class="try">${esc(t)}</button>`).join("")}</div>
@@ -450,11 +472,11 @@ textarea::placeholder { color: var(--ink-3); }
     const inner = $("inner");
     const top = notice ? `<div class="notice" role="alert">${esc(notice)}</div>` : "";
     if (offline) {
-      inner.innerHTML = `<div class="empty"><h1>CEAI is not running</h1><p>Start it with <code>python -m console.chat</code>, then reload this page.</p></div>`;
+      inner.innerHTML = `<div class="empty"><h1>Syno is not running</h1><p>Start it with <code>python -m console.chat</code>, then reload this page.</p></div>`;
       return;
     }
     if (loadingSample) {
-      inner.innerHTML = `<div class="loading-sample" role="status"><h1 style="font-size:1.25rem;margin-bottom:10px">Replaying a coding session through CEAI</h1><p class="num">15 messages, each routed through the real memory system. About 40 s. <span id="elapsed"></span></p></div>`;
+      inner.innerHTML = `<div class="loading-sample" role="status"><h1 style="font-size:1.25rem;margin-bottom:10px">Replaying a coding session through Syno</h1><p class="num">15 messages, each routed through the real memory system. About 40 s. <span id="elapsed"></span></p></div>`;
       return;
     }
     const ex = exchanges();
@@ -488,7 +510,7 @@ textarea::placeholder { color: var(--ink-3); }
     if (!stops.length && !waiting) {
       const h = 4 * 28;
       route.innerHTML = `<svg width="76" height="${h}" aria-hidden="true">${LANES.map((s) => `<line class="lane" x1="${laneX(s)}" x2="${laneX(s)}" y1="0" y2="${h}"/>`).join("")}</svg>
-        <p class="route-empty">Your route appears here: one stop per reply, on the memory line CEAI chose. Switches show as a change of line.</p>`;
+        <p class="route-empty">Your route appears here: one stop per reply, on the memory line Syno chose. Switches show as a change of line.</p>`;
       drawn = 0; return;
     }
     const n = stops.length + (waiting ? 1 : 0), H = n * ROW, y = (k) => k * ROW + ROW / 2;
@@ -528,25 +550,23 @@ textarea::placeholder { color: var(--ink-3); }
 
   function renderSide() {
     const ai = state.ai || {};
-    const pill = $("pill");
-    pill.className = "status-pill" + (ai.connected ? " on" : "");
-    pill.innerHTML = `<i class="light"></i><span>${ai.connected ? esc(ai.model) : "Memory only"}</span>`;
-    pill.title = ai.connected ? `Replies from ${ai.model}, ${ai.where}` : "AI replies are off; memory still works";
+    $("pick").title = ai.connected ? `AI model: ${ai.model} (${ai.where}). Click to switch.` : "AI replies are off; memory still works. Click to pick a model.";
     $("aiStatus").innerHTML = ai.connected
-      ? `<div class="ai-status on"><i class="light"></i><div><b>Replies from ${esc(ai.model)}</b><p>${esc(ai.where)}.${/Ollama/.test(ai.where || "") ? " Private and free, but slow on a laptop. A hosted API is faster (see the README)." : ""}</p></div></div>`
-      : `<div class="ai-status"><i class="light"></i><div><b>AI replies are off</b><p>Memory still works and each reply shows what the AI would have been shown. To get answers, start Ollama or set <code>CEAI_LLM_BASE_URL</code> and restart.</p><button type="button" class="linkish" id="recheck">Check again</button></div></div>`;
+      ? `<div class="ai-status on"><i class="light"></i><div><b>Replies from ${esc(ai.model)}</b><p>${esc(ai.where)}.${/Ollama/.test(ai.where || "") ? " Private and free, but slow on a laptop. A hosted API is faster (see the README)." : ""}</p></div></div>` + panelPicker()
+      : `<div class="ai-status"><i class="light"></i><div><b>AI replies are off</b><p>Memory still works and each reply shows what the AI would have been shown. To get answers, start Ollama or set <code>CEAI_LLM_BASE_URL</code> and restart.</p><button type="button" class="linkish" id="recheck">Check again</button></div></div>` + panelPicker();
     const stops = exchanges().filter((e) => e.reply && e.reply.memory);
     const fill = stops.length ? stops[stops.length - 1].reply.memory.fill : 0;
     const pct = Math.round(fill * 100);
     $("spacePct").textContent = `${pct}%`;
     $("meter").classList.toggle("high", pct >= 90);
     $("meter").firstElementChild.style.width = `${pct}%`;
+    renderModels();
     renderRoute();
   }
   function renderComposer() {
     const v = currentMemory();
     $("hint").innerHTML = v === "auto"
-      ? "Enter to send, Shift+Enter for a new line. CEAI picks the memory unless you choose one."
+      ? "Enter to send, Shift+Enter for a new line. Syno picks the memory unless you choose one."
       : `This message will use <b>${esc(LINES[v].name)}</b>. After it, memory goes back to Automatic.`;
     const lock = pending || busy || loadingSample || offline;
     $("seg").querySelectorAll("input").forEach((i) => { i.disabled = lock; });
@@ -589,7 +609,7 @@ textarea::placeholder { color: var(--ink-3); }
       state.ai = r.ai;
       state.messages.push(r.message);
     } catch (e) {
-      state.messages.push({ role: "assistant", n, text: null, ai_error: `Could not reach CEAI: ${e.message}. Is the chat server still running?`, memory: null });
+      state.messages.push({ role: "assistant", n, text: null, ai_error: `Could not reach Syno: ${e.message}. Is the chat server still running?`, memory: null });
     } finally {
       pending = false; tick(false);
       document.querySelector('input[name="memory"][value="auto"]').checked = true;
@@ -654,8 +674,41 @@ textarea::placeholder { color: var(--ink-3); }
     goTo(s.dataset.goto, getComputedStyle(s).getPropertyValue("--line"));
     if (matchMedia("(max-width: 960px)").matches) closeDrawer();
   });
+  // ---------- AI model picker ----------
+  let modelChoices = [];
+  const pickValue = (provider, id) => `${provider}|${id}`;
+  function panelPicker() {
+    return `<div class="panel-model"><label class="model-pick"><i class="light"></i><span class="sr">AI model</span><select class="model-select"></select><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label></div>`;
+  }
+  function renderModels() {
+    const ai = state.ai || {};
+    const list = modelChoices.slice();
+    if (ai.connected && !list.some((c) => c.id === ai.model && c.provider === ai.provider)) list.unshift({ id: ai.model, provider: ai.provider, where: ai.where });
+    const groups = {};
+    for (const c of list) (groups[c.where] ||= []).push(c);
+    const html = Object.entries(groups).map(([where, cs]) => `<optgroup label="${esc(where)}">` +
+      cs.map((c) => `<option value="${esc(pickValue(c.provider, c.id))}">${esc(c.id)}</option>`).join("") + `</optgroup>`).join("") +
+      `<optgroup label="No AI"><option value="none|none">Memory only (no replies)</option></optgroup>`;
+    const value = ai.connected ? pickValue(ai.provider, ai.model) : "none|none";
+    document.querySelectorAll(".model-select").forEach((sel) => {
+      sel.innerHTML = html; sel.value = value; sel.disabled = busy;
+      sel.closest(".model-pick").classList.toggle("on", !!ai.connected);
+    });
+  }
+  async function loadModels() {
+    try { modelChoices = (await api("/api/models")).models || []; } catch (e) { modelChoices = []; }
+    renderModels();
+  }
+  document.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("model-select")) return;
+    const [provider, ...rest] = e.target.value.split("|");
+    const model = rest.join("|");
+    guarded(async () => { state = await api("/api/model", { model, provider: provider === "none" ? null : provider }); });
+  });
+  document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("model-select") && !modelChoices.length) loadModels(); });
+
   $("panel").addEventListener("click", (e) => {
-    if (e.target.id === "recheck") guarded(async () => { state = await api("/api/connect", {}); });
+    if (e.target.id === "recheck") guarded(async () => { state = await api("/api/connect", {}); await loadModels(); });
   });
 
   $("input").addEventListener("input", () => { grow(); renderComposer(); });
@@ -689,7 +742,7 @@ textarea::placeholder { color: var(--ink-3); }
   applyTheme();
 
   render();
-  api("/api/state").then((s) => { state = s; drawn = 0; render(); $("input").focus(); })
+  api("/api/state").then((s) => { state = s; drawn = 0; render(); $("input").focus(); loadModels(); })
     .catch(() => { offline = true; render(); });
 })();
 </script>

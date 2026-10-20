@@ -1,0 +1,39 @@
+{
+  "gates": {
+    "G1 coding demo + held-out scenarios": {
+      "original": {
+        "caught": 2,
+        "of": 2
+      },
+      "held_out_frozen": 16,
+      "held_out_candidate": 17,
+      "of": 26,
+      "pass": true
+    },
+    "G2 synthetic controller val (evidence hit)": {
+      "frozen": 0.9916666666666667,
+      "v2": 0.9916666666666667,
+      "diff": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "pass": true
+    },
+    "G3 LoCoMo-Plus dev (adaptive cue hit)": {
+      "frozen": 0.13432835820895522,
+      "v2": 0.263681592039801,
+      "diff": 0.12935323383084577,
+      "ci_low": 0.07462686567164178,
+      "ci_high": 0.1890547263681592,
+      "pass": true
+    },
+    "G4 LoCoMo dev (adaptive evidence hit)": {
+      "frozen": 0.7093596059113301,
+      "v2": 0.7852216748768472,
+      "diff": 0.07586206896551724,
+      "ci_low": 0.0586565752128666,
+      "ci_high": 0.09455292908530319,
+      "pass": true
+    }
+  },
+  "all_pass": true
+}

@@ -132,7 +132,7 @@ specifically, reporting both `strict` and `assisted` results.
 against our own fixed-window strawman."
 **How, for $0:** `eval/baselines/` already has a working local `mem0ai` adapter (used for the
 LoCoMo baseline comparison) — reuse it as a third arm in `demo/coding_session/run_demo.py` alongside
-adaptive CEAI and the fixed window.
+adaptive Syno and the fixed window.
 **Files:** `demo/coding_session/run_demo.py`, reusing `eval/baselines/`'s Mem0 adapter.
 **Effort:** S–M.
 
@@ -284,10 +284,10 @@ force a binary choice between the clean claim and the better score.
 | Item | Status |
 |---|---|
 | 3.7 Verify manual override | **Done.** Verified live: the POST reaches the next decision, `next_turn` expires, the dashboard shows it, and invalid requests get 400 |
-| 3.5 Cost and latency | **Done** from recorded timings: `results/final/cost_latency.json` and `results/figures/memory_build_time.png` (CEAI about 6 s / 0 calls vs Mem0 about 972 s / 54 calls per conversation). There is no $ figure, because Mem0's per-call token counts were not recorded |
+| 3.5 Cost and latency | **Done** from recorded timings: `results/final/cost_latency.json` and `results/figures/memory_build_time.png` (Syno about 6 s / 0 calls vs Mem0 about 972 s / 54 calls per conversation). There is no $ figure, because Mem0's per-call token counts were not recorded |
 | 6.2–6.5 Claim reframing | **Done** as CLAUDE.md §6.6 (presentation framing). The numbers are unchanged |
 | 6.1 Ship the ablation-winning sliding-window weights | **Deferred, and needs pre-registration.** It changes the frozen system, and the sliding-window ablation set has no dev/test split, so the weights would be chosen on the same data that reports them. First split that set, then pre-register |
 | 1.1 / 1.2 Stronger free-tier model and judge | **Needs the user:** a free Groq or OpenRouter API key, set as an environment variable and never pasted in chat. Free-tier daily token limits must be checked first; one full comparison is roughly 1–2M tokens |
-| 1.3 Human labelling | Needs the team (sheets ready) |
+| 1.3 Human labelling | **Done 2026-10-19:** judge kappa 0.650 (≥ 0.6), so judge scores are citable |
 | 2.1, 2.2, 2.3, 3.3 | After Monday, each pre-registered (they change system behaviour) |
 | 3.1, 3.2, 3.4, 3.6, 4.1, 5.1 | After Monday (Colab sessions, setup time or outside data) |

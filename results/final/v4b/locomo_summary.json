@@ -1,0 +1,248 @@
+{
+  "n_questions": 966,
+  "strategies": {
+    "sliding_window": {
+      "evidence_hit_rate": 0.08099688473520249,
+      "evidence_coverage": 0.36342806385442006,
+      "answer_in_context": 0.08643617021276596,
+      "mean_tokens": 891.7142857142857,
+      "qa_f1": null,
+      "judge_score": null
+    },
+    "summarization": {
+      "evidence_hit_rate": 0.04569055036344756,
+      "evidence_coverage": 0.3167146998042214,
+      "answer_in_context": 0.06382978723404255,
+      "mean_tokens": 998.4616977225672,
+      "qa_f1": null,
+      "judge_score": null
+    },
+    "rag": {
+      "evidence_hit_rate": 0.7632398753894081,
+      "evidence_coverage": 0.877356569722615,
+      "answer_in_context": 0.4946808510638298,
+      "mean_tokens": 997.787784679089,
+      "qa_f1": null,
+      "judge_score": null
+    },
+    "hybrid": {
+      "evidence_hit_rate": 0.7092419522326064,
+      "evidence_coverage": 0.8432344723495803,
+      "answer_in_context": 0.45345744680851063,
+      "mean_tokens": 975.5372670807453,
+      "qa_f1": null,
+      "judge_score": null
+    },
+    "adaptive": {
+      "evidence_hit_rate": 0.7611630321910696,
+      "evidence_coverage": 0.8752610488158136,
+      "answer_in_context": 0.4933510638297872,
+      "mean_tokens": 997.6159420289855,
+      "qa_f1": null,
+      "judge_score": null
+    }
+  },
+  "best_fixed_baseline": "rag",
+  "adaptive_minus_best_fixed_hit_rate": -0.0020768431983384517,
+  "adaptive_minus_always_hybrid_hit_rate": 0.05192107995846318,
+  "evidence_hit_rate_by_category": {
+    "multi_hop": {
+      "sliding_window": 0.015267175572519083,
+      "summarization": 0.0,
+      "rag": 0.26717557251908397,
+      "hybrid": 0.15267175572519084,
+      "adaptive": 0.26717557251908397,
+      "n": 131
+    },
+    "temporal": {
+      "sliding_window": 0.1165644171779141,
+      "summarization": 0.03067484662576687,
+      "rag": 0.7791411042944786,
+      "hybrid": 0.7668711656441718,
+      "adaptive": 0.7730061349693251,
+      "n": 163
+    },
+    "open_domain": {
+      "sliding_window": 0.12121212121212122,
+      "summarization": 0.030303030303030304,
+      "rag": 0.3333333333333333,
+      "hybrid": 0.2727272727272727,
+      "adaptive": 0.3333333333333333,
+      "n": 33
+    },
+    "single_hop": {
+      "sliding_window": 0.08530805687203792,
+      "summarization": 0.061611374407582936,
+      "rag": 0.8957345971563981,
+      "hybrid": 0.8459715639810427,
+      "adaptive": 0.8933649289099526,
+      "n": 422
+    },
+    "adversarial": {
+      "sliding_window": 0.0794392523364486,
+      "summarization": 0.056074766355140186,
+      "rag": 0.8598130841121495,
+      "hybrid": 0.8037383177570093,
+      "adaptive": 0.8598130841121495,
+      "n": 214
+    }
+  },
+  "controller": {
+    "macro_f1_vs_objective_oracle": 0.22409992652461427,
+    "per_class": {
+      "sliding_window": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 69
+      },
+      "summarization": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 20
+      },
+      "rag": {
+        "precision": 0.8133333333333334,
+        "recall": 0.9983633387888707,
+        "f1": 0.8963997060984571,
+        "support": 611
+      },
+      "hybrid": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 52
+      }
+    },
+    "acceptable_choice_accuracy": 0.9747340425531915,
+    "oracle_distribution": {
+      "hybrid": 52,
+      "none": 214,
+      "rag": 611,
+      "sliding_window": 69,
+      "summarization": 20
+    },
+    "choice_distribution": {
+      "rag": 961,
+      "summarization": 4,
+      "sliding_window": 1
+    },
+    "task_type_distribution": {
+      "qa": 961,
+      "exploration": 2,
+      "debugging": 1,
+      "chat": 2
+    }
+  },
+  "granularity": {
+    "turn": {
+      "ndcg@10": 0.1811143011396723,
+      "recall@10": 0.2817814699434637,
+      "tokens@10": 261.62111801242236,
+      "recall@word_budget": 0.32750045327926947
+    },
+    "segment": {
+      "ndcg@10": 0.4078735332095012,
+      "recall@10": 0.5959229590070712,
+      "tokens@10": 1199.3333333333333,
+      "recall@word_budget": 0.37589831709769406
+    },
+    "adaptive": {
+      "ndcg@10": 0.2304960699247144,
+      "recall@10": 0.33723277126703916,
+      "tokens@10": 329.4503105590062,
+      "recall@word_budget": 0.3545669946760289
+    }
+  },
+  "config": {
+    "system": "v4b",
+    "budget": 1024,
+    "conversations": 5,
+    "nli": false,
+    "split": "test",
+    "rag": {
+      "compact_headers": true,
+      "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "neighbors": 0,
+      "hybrid": false,
+      "mmr_lambda": null
+    },
+    "qa_llm": "not run (pass --llm with an LLM configured)",
+    "summary_generator": "rule_based",
+    "answer_judge": "not run",
+    "max_questions_per_conversation": null
+  },
+  "runs": [
+    {
+      "conv": "conv-30",
+      "turns": 369,
+      "questions": 105,
+      "ingest_s": 22.280171394348145,
+      "total_s": 550.3499276638031,
+      "nli_pairs": 0,
+      "llm": null,
+      "judge": null,
+      "chunk_granularity_adaptive": {
+        "turn": 203,
+        "segment": 79
+      }
+    },
+    {
+      "conv": "conv-42",
+      "turns": 629,
+      "questions": 260,
+      "ingest_s": 24.241220474243164,
+      "total_s": 1304.7606205940247,
+      "nli_pairs": 0,
+      "llm": null,
+      "judge": null,
+      "chunk_granularity_adaptive": {
+        "turn": 399,
+        "segment": 111
+      }
+    },
+    {
+      "conv": "conv-44",
+      "turns": 675,
+      "questions": 158,
+      "ingest_s": 24.323704481124878,
+      "total_s": 988.2029387950897,
+      "nli_pairs": 0,
+      "llm": null,
+      "judge": null,
+      "chunk_granularity_adaptive": {
+        "turn": 282,
+        "segment": 187
+      }
+    },
+    {
+      "conv": "conv-48",
+      "turns": 681,
+      "questions": 239,
+      "ingest_s": 31.110203504562378,
+      "total_s": 1490.9979639053345,
+      "nli_pairs": 0,
+      "llm": null,
+      "judge": null,
+      "chunk_granularity_adaptive": {
+        "segment": 119,
+        "turn": 442
+      }
+    },
+    {
+      "conv": "conv-50",
+      "turns": 568,
+      "questions": 204,
+      "ingest_s": 17.68308997154236,
+      "total_s": 1086.3742125034332,
+      "nli_pairs": 0,
+      "llm": null,
+      "judge": null,
+      "chunk_granularity_adaptive": {
+        "turn": 329,
+        "segment": 113
+      }
+    }
+  ]
+}

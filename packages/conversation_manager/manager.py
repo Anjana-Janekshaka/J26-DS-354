@@ -107,8 +107,8 @@ class ConversationManager:
         """Classify and signal a user message *without* committing it to the conversation.
 
         Used for evaluation questions: the signal reflects the current state (token usage includes
-        the probe itself), then turn count, token usage, task state and topic centroid are restored.
-        The probe gets a distinct id (``t0042.p3``) so its decision record never collides.
+        the probe itself), then turn count, token usage, task state, topic centroid and known entities
+        are restored. The probe gets a distinct id (``t0042.p3``) so its decision record never collides.
         """
         snap = (
             self.turn_count,
@@ -118,6 +118,7 @@ class ConversationManager:
             list(self.classifier._recent),
             self.classifier._seen,
             self.classifier._last_type,
+            set(self.classifier._entities),
             len(self.turns),
         )
         self._probe_seq = getattr(self, "_probe_seq", 0) + 1
@@ -133,6 +134,7 @@ class ConversationManager:
             self.classifier._recent,
             self.classifier._seen,
             self.classifier._last_type,
+            self.classifier._entities,
             n,
         ) = snap
         del self.turns[n:]
