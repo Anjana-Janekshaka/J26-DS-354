@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>CEAI Chat</title>
+<script>
+  // Apply the saved theme before first paint.
+  try { const t = localStorage.getItem("ceai-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --raised: #ffffff; --map: #eef1f5; --wash: #eceff3; --you: #e8edf5;
+  --ink: #121820; --ink-2: #4a5462; --ink-3: #66707e; --rule: #dfe3e8; --rule-2: #c9cfd7;
+  --l-recent: #1a63d6; --l-summary: #b4540a; --l-search: #0a7a52; --l-both: #7038e0; --on-line: #ffffff;
+  --good: #0f7a4a; --warn: #8a5300; --warn-wash: #fdf2dc; --bad: #b3261e; --bad-wash: #fdeceb;
+  --focus: #1a63d6; --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 14px rgba(16, 24, 40, .06);
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --head: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
+  --row: 56px; --ease: cubic-bezier(.16, 1, .3, 1);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1117; --surface: #141a22; --raised: #19202a; --map: #10151c; --wash: #1c232d; --you: #1d2736;
+  --ink: #e7ebf0; --ink-2: #aab3bf; --ink-3: #8a94a2; --rule: #252d38; --rule-2: #343e4b;
+  --l-recent: #6ea6ff; --l-summary: #f2a33a; --l-search: #3cc993; --l-both: #b49bff; --on-line: #0b0f14;
+  --good: #46d08e; --warn: #f2c463; --warn-wash: #2a2312; --bad: #ff8a80; --bad-wash: #2c1716;
+  --focus: #6ea6ff; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+}}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --surface: #141a22; --raised: #19202a; --map: #10151c; --wash: #1c232d; --you: #1d2736;
+  --ink: #e7ebf0; --ink-2: #aab3bf; --ink-3: #8a94a2; --rule: #252d38; --rule-2: #343e4b;
+  --l-recent: #6ea6ff; --l-summary: #f2a33a; --l-search: #3cc993; --l-both: #b49bff; --on-line: #0b0f14;
+  --good: #46d08e; --warn: #f2c463; --warn-wash: #2a2312; --bad: #ff8a80; --bad-wash: #2c1716;
+  --focus: #6ea6ff; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; caret-color: var(--focus); }
+::selection { background: color-mix(in srgb, var(--focus) 26%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+h1, h2, h3 { font-family: var(--head); margin: 0; line-height: 1.25; text-wrap: balance; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.hidden { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Line bullets: the method's colour, the way a transit map names a line. */
+.l-sliding_window { --line: var(--l-recent); } .l-summarization { --line: var(--l-summary); }
+.l-rag { --line: var(--l-search); } .l-hybrid { --line: var(--l-both); }
+.bullet { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; background: var(--line); color: var(--on-line); font-size: .8125rem; font-weight: 650; letter-spacing: .01em; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+
+/* ---------- shell ---------- */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) 360px; height: 100vh; height: 100dvh; }
+.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 20px; background: var(--surface); border-bottom: 1px solid var(--rule); min-height: 56px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 26px; height: 26px; flex: none; }
+.brand b { font: 700 1.125rem/1 var(--head); letter-spacing: .01em; }
+.brand span { color: var(--ink-2); font-size: .9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--wash); color: var(--ink-2); font-size: .8125rem; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.status-pill .light { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+.status-pill.on .light { background: var(--good); }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font-size: .875rem; font-weight: 550; transition: background .15s, border-color .15s; }
+.btn:hover:not(:disabled) { background: var(--wash); border-color: var(--rule-2); }
+.btn:disabled { opacity: .5; }
+.btn.icon { width: 36px; padding: 0; justify-content: center; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover:not(:disabled) { background: var(--wash); }
+.only-narrow { display: none; }
+
+/* ---------- conversation ---------- */
+.main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.thread { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+.thread-inner { max-width: 800px; margin: 0 auto; padding: 28px 24px 24px 12px; }
+.notice { margin: 0 0 16px 48px; padding: 10px 14px; border-radius: 10px; background: var(--bad-wash); color: var(--bad); font-size: .9375rem; }
+
+.ex { display: grid; grid-template-columns: 48px minmax(0, 1fr); padding: 10px 0; border-radius: 14px; transition: background .25s var(--ease); }
+.ex-num { justify-self: center; align-self: start; margin-top: 7px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; display: grid; place-items: center; font-size: .75rem; font-weight: 650; color: var(--ink-3); border: 2px solid transparent; font-variant-numeric: tabular-nums; transition: border-color .2s, color .2s, background .2s; }
+.ex-body { min-width: 0; padding-right: 8px; }
+.ex.cited { background: color-mix(in srgb, var(--cite) 9%, transparent); }
+.ex.cited .ex-num { border-color: var(--cite); color: var(--ink); background: var(--surface); }
+.ex.flash { background: color-mix(in srgb, var(--cite, var(--focus)) 16%, transparent); }
+
+.you { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.you .bubble { background: var(--you); border-radius: 18px 18px 6px 18px; padding: 10px 16px; max-width: min(85%, 620px); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai { max-width: 70ch; }
+.ai .body { overflow-wrap: anywhere; }
+.ai .body > :first-child { margin-top: 0; }
+.ai .body p { margin: 0 0 12px; }
+.ai .body h3 { font-size: 1.0625rem; margin: 18px 0 8px; }
+.ai .body ul, .ai .body ol { margin: 0 0 12px; padding-left: 1.4em; }
+.ai .body li { margin: 3px 0; }
+.ai .body li::marker { color: var(--ink-3); }
+.ai code { font-family: var(--mono); font-size: .875em; background: var(--wash); padding: 1px 5px; border-radius: 5px; }
+.code { margin: 4px 0 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.code-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 4px 12px; border-bottom: 1px solid var(--rule); background: var(--wash); font-size: .75rem; color: var(--ink-2); }
+.code-head button { border: 0; background: transparent; color: var(--ink-2); font-size: .75rem; padding: 4px 8px; border-radius: 6px; display: inline-flex; gap: 6px; align-items: center; }
+.code-head button:hover { background: var(--surface); color: var(--ink); }
+.code-head svg.i { width: 14px; height: 14px; }
+.code pre { margin: 0; padding: 12px 14px; overflow-x: auto; font: .84rem/1.55 var(--mono); }
+.code pre code { background: none; padding: 0; font-size: inherit; }
+
+/* The memory line under each reply */
+.mem { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: .875rem; color: var(--ink-2); }
+.mem .by { font-size: .8125rem; color: var(--ink-3); }
+.mem .by.you-chose { color: var(--ink); font-weight: 600; }
+.cite { border: 0; background: transparent; padding: 1px 6px; margin: 0 -2px; border-radius: 6px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.cite:hover, .cite:focus-visible { background: color-mix(in srgb, var(--line) 16%, transparent); }
+.why-btn { border: 0; background: transparent; color: var(--ink-2); padding: 3px 8px 3px 6px; margin-left: -2px; border-radius: 8px; font-size: .8125rem; font-weight: 550; display: inline-flex; align-items: center; gap: 4px; }
+.why-btn:hover { background: var(--wash); color: var(--ink); }
+.why-btn svg.i { width: 14px; height: 14px; transition: transform .2s var(--ease); }
+.why-btn[aria-expanded="true"] svg.i { transform: rotate(90deg); }
+.why { margin-top: 10px; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--rule); font-size: .9375rem; }
+.why p { margin: 0 0 8px; }
+.why .note { color: var(--warn); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 4px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.facts dt { font-size: .75rem; color: var(--ink-3); }
+.facts dd { margin: 2px 0 0; font-weight: 600; font-size: .875rem; }
+.facts .bar { height: 4px; border-radius: 2px; background: var(--wash); margin-top: 6px; overflow: hidden; }
+.facts .bar i { display: block; height: 100%; background: var(--line); }
+.why details { margin-top: 10px; }
+.why summary { cursor: pointer; font-size: .8125rem; color: var(--ink-2); font-weight: 550; width: fit-content; border-radius: 6px; }
+.why summary:hover { color: var(--ink); }
+.why pre { font: .78rem/1.5 var(--mono); background: var(--wash); padding: 10px 12px; border-radius: 8px; max-height: 280px; overflow: auto; white-space: pre-wrap; margin: 8px 0 0; }
+.offline { padding: 10px 14px; border-radius: 10px; background: var(--warn-wash); color: var(--warn); font-size: .9375rem; }
+.err { padding: 10px 14px; border-radius: 10px; background: var(--bad-wash); color: var(--bad); font-size: .9375rem; }
+.waiting { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: .9375rem; }
+.waiting .elapsed { color: var(--ink-3); font-size: .8125rem; min-width: 3ch; }
+
+/* Empty state */
+.empty { max-width: 600px; margin: 6vh auto 0; padding: 0 0 0 36px; }
+.empty h1 { font-size: 1.75rem; font-weight: 650; letter-spacing: -.01em; margin-bottom: 10px; }
+.empty > p { color: var(--ink-2); margin: 0 0 22px; max-width: 60ch; }
+.lines { list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 10px; }
+.lines li { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 12px; align-items: center; font-size: .9375rem; color: var(--ink-2); }
+.lines .bullet { justify-self: start; }
+.empty h2 { font-size: .9375rem; font-weight: 650; margin: 0 0 10px; }
+.tries { display: grid; gap: 8px; margin-bottom: 18px; }
+.try { text-align: left; border: 1px solid var(--rule); background: var(--surface); border-radius: 12px; padding: 11px 14px; font-size: .9375rem; transition: border-color .15s, background .15s; }
+.try:hover { border-color: var(--rule-2); background: var(--raised); }
+.loading-sample { max-width: 520px; margin: 14vh auto 0; text-align: center; color: var(--ink-2); }
+
+/* Composer */
+.composer { padding: 10px 24px 14px; background: linear-gradient(to bottom, transparent, var(--bg) 30%); }
+.composer-inner { max-width: 800px; margin: 0 auto; padding-left: 36px; }
+.box { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--rule-2); border-radius: 16px; background: var(--surface); padding: 8px 8px 8px 16px; box-shadow: var(--shadow); transition: border-color .15s; }
+.box:focus-within { border-color: var(--focus); }
+textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; min-height: 28px; max-height: 220px; line-height: 1.5; padding: 6px 0; }
+textarea:focus-visible { outline: none; }
+textarea::placeholder { color: var(--ink-3); }
+.send { width: 40px; height: 40px; flex: none; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); display: grid; place-items: center; transition: opacity .15s, transform .15s var(--ease); }
+.send:hover:not(:disabled) { transform: translateY(-1px); }
+.send:disabled { opacity: .3; }
+.override { display: flex; align-items: center; gap: 10px; margin-top: 10px; min-width: 0; }
+.override-label { font-size: .8125rem; color: var(--ink-2); white-space: nowrap; }
+.seg { display: flex; gap: 4px; overflow-x: auto; padding: 2px; margin: -2px; scrollbar-width: none; }
+.seg label { position: relative; flex: none; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; border: 1px solid var(--rule); background: var(--surface); font-size: .8125rem; color: var(--ink-2); white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
+.seg label:hover span { border-color: var(--rule-2); color: var(--ink); }
+.seg input:checked + span { color: var(--ink); font-weight: 600; border-color: var(--line, var(--ink)); background: color-mix(in srgb, var(--line, var(--ink)) 12%, var(--surface)); }
+.seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.seg input:disabled + span { opacity: .5; }
+.seg .dot { width: 8px; height: 8px; }
+.hint { font-size: .78rem; color: var(--ink-3); margin: 8px 0 0; }
+.hint b { color: var(--ink); font-weight: 600; }
+
+/* ---------- route map panel ---------- */
+.panel { display: flex; flex-direction: column; min-height: 0; background: var(--map); border-left: 1px solid var(--rule); }
+.panel-sec { padding: 14px 20px; border-bottom: 1px solid var(--rule); }
+.panel-sec:last-child { border-bottom: 0; }
+.panel h2 { font-size: .9375rem; font-weight: 650; }
+.panel .sub { font-size: .8125rem; color: var(--ink-3); }
+.ai-status { display: flex; gap: 10px; align-items: flex-start; font-size: .875rem; }
+.ai-status .light { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex: none; background: var(--warn); }
+.ai-status.on .light { background: var(--good); }
+.ai-status p { margin: 2px 0 0; color: var(--ink-2); font-size: .8125rem; }
+.linkish { border: 0; background: none; padding: 0; color: var(--focus); text-decoration: underline; text-underline-offset: 3px; font-size: .8125rem; margin-top: 4px; }
+.route-sec { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
+.route-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.route-scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -20px; padding: 0 20px 16px; scroll-behavior: smooth; }
+.route { position: relative; }
+.route svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.route .lane { stroke: var(--rule-2); stroke-width: 1; stroke-dasharray: 2 5; }
+.route .seg-line { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.route .seg-line.new { stroke-dasharray: 220; stroke-dashoffset: 220; animation: draw .55s var(--ease) forwards; }
+.route .seg-line.next { stroke: var(--rule-2); stroke-width: 3; stroke-dasharray: 3 6; }
+.route .stn { fill: var(--surface); stroke-width: 3; }
+.route .stn.manual { stroke-width: 0; }
+.route .stn.next { stroke: var(--ink-3); stroke-dasharray: 3 3; stroke-width: 2; }
+.route .here { fill: none; stroke-width: 1.5; opacity: .45; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.stops { list-style: none; margin: 0; padding: 0; position: relative; }
+.stop { display: flex; flex-direction: column; justify-content: center; width: 100%; height: var(--row); padding: 0 8px 0 84px; border: 0; background: transparent; text-align: left; border-radius: 10px; transition: background .15s; }
+.stop:hover, .stop.cited { background: color-mix(in srgb, var(--line) 12%, transparent); }
+.stop-top { display: flex; align-items: center; gap: 8px; font-size: .8125rem; min-width: 0; white-space: nowrap; overflow: hidden; }
+.stop-top .m { flex: none; }
+.stop-top b { font-variant-numeric: tabular-nums; color: var(--ink); }
+.stop-top .m { color: var(--ink); font-weight: 600; }
+.tag { font-size: .6875rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--wash); color: var(--ink-2); white-space: nowrap; }
+.tag.manual { background: var(--ink); color: var(--bg); }
+.stop-text { font-size: .8125rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stop.next .stop-top { color: var(--ink-3); }
+.route-empty { font-size: .875rem; color: var(--ink-3); padding: 4px 0 0 84px; min-height: 120px; }
+.meter { height: 6px; border-radius: 3px; background: var(--wash); overflow: hidden; margin: 8px 0 6px; }
+.meter i { display: block; height: 100%; border-radius: 3px; background: var(--ink-2); transition: width .4s var(--ease); }
+.meter.high i { background: var(--warn); }
+.space-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .875rem; }
+.space-row b { font-variant-numeric: tabular-nums; }
+.legend { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.legend li { display: flex; }
+.legend .bullet { height: 22px; font-size: .75rem; cursor: help; }
+.panel-actions { display: grid; gap: 8px; }
+.panel-actions .btn { justify-content: flex-start; height: auto; padding: 9px 12px; background: var(--surface); }
+.panel-actions .btn span { display: grid; text-align: left; }
+.panel-actions .btn small { font-weight: 400; color: var(--ink-3); font-size: .78rem; }
+.scrim { display: none; }
+
+/* ---------- narrow screens: the route map becomes a drawer ---------- */
+@media (max-width: 960px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .only-narrow { display: inline-flex; }
+  .brand span, .status-pill { display: none; }
+  .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, calc(100vw - 48px)); z-index: 20; transform: translateX(100%); transition: transform .28s var(--ease); box-shadow: var(--shadow); visibility: hidden; }
+  .app.drawer-open .panel { transform: none; visibility: visible; }
+  .app.drawer-open .scrim { display: block; position: fixed; inset: 0; z-index: 15; background: rgba(8, 12, 18, .4); }
+  .thread-inner { padding: 18px 16px 16px 4px; }
+  .composer { padding: 8px 16px 12px; }
+  .composer-inner { padding-left: 0; }
+  .empty { padding-left: 12px; }
+  .notice { margin-left: 12px; }
+  .ex { grid-template-columns: 38px minmax(0, 1fr); }
+  .lines li { grid-template-columns: 1fr; gap: 4px; }
+  .override-label { display: none; }
+  .facts { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .route .seg-line.new { stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true">
+        <path d="M5 4v6l8 8v4" fill="none" stroke="var(--l-recent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 4v6l-8 8" fill="none" stroke="var(--l-search)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="13" cy="18" r="3.2" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+      </svg>
+      <b>CEAI</b><span>Chat with adaptive memory</span>
+    </div>
+    <div class="top-actions">
+      <span class="status-pill" id="pill"><i class="light"></i><span>Connecting…</span></span>
+      <button class="btn ghost icon" id="theme" type="button" aria-label="Theme: system"></button>
+      <button class="btn" id="newChat" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
+      <button class="btn only-narrow icon" id="openRoute" type="button" aria-label="Show memory route" aria-expanded="false" aria-controls="panel">
+        <svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="19" r="2"/><path d="M6 7v4a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="thread" id="thread" aria-live="polite"><div class="thread-inner" id="inner"></div></div>
+    <form class="composer" id="composer" autocomplete="off">
+      <div class="composer-inner">
+        <div class="box">
+          <textarea id="input" rows="1" placeholder="Message the assistant" aria-label="Message"></textarea>
+          <button class="send" id="send" type="submit" aria-label="Send" disabled>
+            <svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+        </div>
+        <div class="override">
+          <span class="override-label" id="ovl">Memory for this message</span>
+          <div class="seg" id="seg" role="radiogroup" aria-labelledby="ovl"></div>
+        </div>
+        <p class="hint" id="hint"></p>
+      </div>
+    </form>
+  </main>
+
+  <aside class="panel" id="panel" aria-label="Memory">
+    <div class="panel-sec"><div id="aiStatus"></div></div>
+    <section class="panel-sec route-sec" aria-labelledby="routeTitle">
+      <div class="route-head"><h2 id="routeTitle">Memory route</h2><span class="sub num" id="routeStats"></span></div>
+      <div class="route-scroll" id="routeScroll"><div class="route" id="route"></div></div>
+    </section>
+    <section class="panel-sec" aria-labelledby="spaceTitle">
+      <div class="space-row"><h2 id="spaceTitle">Memory space</h2><b id="spacePct">0%</b></div>
+      <div class="meter" id="meter"><i style="width:0"></i></div>
+      <p class="sub" style="margin:0">When it fills, CEAI uses the summary or a search instead of sending everything.</p>
+      <ul class="legend" id="legend"></ul>
+    </section>
+    <div class="panel-sec panel-actions">
+      <button class="btn" id="sample" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Load a sample conversation<small>15 messages from a coding session, about 40 s</small></span></button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+</div>
+
+<script>
+(() => {
+  const LINES = {
+    sliding_window: { name: "Recent", long: "Recent messages", desc: "The latest part of the chat, word for word." },
+    hybrid: { name: "Recent + search", long: "Recent + search", desc: "The latest messages plus the best earlier matches." },
+    rag: { name: "Search", long: "Search", desc: "Finds the earlier messages that match this one." },
+    summarization: { name: "Summary", long: "Summary", desc: "The gist of the whole chat, keeping current code signatures." },
+  };
+  const LANES = ["sliding_window", "hybrid", "rag", "summarization"];
+  const TRIES = [
+    "Write a helper to fetch a user's open tasks and a helper to format due dates.",
+    "Rename the parameter user_id to uid in get_user_tasks.",
+    "What did we decide about the due date format earlier?",
+  ];
+  const ICON = {
+    system: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+    light: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    dark: '<svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+    chevron: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+    copy: '<svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  };
+
+  let state = { messages: [], ai: { connected: false }, budget: 700 };
+  let pending = false, loadingSample = false, busy = false, offline = false;
+  let notice = "", drawn = 0, waitStart = 0, ticker = null;
+  const openWhy = new Set();
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- safe text formatting: code fences, headings, lists, paragraphs, `code`, **bold** ----------
+  function inline(s) {
+    return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  }
+  function prose(block) {
+    const out = []; let para = [], list = null;
+    const flushPara = () => { if (para.length) { out.push(`<p>${para.map(inline).join("<br>")}</p>`); para = []; } };
+    const flushList = () => { if (list) { out.push(`<${list.tag}>${list.items.map((i) => `<li>${inline(i)}</li>`).join("")}</${list.tag}>`); list = null; } };
+    for (const line of block.split("\n")) {
+      const bullet = line.match(/^\s*[-*•]\s+(.*)$/), numbered = line.match(/^\s*\d+[.)]\s+(.*)$/), head = line.match(/^#{1,4}\s+(.*)$/);
+      if (!line.trim()) { flushPara(); flushList(); continue; }
+      if (head) { flushPara(); flushList(); out.push(`<h3>${inline(head[1])}</h3>`); continue; }
+      const item = bullet || numbered;
+      if (item) {
+        flushPara(); const tag = bullet ? "ul" : "ol";
+        if (!list || list.tag !== tag) { flushList(); list = { tag, items: [] }; }
+        list.items.push(item[1]); continue;
+      }
+      if (list) flushList();
+      para.push(line);
+    }
+    flushPara(); flushList();
+    return out.join("");
+  }
+  function format(text) {
+    const re = /```([\w+#.-]*)[^\n]*\n?([\s\S]*?)(?:```|$)/g;
+    let html = "", last = 0, m;
+    while ((m = re.exec(String(text)))) {
+      html += prose(text.slice(last, m.index));
+      html += `<div class="code"><div class="code-head"><span>${esc(m[1] || "code")}</span><button type="button" data-copy>${ICON.copy}<span>Copy</span></button></div><pre><code>${esc(m[2].replace(/\n$/, ""))}</code></pre></div>`;
+      last = re.lastIndex;
+      if (m[0].length === 0) break;
+    }
+    return html + prose(String(text).slice(last));
+  }
+  function spans(nums) {
+    const out = []; if (!nums || !nums.length) return out;
+    let a = nums[0], b = nums[0];
+    for (const n of nums.slice(1).concat([null])) { if (n === b + 1) { b = n; continue; } out.push([a, b]); a = b = n; }
+    return out;
+  }
+
+  async function api(path, body) {
+    const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+    return data;
+  }
+
+  // ---------- conversation ----------
+  function exchanges() {
+    const out = []; let cur = null;
+    for (const m of state.messages) {
+      if (m.role === "user") { cur = { n: m.n, user: m, reply: null }; out.push(cur); }
+      else if (cur && !cur.reply) cur.reply = m;
+      else out.push({ n: m.n, user: null, reply: m });
+    }
+    return out;
+  }
+  function memoryLine(mem, n) {
+    const L = LINES[mem.strategy];
+    let drew;
+    if (mem.strategy === "summarization") drew = `<span>used the chat summary</span>`;
+    else {
+      const s = spans(mem.drew_on || []);
+      drew = s.length
+        ? `<span>drew on ${s.map(([a, b]) => `<button type="button" class="cite" data-cite="${a}-${b}" data-from="${n}" aria-label="Show message${a === b ? ` ${a}` : `s ${a} to ${b}`}">#${a}${a === b ? "" : `–${b}`}</button>`).join(", ")}</span>`
+        : `<span>used this message only</span>`;
+    }
+    const open = openWhy.has(n);
+    const pct = mem.budget ? Math.min(100, Math.round((mem.tokens / mem.budget) * 100)) : 0;
+    return `<div class="mem l-${mem.strategy}">
+        <span class="bullet">${esc(L.name)}</span>
+        <span class="by ${mem.chosen_by === "you" ? "you-chose" : ""}">${mem.chosen_by === "you" ? "your choice" : "automatic"}</span>
+        ${drew}
+        <button type="button" class="why-btn" data-why="${n}" aria-expanded="${open}" aria-controls="why-${n}">${ICON.chevron}Why this memory?</button>
+      </div>
+      <div class="why l-${mem.strategy} ${open ? "" : "hidden"}" id="why-${n}">
+        <p>${esc(mem.reason || "")}</p>
+        ${(mem.notes || []).map((t) => `<p class="note">${esc(t)}</p>`).join("")}
+        <dl class="facts">
+          <div><dt>Memory shown to the AI</dt><dd class="num">${mem.tokens} of ${mem.budget} tokens</dd><div class="bar"><i style="width:${pct}%"></i></div></div>
+          <div><dt>Decided in</dt><dd class="num">${Number(mem.ms || 0).toFixed(2)} ms, no AI call</dd></div>
+          <div><dt>Chosen by</dt><dd>${mem.chosen_by === "you" ? "You" : "CEAI, automatically"}</dd></div>
+        </dl>
+        <details><summary>What the assistant was shown</summary><pre>${esc(mem.context || "(nothing yet)")}</pre></details>
+        ${mem.rationale ? `<details><summary>Controller decision log</summary><pre>${esc(mem.rationale)}</pre></details>` : ""}
+      </div>`;
+  }
+  function replyBody(m) {
+    if (m.text) return `<div class="body">${format(m.text)}</div>`;
+    if (m.ai_error) return `<div class="err">${esc(m.ai_error)}</div>`;
+    return `<div class="offline">AI replies are off, so there is no answer. Memory still worked: open “Why this memory?” to see what the assistant would have been shown.</div>`;
+  }
+  function waitingLine() {
+    const ai = state.ai || {};
+    const what = ai.connected ? `Choosing memory, then ${esc(ai.model)} writes a reply` : "Choosing memory";
+    const slow = ai.connected && /Ollama/.test(ai.where || "") ? " On this computer a reply can take a minute or two." : "";
+    return `<div class="waiting" role="status"><span>${what}…${slow}</span><span class="elapsed num" id="elapsed"></span></div>`;
+  }
+  function emptyState() {
+    return `<div class="empty">
+      <h1>Chat as usual. See what the assistant remembers.</h1>
+      <p>For every message, CEAI picks one of four ways to remember the conversation, so long chats stay accurate without sending everything. Each reply shows the method it used and the earlier messages it drew on.</p>
+      <ul class="lines">${LANES.map((k) => `<li class="l-${k}"><span class="bullet">${LINES[k].name}</span><span>${LINES[k].desc}</span></li>`).join("")}</ul>
+      <h2>Try one</h2>
+      <div class="tries">${TRIES.map((t) => `<button type="button" class="try">${esc(t)}</button>`).join("")}</div>
+      <button type="button" class="btn" data-sample><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>Load a sample conversation (about 40 s)</button>
+    </div>`;
+  }
+  function renderThread(scroll) {
+    const inner = $("inner");
+    const top = notice ? `<div class="notice" role="alert">${esc(notice)}</div>` : "";
+    if (offline) {
+      inner.innerHTML = `<div class="empty"><h1>CEAI is not running</h1><p>Start it with <code>python -m console.chat</code>, then reload this page.</p></div>`;
+      return;
+    }
+    if (loadingSample) {
+      inner.innerHTML = `<div class="loading-sample" role="status"><h1 style="font-size:1.25rem;margin-bottom:10px">Replaying a coding session through CEAI</h1><p class="num">15 messages, each routed through the real memory system. About 40 s. <span id="elapsed"></span></p></div>`;
+      return;
+    }
+    const ex = exchanges();
+    if (!ex.length) { inner.innerHTML = top + emptyState(); return; }
+    inner.innerHTML = top + ex.map((e, i) => {
+      const lastPending = pending && i === ex.length - 1 && !e.reply;
+      const you = e.user ? `<div class="you"><div class="bubble">${esc(e.user.text)}</div></div>` : "";
+      let ai = "";
+      if (e.reply) ai = `<div class="ai">${replyBody(e.reply)}${e.reply.memory ? memoryLine(e.reply.memory, e.n) : ""}</div>`;
+      else if (lastPending) ai = `<div class="ai">${waitingLine()}</div>`;
+      return `<section class="ex" id="ex-${e.n}" aria-label="Message ${e.n}"><div class="ex-num" aria-hidden="true">${e.n ?? ""}</div><div class="ex-body">${you}${ai}</div></section>`;
+    }).join("");
+    if (scroll) requestAnimationFrame(() => { const t = $("thread"); t.style.scrollBehavior = "auto"; t.scrollTop = t.scrollHeight; t.style.scrollBehavior = ""; });
+  }
+
+  // ---------- the route map ----------
+  const X0 = 14, GAP = 16, ROW = 56;
+  const laneX = (s) => X0 + LANES.indexOf(s) * GAP;
+  function segPath(x1, y1, x2, y2) {
+    const dx = Math.abs(x2 - x1);
+    if (!dx) return `M${x1} ${y1}V${y2}`;
+    const ys = y1 + (ROW - dx) / 2;   // run straight, cross at 45 degrees, run straight
+    return `M${x1} ${y1}V${ys}L${x2} ${ys + dx}V${y2}`;
+  }
+  function renderRoute() {
+    const stops = exchanges().filter((e) => e.reply && e.reply.memory);
+    const waiting = pending;
+    const switches = stops.filter((e, i) => i && e.reply.memory.strategy !== stops[i - 1].reply.memory.strategy).length;
+    $("routeStats").textContent = stops.length ? `${stops.length} ${stops.length === 1 ? "reply" : "replies"} · ${switches} ${switches === 1 ? "switch" : "switches"}` : "";
+    const route = $("route");
+    if (!stops.length && !waiting) {
+      const h = 4 * 28;
+      route.innerHTML = `<svg width="76" height="${h}" aria-hidden="true">${LANES.map((s) => `<line class="lane" x1="${laneX(s)}" x2="${laneX(s)}" y1="0" y2="${h}"/>`).join("")}</svg>
+        <p class="route-empty">Your route appears here: one stop per reply, on the memory line CEAI chose. Switches show as a change of line.</p>`;
+      drawn = 0; return;
+    }
+    const n = stops.length + (waiting ? 1 : 0), H = n * ROW, y = (k) => k * ROW + ROW / 2;
+    let svg = `<svg width="76" height="${H}" aria-hidden="true">`;
+    svg += LANES.map((s) => `<line class="lane" x1="${laneX(s)}" x2="${laneX(s)}" y1="0" y2="${H}"/>`).join("");
+    stops.forEach((e, k) => {
+      if (!k) return;
+      const a = stops[k - 1].reply.memory.strategy, b = e.reply.memory.strategy;
+      svg += `<path class="seg-line ${k >= drawn ? "new" : ""}" style="stroke:${cssLine(b)}" d="${segPath(laneX(a), y(k - 1), laneX(b), y(k))}"/>`;
+    });
+    if (waiting) {
+      const from = stops.length ? laneX(stops[stops.length - 1].reply.memory.strategy) : laneX("sliding_window");
+      if (stops.length) svg += `<path class="seg-line next" d="M${from} ${y(stops.length - 1)}V${y(stops.length)}"/>`;
+      svg += `<circle class="stn next" cx="${from}" cy="${y(stops.length)}" r="6"/>`;
+    }
+    stops.forEach((e, k) => {
+      const mem = e.reply.memory, x = laneX(mem.strategy), c = cssLine(mem.strategy), last = k === stops.length - 1 && !waiting;
+      if (last) svg += `<circle class="here" cx="${x}" cy="${y(k)}" r="11" style="stroke:${c}"/>`;
+      svg += mem.chosen_by === "you"
+        ? `<rect class="stn manual" x="${x - 7}" y="${y(k) - 7}" width="14" height="14" rx="3" style="fill:${c}"/>`
+        : `<circle class="stn" cx="${x}" cy="${y(k)}" r="${last ? 7 : 6}" style="stroke:${c}"/>`;
+    });
+    svg += "</svg>";
+    const items = stops.map((e, k) => {
+      const mem = e.reply.memory, prev = k ? stops[k - 1].reply.memory.strategy : null;
+      const switched = prev && prev !== mem.strategy ? `<span class="tag">from ${esc(LINES[prev].name)}</span>` : "";
+      const manual = mem.chosen_by === "you" ? `<span class="tag manual">your choice</span>` : "";
+      return `<li><button type="button" class="stop l-${mem.strategy}" id="stop-${e.n}" data-goto="${e.n}" aria-label="Message ${e.n}: ${esc(LINES[mem.strategy].name)}${prev && prev !== mem.strategy ? `, switched from ${esc(LINES[prev].name)}` : ""}">
+        <span class="stop-top"><b>#${e.n}</b><span class="m">${esc(LINES[mem.strategy].name)}</span>${manual}${switched}</span>
+        <span class="stop-text">${esc(e.user ? e.user.text : "")}</span></button></li>`;
+    }).join("") + (waiting ? `<li><div class="stop next" aria-hidden="true"><span class="stop-top">Next stop: choosing memory…</span></div></li>` : "");
+    route.innerHTML = svg + `<ol class="stops">${items}</ol>`;
+    drawn = stops.length;
+    const sc = $("routeScroll"); requestAnimationFrame(() => { sc.scrollTop = sc.scrollHeight; });
+  }
+  function cssLine(s) { return { sliding_window: "var(--l-recent)", summarization: "var(--l-summary)", rag: "var(--l-search)", hybrid: "var(--l-both)" }[s]; }
+
+  function renderSide() {
+    const ai = state.ai || {};
+    const pill = $("pill");
+    pill.className = "status-pill" + (ai.connected ? " on" : "");
+    pill.innerHTML = `<i class="light"></i><span>${ai.connected ? esc(ai.model) : "Memory only"}</span>`;
+    pill.title = ai.connected ? `Replies from ${ai.model}, ${ai.where}` : "AI replies are off; memory still works";
+    $("aiStatus").innerHTML = ai.connected
+      ? `<div class="ai-status on"><i class="light"></i><div><b>Replies from ${esc(ai.model)}</b><p>${esc(ai.where)}.${/Ollama/.test(ai.where || "") ? " Private and free, but slow on a laptop. A hosted API is faster (see the README)." : ""}</p></div></div>`
+      : `<div class="ai-status"><i class="light"></i><div><b>AI replies are off</b><p>Memory still works and each reply shows what the AI would have been shown. To get answers, start Ollama or set <code>CEAI_LLM_BASE_URL</code> and restart.</p><button type="button" class="linkish" id="recheck">Check again</button></div></div>`;
+    const stops = exchanges().filter((e) => e.reply && e.reply.memory);
+    const fill = stops.length ? stops[stops.length - 1].reply.memory.fill : 0;
+    const pct = Math.round(fill * 100);
+    $("spacePct").textContent = `${pct}%`;
+    $("meter").classList.toggle("high", pct >= 90);
+    $("meter").firstElementChild.style.width = `${pct}%`;
+    renderRoute();
+  }
+  function renderComposer() {
+    const v = currentMemory();
+    $("hint").innerHTML = v === "auto"
+      ? "Enter to send, Shift+Enter for a new line. CEAI picks the memory unless you choose one."
+      : `This message will use <b>${esc(LINES[v].name)}</b>. After it, memory goes back to Automatic.`;
+    const lock = pending || busy || loadingSample || offline;
+    $("seg").querySelectorAll("input").forEach((i) => { i.disabled = lock; });
+    $("send").disabled = lock || !$("input").value.trim();
+    $("newChat").disabled = busy || loadingSample || pending;
+    $("sample").disabled = busy || loadingSample || pending;
+  }
+  function render(scroll = true) { renderThread(scroll); renderSide(); renderComposer(); }
+
+  // ---------- override selector ----------
+  $("seg").innerHTML = [["auto", "Automatic"]].concat(LANES.map((k) => [k, LINES[k].name])).map(([v, label]) =>
+    `<label class="${v === "auto" ? "" : `l-${v}`}"><input type="radio" name="memory" value="${v}" ${v === "auto" ? "checked" : ""}><span>${v === "auto" ? "" : '<i class="dot"></i>'}${label}</span></label>`).join("");
+  const currentMemory = () => (document.querySelector('input[name="memory"]:checked') || {}).value || "auto";
+  $("seg").addEventListener("change", renderComposer);
+  $("legend").innerHTML = LANES.map((k) => `<li class="l-${k}"><span class="bullet" title="${esc(LINES[k].desc)}">${LINES[k].name}</span></li>`).join("");
+
+  // ---------- actions ----------
+  function tick(on) {
+    clearInterval(ticker); ticker = null;
+    if (!on) return;
+    waitStart = Date.now();
+    const show = () => { const el = $("elapsed"); if (el) el.textContent = `${Math.round((Date.now() - waitStart) / 1000)} s`; };
+    show(); ticker = setInterval(show, 1000);
+  }
+  async function guarded(fn) {
+    busy = true; notice = ""; renderComposer();
+    try { await fn(); } catch (e) { notice = e.message; }
+    finally { busy = false; render(); }
+  }
+  async function send() {
+    const text = $("input").value.trim();
+    if (!text || pending || busy || loadingSample) return;
+    const memory = currentMemory();
+    const n = state.messages.filter((m) => m.role === "user").length + 1;
+    state.messages.push({ role: "user", n, text });
+    $("input").value = ""; grow();
+    pending = true; notice = ""; render(); tick(true);
+    try {
+      const r = await api("/api/send", { text, memory });
+      state.ai = r.ai;
+      state.messages.push(r.message);
+    } catch (e) {
+      state.messages.push({ role: "assistant", n, text: null, ai_error: `Could not reach CEAI: ${e.message}. Is the chat server still running?`, memory: null });
+    } finally {
+      pending = false; tick(false);
+      document.querySelector('input[name="memory"][value="auto"]').checked = true;
+      render(); $("input").focus();
+    }
+  }
+  function grow() { const t = $("input"); t.style.height = "auto"; t.style.height = Math.min(220, t.scrollHeight) + "px"; }
+  async function loadSample() {
+    if (busy || loadingSample || pending) return;
+    loadingSample = true; notice = ""; openWhy.clear(); drawn = 0; closeDrawer(); render(); tick(true);
+    try { state = await api("/api/sample", {}); }
+    catch (e) { notice = `The sample did not load: ${e.message}`; }
+    finally { loadingSample = false; tick(false); render(); }
+  }
+
+  // Highlight the exchanges a reply drew on, in the thread and on the route map.
+  function lightCites(btn, on) {
+    const [a, b] = btn.dataset.cite.split("-").map(Number);
+    const from = $(`ex-${btn.dataset.from}`), line = getComputedStyle(btn).getPropertyValue("--line");
+    for (let k = a; k <= b; k++) {
+      const ex = $(`ex-${k}`), st = $(`stop-${k}`);
+      if (ex) { ex.classList.toggle("cited", on); ex.style.setProperty("--cite", line); }
+      if (st) st.classList.toggle("cited", on);
+    }
+    if (from && !on) from.classList.remove("cited");
+  }
+  function goTo(n, color) {
+    const ex = $(`ex-${n}`); if (!ex) return;
+    ex.scrollIntoView({ block: "center" });
+    if (color) ex.style.setProperty("--cite", color);
+    ex.classList.add("flash"); setTimeout(() => ex.classList.remove("flash"), 1100);
+  }
+
+  const thread = $("thread");
+  thread.addEventListener("mouseover", (e) => { const c = e.target.closest(".cite"); if (c) lightCites(c, true); });
+  thread.addEventListener("mouseout", (e) => { const c = e.target.closest(".cite"); if (c && !c.contains(e.relatedTarget)) lightCites(c, false); });
+  thread.addEventListener("focusin", (e) => { if (e.target.matches(".cite")) lightCites(e.target, true); });
+  thread.addEventListener("focusout", (e) => { if (e.target.matches(".cite")) lightCites(e.target, false); });
+  thread.addEventListener("click", async (e) => {
+    const cite = e.target.closest(".cite");
+    if (cite) { goTo(cite.dataset.cite.split("-")[0], getComputedStyle(cite).getPropertyValue("--line")); return; }
+    const why = e.target.closest("[data-why]");
+    if (why) {
+      const n = Number(why.dataset.why), box = $(`why-${n}`), open = box.classList.toggle("hidden") === false;
+      why.setAttribute("aria-expanded", String(open));
+      open ? openWhy.add(n) : openWhy.delete(n);
+      return;
+    }
+    const copy = e.target.closest("[data-copy]");
+    if (copy) {
+      const code = copy.closest(".code").querySelector("code").textContent;
+      try { await navigator.clipboard.writeText(code); copy.lastChild.textContent = "Copied"; } catch (err) { copy.lastChild.textContent = "Select and copy"; }
+      setTimeout(() => { copy.lastChild.textContent = "Copy"; }, 1600);
+      return;
+    }
+    const tryBtn = e.target.closest(".try");
+    if (tryBtn) { $("input").value = tryBtn.textContent; grow(); renderComposer(); $("input").focus(); return; }
+    if (e.target.closest("[data-sample]")) loadSample();
+  });
+  $("route").addEventListener("click", (e) => {
+    const s = e.target.closest("[data-goto]"); if (!s) return;
+    goTo(s.dataset.goto, getComputedStyle(s).getPropertyValue("--line"));
+    if (matchMedia("(max-width: 960px)").matches) closeDrawer();
+  });
+  $("panel").addEventListener("click", (e) => {
+    if (e.target.id === "recheck") guarded(async () => { state = await api("/api/connect", {}); });
+  });
+
+  $("input").addEventListener("input", () => { grow(); renderComposer(); });
+  $("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+  $("composer").addEventListener("submit", (e) => { e.preventDefault(); send(); });
+  $("newChat").onclick = () => guarded(async () => { state = await api("/api/new", {}); openWhy.clear(); drawn = 0; });
+  $("sample").onclick = loadSample;
+
+  // Drawer on narrow screens
+  function openDrawer() { $("app").classList.add("drawer-open"); $("openRoute").setAttribute("aria-expanded", "true"); }
+  function closeDrawer() { $("app").classList.remove("drawer-open"); $("openRoute").setAttribute("aria-expanded", "false"); }
+  $("openRoute").onclick = () => ($("app").classList.contains("drawer-open") ? closeDrawer() : openDrawer());
+  $("scrim").onclick = closeDrawer;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+  // Theme: system, light, dark
+  const THEMES = ["system", "light", "dark"];
+  let theme = "system";
+  try { theme = localStorage.getItem("ceai-theme") || "system"; } catch (e) {}
+  function applyTheme() {
+    if (theme === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
+    $("theme").innerHTML = ICON[theme];
+    $("theme").setAttribute("aria-label", `Theme: ${theme}. Change theme`);
+    $("theme").title = `Theme: ${theme}`;
+  }
+  $("theme").onclick = () => {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % 3];
+    try { localStorage.setItem("ceai-theme", theme); } catch (e) {}
+    applyTheme();
+  };
+  applyTheme();
+
+  render();
+  api("/api/state").then((s) => { state = s; drawn = 0; render(); $("input").focus(); })
+    .catch(() => { offline = true; render(); });
+})();
+</script>
+</body>
+</html>

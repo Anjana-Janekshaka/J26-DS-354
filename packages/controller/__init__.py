@@ -2,6 +2,6 @@
 
 from .controller import RuleBasedController
 from .model_based import ModelBasedController
-from .rules import RULES, RuleConfig, RuleHit, apply_escalations
+from .rules import RULES, RuleConfig, RuleHit, TurnCues, apply_escalations
 
-__all__ = ["RULES", "ModelBasedController", "RuleBasedController", "RuleConfig", "RuleHit", "apply_escalations"]
+__all__ = ["RULES", "ModelBasedController", "RuleBasedController", "RuleConfig", "RuleHit", "TurnCues", "apply_escalations"]
