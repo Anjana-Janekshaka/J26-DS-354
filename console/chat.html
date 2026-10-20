@@ -79,6 +79,17 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .status-pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--wash); color: var(--ink-2); font-size: .8125rem; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 .status-pill .light { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
 .status-pill.on .light { background: var(--good); }
+/* AI model picker: the status pill as a menu */
+.model-pick { position: relative; display: inline-flex; align-items: center; height: 32px; border-radius: 16px; background: var(--wash); color: var(--ink-2); font-size: .8125rem; max-width: 300px; }
+.model-pick:hover { background: color-mix(in srgb, var(--ink) 8%, var(--wash)); }
+.model-pick .light { position: absolute; left: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); pointer-events: none; }
+.model-pick.on .light { background: var(--good); }
+.model-pick svg.i { position: absolute; right: 10px; width: 14px; height: 14px; pointer-events: none; }
+.model-select { appearance: none; -webkit-appearance: none; height: 100%; width: 100%; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; padding: 0 30px 0 28px; border-radius: 16px; cursor: pointer; text-overflow: ellipsis; }
+.model-select:disabled { cursor: progress; }
+.model-select option, .model-select optgroup { color: var(--ink); background: var(--surface); }
+.panel-model { margin-top: 10px; }
+.panel-model .model-pick { max-width: none; width: 100%; }
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font-size: .875rem; font-weight: 550; transition: background .15s, border-color .15s; }
 .btn:hover:not(:disabled) { background: var(--wash); border-color: var(--rule-2); }
 .btn:disabled { opacity: .5; }
@@ -239,7 +250,7 @@ textarea::placeholder { color: var(--ink-3); }
 @media (max-width: 960px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .only-narrow { display: inline-flex; }
-  .brand span, .status-pill { display: none; }
+  .brand span, .top .model-pick { display: none; }
   .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, calc(100vw - 48px)); z-index: 20; transform: translateX(100%); transition: transform .28s var(--ease); box-shadow: var(--shadow); visibility: hidden; }
   .app.drawer-open .panel { transform: none; visibility: visible; }
   .app.drawer-open .scrim { display: block; position: fixed; inset: 0; z-index: 15; background: rgba(8, 12, 18, .4); }
@@ -271,7 +282,7 @@ textarea::placeholder { color: var(--ink-3); }
       <b>Syno</b><span>Chat with adaptive memory</span>
     </div>
     <div class="top-actions">
-      <span class="status-pill" id="pill"><i class="light"></i><span>Connecting…</span></span>
+      <label class="model-pick" id="pick" title="AI model"><i class="light"></i><span class="sr">AI model</span><select class="model-select" id="modelTop"><option>Connecting…</option></select><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label>
       <button class="btn ghost icon" id="theme" type="button" aria-label="Theme: system"></button>
       <button class="btn" id="newChat" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
       <button class="btn only-narrow icon" id="openRoute" type="button" aria-label="Show memory route" aria-expanded="false" aria-controls="panel">
@@ -539,19 +550,17 @@ textarea::placeholder { color: var(--ink-3); }
 
   function renderSide() {
     const ai = state.ai || {};
-    const pill = $("pill");
-    pill.className = "status-pill" + (ai.connected ? " on" : "");
-    pill.innerHTML = `<i class="light"></i><span>${ai.connected ? esc(ai.model) : "Memory only"}</span>`;
-    pill.title = ai.connected ? `Replies from ${ai.model}, ${ai.where}` : "AI replies are off; memory still works";
+    $("pick").title = ai.connected ? `AI model: ${ai.model} (${ai.where}). Click to switch.` : "AI replies are off; memory still works. Click to pick a model.";
     $("aiStatus").innerHTML = ai.connected
-      ? `<div class="ai-status on"><i class="light"></i><div><b>Replies from ${esc(ai.model)}</b><p>${esc(ai.where)}.${/Ollama/.test(ai.where || "") ? " Private and free, but slow on a laptop. A hosted API is faster (see the README)." : ""}</p></div></div>`
-      : `<div class="ai-status"><i class="light"></i><div><b>AI replies are off</b><p>Memory still works and each reply shows what the AI would have been shown. To get answers, start Ollama or set <code>CEAI_LLM_BASE_URL</code> and restart.</p><button type="button" class="linkish" id="recheck">Check again</button></div></div>`;
+      ? `<div class="ai-status on"><i class="light"></i><div><b>Replies from ${esc(ai.model)}</b><p>${esc(ai.where)}.${/Ollama/.test(ai.where || "") ? " Private and free, but slow on a laptop. A hosted API is faster (see the README)." : ""}</p></div></div>` + panelPicker()
+      : `<div class="ai-status"><i class="light"></i><div><b>AI replies are off</b><p>Memory still works and each reply shows what the AI would have been shown. To get answers, start Ollama or set <code>CEAI_LLM_BASE_URL</code> and restart.</p><button type="button" class="linkish" id="recheck">Check again</button></div></div>` + panelPicker();
     const stops = exchanges().filter((e) => e.reply && e.reply.memory);
     const fill = stops.length ? stops[stops.length - 1].reply.memory.fill : 0;
     const pct = Math.round(fill * 100);
     $("spacePct").textContent = `${pct}%`;
     $("meter").classList.toggle("high", pct >= 90);
     $("meter").firstElementChild.style.width = `${pct}%`;
+    renderModels();
     renderRoute();
   }
   function renderComposer() {
@@ -665,8 +674,41 @@ textarea::placeholder { color: var(--ink-3); }
     goTo(s.dataset.goto, getComputedStyle(s).getPropertyValue("--line"));
     if (matchMedia("(max-width: 960px)").matches) closeDrawer();
   });
+  // ---------- AI model picker ----------
+  let modelChoices = [];
+  const pickValue = (provider, id) => `${provider}|${id}`;
+  function panelPicker() {
+    return `<div class="panel-model"><label class="model-pick"><i class="light"></i><span class="sr">AI model</span><select class="model-select"></select><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label></div>`;
+  }
+  function renderModels() {
+    const ai = state.ai || {};
+    const list = modelChoices.slice();
+    if (ai.connected && !list.some((c) => c.id === ai.model && c.provider === ai.provider)) list.unshift({ id: ai.model, provider: ai.provider, where: ai.where });
+    const groups = {};
+    for (const c of list) (groups[c.where] ||= []).push(c);
+    const html = Object.entries(groups).map(([where, cs]) => `<optgroup label="${esc(where)}">` +
+      cs.map((c) => `<option value="${esc(pickValue(c.provider, c.id))}">${esc(c.id)}</option>`).join("") + `</optgroup>`).join("") +
+      `<optgroup label="No AI"><option value="none|none">Memory only (no replies)</option></optgroup>`;
+    const value = ai.connected ? pickValue(ai.provider, ai.model) : "none|none";
+    document.querySelectorAll(".model-select").forEach((sel) => {
+      sel.innerHTML = html; sel.value = value; sel.disabled = busy;
+      sel.closest(".model-pick").classList.toggle("on", !!ai.connected);
+    });
+  }
+  async function loadModels() {
+    try { modelChoices = (await api("/api/models")).models || []; } catch (e) { modelChoices = []; }
+    renderModels();
+  }
+  document.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("model-select")) return;
+    const [provider, ...rest] = e.target.value.split("|");
+    const model = rest.join("|");
+    guarded(async () => { state = await api("/api/model", { model, provider: provider === "none" ? null : provider }); });
+  });
+  document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("model-select") && !modelChoices.length) loadModels(); });
+
   $("panel").addEventListener("click", (e) => {
-    if (e.target.id === "recheck") guarded(async () => { state = await api("/api/connect", {}); });
+    if (e.target.id === "recheck") guarded(async () => { state = await api("/api/connect", {}); await loadModels(); });
   });
 
   $("input").addEventListener("input", () => { grow(); renderComposer(); });
@@ -700,7 +742,7 @@ textarea::placeholder { color: var(--ink-3); }
   applyTheme();
 
   render();
-  api("/api/state").then((s) => { state = s; drawn = 0; render(); $("input").focus(); })
+  api("/api/state").then((s) => { state = s; drawn = 0; render(); $("input").focus(); loadModels(); })
     .catch(() => { offline = true; render(); });
 })();
 </script>

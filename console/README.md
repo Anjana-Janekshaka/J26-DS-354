@@ -19,7 +19,7 @@ python -m console.chat              # opens http://127.0.0.1:8800/ (loads the mo
 | Setup | Speed | How |
 |---|---|---|
 | Ollama on this computer (default if it is running) | about 1 minute per reply on a laptop CPU | Start Ollama; uses `qwen2.5:7b` (or `CEAI_CHAT_MODEL`) |
-| A free hosted API, e.g. Groq | 1 to 2 seconds | Set `CEAI_LLM_BASE_URL=https://api.groq.com/openai/v1`, `CEAI_LLM_MODEL=llama-3.3-70b-versatile` and `CEAI_LLM_API_KEY` in your terminal (never in a file or chat), then restart |
+| A free hosted API, e.g. Groq | 1 to 2 seconds | Copy `.env.example` to `.env` and put your key in `CEAI_LLM_API_KEY` (model `openai/gpt-oss-120b`; `scripts/list_llm_models.py` lists the ones your key can use). Or set them in your terminal. Never paste the key into a chat. Then restart |
 | Nothing | instant | Memory-only mode: no answer, but "Why?" shows what the AI would have been shown |
 
 Replies are capped at 400 tokens (`CEAI_CHAT_MAX_TOKENS`). Memory itself never calls an AI.

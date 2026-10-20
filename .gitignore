@@ -9,3 +9,6 @@ eval/**/results*/*.jsonl
 eval/**/results*/traces/
 
 eval/beam/data/
+
+# local secrets (copy .env.example to .env)
+.env

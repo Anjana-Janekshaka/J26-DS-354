@@ -24,6 +24,7 @@ import os
 import re
 import threading
 import time
+import urllib.parse
 import urllib.request
 import warnings
 import webbrowser
@@ -34,7 +35,7 @@ from contracts import OverrideRequest, count_tokens
 from controller.rules import RULES, TurnCues
 from eval.frozen import frozen_controller, system_name, system_retrieval
 from integration import MemoryPipeline
-from integration.llm_client import OpenAICompatibleLLM
+from integration.llm_client import USER_AGENT, OpenAICompatibleLLM
 from retrieval import RetrievalConfig
 
 PAGE = Path(__file__).parent / "chat.html"
@@ -73,22 +74,78 @@ def _ollama_models(base: str = "http://127.0.0.1:11434") -> list[str]:
         return []
 
 
+OLLAMA = "http://127.0.0.1:11434"
+OLLAMA_WHERE = "Ollama on this computer"
+# Models a hosted API lists that are not chat models (speech, text-to-speech, safety classifiers).
+NOT_CHAT = re.compile(r"whisper|orpheus|tts|guard|embed|moderation", re.I)
+_api_cache: dict[str, tuple[float, list[str]]] = {}
+
+
+def reply_tokens() -> int:
+    """Read at call time, so a value from .env (loaded in main) counts."""
+    return int(os.environ.get("CEAI_CHAT_MAX_TOKENS", str(REPLY_TOKENS)))
+
+
+def _api_where(base: str) -> str:
+    host = urllib.parse.urlparse(base).hostname or base
+    return f"Hosted API ({host})"
+
+
+def _api_models(base: str, key: str | None) -> list[str]:
+    """Chat models the hosted API offers to this key (cached 5 min). Empty if it cannot be listed."""
+    hit = _api_cache.get(base)
+    if hit and time.time() - hit[0] < 300:
+        return hit[1]
+    headers = {"User-Agent": USER_AGENT, **({"Authorization": f"Bearer {key}"} if key else {})}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f"{base.rstrip('/')}/models", headers=headers), timeout=8) as r:
+            ids = sorted(m["id"] for m in json.loads(r.read()).get("data", []) if m.get("active", True))
+    except Exception:
+        return []
+    ids = [m for m in ids if not NOT_CHAT.search(m)]
+    _api_cache[base] = (time.time(), ids)
+    return ids
+
+
+def make_llm(provider: str, model: str) -> tuple[OpenAICompatibleLLM, dict]:
+    """provider 'api' = CEAI_LLM_BASE_URL / CEAI_LLM_API_KEY; 'ollama' = the local Ollama server."""
+    if provider == "api":
+        base = os.environ["CEAI_LLM_BASE_URL"]
+        llm = OpenAICompatibleLLM(base, model, api_key=os.environ.get("CEAI_LLM_API_KEY"), max_tokens=reply_tokens(),
+                                  temperature=0.3, timeout_s=180, max_retries=1)
+        return llm, {"connected": True, "model": model, "where": _api_where(base), "provider": "api"}
+    llm = OpenAICompatibleLLM(f"{OLLAMA}/v1", model, max_tokens=reply_tokens(), temperature=0.3, timeout_s=300, max_retries=1)
+    return llm, {"connected": True, "model": model, "where": OLLAMA_WHERE, "provider": "ollama"}
+
+
+OFF = {"connected": False, "model": None, "where": None, "provider": None}
+
+
 def connect_ai() -> tuple[object | None, dict]:
     base = os.environ.get("CEAI_LLM_BASE_URL")
     if base:
         model = os.environ.get("CEAI_LLM_MODEL", "")
         if model:
-            llm = OpenAICompatibleLLM(base, model, api_key=os.environ.get("CEAI_LLM_API_KEY"), max_tokens=REPLY_TOKENS,
-                                      temperature=0.3, timeout_s=180, max_retries=1)
-            return llm, {"connected": True, "model": model, "where": "API from CEAI_LLM_BASE_URL"}
+            return make_llm("api", model)
     models = _ollama_models()
     if models:
         want = os.environ.get("CEAI_CHAT_MODEL")
         model = want if want in models else next((m for m in models if m.startswith("qwen2.5")), models[0])
-        llm = OpenAICompatibleLLM("http://127.0.0.1:11434/v1", model, max_tokens=REPLY_TOKENS, temperature=0.3,
-                                  timeout_s=300, max_retries=1)
-        return llm, {"connected": True, "model": model, "where": "Ollama on this computer"}
-    return None, {"connected": False, "model": None, "where": None}
+        return make_llm("ollama", model)
+    return None, dict(OFF)
+
+
+def model_choices() -> list[dict]:
+    """Every model the user can switch to: the hosted API's chat models, then local Ollama models."""
+    out = []
+    base = os.environ.get("CEAI_LLM_BASE_URL")
+    if base:
+        listed = _api_models(base, os.environ.get("CEAI_LLM_API_KEY"))
+        configured = os.environ.get("CEAI_LLM_MODEL")
+        for m in listed or ([configured] if configured else []):
+            out.append({"id": m, "provider": "api", "where": _api_where(base)})
+    out += [{"id": m, "provider": "ollama", "where": OLLAMA_WHERE} for m in _ollama_models()]
+    return out
 
 
 def stream_ai(llm: OpenAICompatibleLLM, system: str, user: str, on_text, stop: threading.Event | None = None,
@@ -99,7 +156,7 @@ def stream_ai(llm: OpenAICompatibleLLM, system: str, user: str, on_text, stop: t
     """
     body = json.dumps({"model": llm.model, "temperature": llm.temperature, "max_tokens": llm.max_tokens, "stream": True,
                        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}  # see integration.llm_client
     if llm.api_key:
         headers["Authorization"] = f"Bearer {llm.api_key}"
     req = urllib.request.Request(llm.url, data=body, headers=headers, method="POST")
@@ -154,20 +211,24 @@ class ChatSession:
         self.llm, self.ai = connect_ai()
         return self.ai
 
-    def use_model(self, model: str) -> dict:
-        """Switch the AI model (same endpoint) for the following messages."""
-        if self.llm is None:
+    def use_model(self, model: str, provider: str | None = None) -> dict:
+        """Switch the AI model for the following messages. ``provider``: 'api', 'ollama', or None for the
+        current one. ``model='none'`` turns AI replies off (memory-only mode)."""
+        if model == "none":
+            self.llm, self.ai = None, dict(OFF)
+            return self.ai
+        provider = provider or self.ai.get("provider")
+        if provider not in ("api", "ollama"):
             raise ValueError("no AI is connected")
-        self.llm = OpenAICompatibleLLM(self.llm.url.rsplit("/chat/completions", 1)[0], model, api_key=self.llm.api_key,
-                                       max_tokens=self.llm.max_tokens, temperature=self.llm.temperature,
-                                       timeout_s=self.llm.timeout_s, max_retries=self.llm.max_retries)
-        self.ai = {**self.ai, "model": model}
+        if provider == "api" and not os.environ.get("CEAI_LLM_BASE_URL"):
+            raise ValueError("no hosted API is set (CEAI_LLM_BASE_URL)")
+        self.llm, self.ai = make_llm(provider, model)
         return self.ai
 
     def models(self) -> list[str]:
-        if self.ai.get("where") == "Ollama on this computer":
-            return _ollama_models()
-        return [self.ai["model"]] if self.ai.get("model") else []
+        """Model names on the current provider (used by the terminal app's /model)."""
+        return [c["id"] for c in model_choices() if c["provider"] == self.ai.get("provider")] or (
+            [self.ai["model"]] if self.ai.get("model") else [])
 
     # replaying saved messages (resume, undo, retry) -------------------------------------------
     def exchanges(self) -> list[dict]:
@@ -216,7 +277,8 @@ class ChatSession:
             try:
                 reply = self.llm(*turn["ask"]).strip()
             except Exception as e:  # network, model not loaded, timeout
-                ai_error = f"The AI did not answer ({type(e).__name__}). Your message and memory are saved."
+                ai_error = (f"The AI did not answer ({type(e).__name__}: {str(e)[:300]}). "
+                            "Your message and memory are saved.")
         return self.finish(turn, reply, ai_error)
 
     def prepare(self, text: str, memory: str = "auto", at: float | None = None) -> dict:
@@ -344,6 +406,10 @@ def make_handler(chat: ChatSession):
             elif self.path == "/api/state":
                 with chat.lock:
                     self._json(chat.state())
+            elif self.path == "/api/models":
+                choices = model_choices()  # network call: outside the lock
+                with chat.lock:
+                    self._json({"ai": chat.ai, "models": choices})
             else:
                 self.send_error(404)
 
@@ -368,6 +434,12 @@ def make_handler(chat: ChatSession):
                 if self.path == "/api/connect":
                     chat.reconnect()
                     return self._json(chat.state())
+                if self.path == "/api/model":
+                    model, provider = str(data.get("model", "")).strip(), data.get("provider")
+                    if model != "none" and not any(c["id"] == model and c["provider"] == provider for c in model_choices()):
+                        return self._json({"error": f"Model {model!r} is not available."}, 400)
+                    chat.use_model(model, provider)
+                    return self._json(chat.state())
             self.send_error(404)
 
     return Handler
@@ -375,6 +447,10 @@ def make_handler(chat: ChatSession):
 
 def main() -> None:
     warnings.filterwarnings("ignore")
+    from integration.dotenv import load_dotenv
+
+    if load_dotenv():
+        print("Settings read from .env", flush=True)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--port", type=int, default=8800)
     ap.add_argument("--budget", type=int, default=700, help="memory budget in tokens")

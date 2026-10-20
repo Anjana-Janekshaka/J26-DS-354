@@ -1219,6 +1219,9 @@ class App:
 
 def main() -> None:
     warnings.filterwarnings("ignore")
+    from integration.dotenv import load_dotenv
+
+    load_dotenv()  # the AI settings in .env, if present
     try:
         from transformers.utils import logging as hf_logging
 
