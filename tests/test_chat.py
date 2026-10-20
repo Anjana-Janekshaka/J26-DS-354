@@ -9,7 +9,7 @@ from retrieval import RetrievalConfig
 
 def make_session(monkeypatch) -> chat_mod.ChatSession:
     s = chat_mod.ChatSession.__new__(chat_mod.ChatSession)
-    s.budget, s.llm, s.ai = 700, None, {"connected": False, "model": None, "where": None}
+    s.budget, s.llm, s.ai, s.personality = 700, None, {"connected": False, "model": None, "where": None}, None
     import threading
 
     s.lock = threading.Lock()

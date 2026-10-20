@@ -24,6 +24,51 @@ python -m console.chat              # opens http://127.0.0.1:8800/ (loads the mo
 
 Replies are capped at 400 tokens (`CEAI_CHAT_MAX_TOKENS`). Memory itself never calls an AI.
 
+## In the terminal
+
+The same chat as a terminal app, modelled on the Hermes agent CLI's "modern" layout: a banner,
+a `❯` prompt, glyph rows instead of boxes, streamed replies and a status bar.
+
+```
+python -m console.tui                     # new chat
+python -m console.tui -c                  # continue the most recent chat
+python -m console.tui -r <number|id|title>
+python -m console.tui -q "one question"   # answer once and exit (-q - reads stdin)
+python -m console.tui --model qwen2.5:7b --budget 1000
+```
+
+**On screen.** `◆ memory` row above every reply (method, why, which earlier messages it drew on;
+`┊` rows for the three prepared methods in `/verbose verbose`), `∴ Thought for Ns` for reasoning
+models, `◈` reply, `─` summary line. The status bar shows the AI, memory fill (green / yellow /
+orange / red), the last and next method, queued messages, duration and the chat title, and
+shrinks on narrow terminals.
+
+**Keys.** Enter sends · Alt+Enter, Ctrl+J or a trailing `\` adds a line · Tab completes commands
+and their arguments, or accepts the grey suggestion from earlier inputs · Up/Down earlier inputs
+(kept across runs) · Ctrl+P command list · Ctrl+G write in your editor · Ctrl+S put the input aside
+and bring it back · Ctrl+C stop a reply / clear the input / twice to quit · Ctrl+D quit. Long pastes
+fold into `[pasted N lines #k]` and are sent in full. `!<command>` runs a shell command (not sent
+to the AI).
+
+**Commands** (any unique prefix works; `/h` is `/help`):
+
+| Group | Commands |
+|---|---|
+| Session | `/new [title]`, `/clear`, `/history`, `/save [file.md]`, `/retry`, `/undo`, `/title [name]`, `/sessions`, `/resume <n>`, `/branch [name]`, `/btw <question>` (uses memory, not remembered), `/queue <msg>\|list\|rm N\|clear`, `/copy [N]` |
+| Memory | `/memory <auto\|recent\|summary\|search\|both>` (next message only), `/why`, `/context [all]`, `/track`, `/sample`, `/status`, `/usage` |
+| AI and display | `/model [name]`, `/connect`, `/personality [name\|none]`, `/verbose [off\|new\|all\|verbose]`, `/focus`, `/reasoning [show\|hide]`, `/skin [ceai\|ocean\|amber\|mono]`, `/indicator [kaomoji\|emoji\|unicode\|ascii]`, `/statusbar`, `/timestamps`, `/footer`, `/bell`, `/config` |
+| Info | `/help [word]`, `/version`, `/redraw`, `/quit [--delete]` |
+
+`/new`, `/clear`, `/undo` and `/quit --delete` ask first; add `-y` to skip. Chats, settings and
+input history are saved in `~/.ceai` (or `CEAI_HOME`). A saved chat keeps only the messages, the
+replies and your per-message memory choices; resuming rebuilds the memory by replaying them, with
+no AI calls, so the decisions come out the same. Needs `prompt_toolkit` (`pip install -e ".[tui]"`);
+without it, a plain prompt is used.
+
+Left out on purpose, because CEAI is a chat with managed memory rather than a tool-using agent:
+tools, skills, MCP, subagents and `/bg`, cron and `/loop`, worktrees, voice, browser, messaging
+platforms, billing, pets. `/compress` is what the memory methods already do every message.
+
 ---
 
 # Replay console (for the evaluators)

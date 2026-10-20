@@ -30,7 +30,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from contracts import OverrideRequest
+from contracts import OverrideRequest, count_tokens
 from controller.rules import RULES, TurnCues
 from eval.frozen import frozen_controller, system_name, system_retrieval
 from integration import MemoryPipeline
@@ -52,6 +52,14 @@ BECAUSE = {
     "hold": "Nothing new stood out, so it kept the same memory method as before.",
     "default": "It started with the recent messages.",
 }
+PERSONALITIES = {
+    "helpful": "Be friendly and helpful.",
+    "concise": "Answer as briefly as possible. No preamble.",
+    "technical": "Be precise and technical. Prefer code and exact names.",
+    "teacher": "Explain step by step, as to a student, and check understanding.",
+    "creative": "Be imaginative and suggest unusual options.",
+}
+SECTION = re.compile(r"\n\n(?=\[[A-Z][^\]\n]*\]\n)")
 # Replies are capped so a local CPU model answers in reasonable time; raise it for a hosted API.
 REPLY_TOKENS = int(os.environ.get("CEAI_CHAT_MAX_TOKENS", "400"))
 
@@ -83,10 +91,44 @@ def connect_ai() -> tuple[object | None, dict]:
     return None, {"connected": False, "model": None, "where": None}
 
 
+def stream_ai(llm: OpenAICompatibleLLM, system: str, user: str, on_text, stop: threading.Event | None = None,
+              on_reasoning=None) -> None:
+    """Stream a reply from the same endpoint ``llm`` uses, calling ``on_text`` with each new piece.
+
+    Reasoning models may send their thinking in a separate field; it goes to ``on_reasoning``.
+    """
+    body = json.dumps({"model": llm.model, "temperature": llm.temperature, "max_tokens": llm.max_tokens, "stream": True,
+                       "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
+    headers = {"Content-Type": "application/json"}
+    if llm.api_key:
+        headers["Authorization"] = f"Bearer {llm.api_key}"
+    req = urllib.request.Request(llm.url, data=body, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=llm.timeout_s) as resp:
+        for raw in resp:
+            if stop is not None and stop.is_set():
+                return
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                return
+            try:
+                delta = json.loads(data)["choices"][0].get("delta") or {}
+            except (json.JSONDecodeError, KeyError, IndexError):
+                continue
+            thought = delta.get("reasoning_content") or delta.get("reasoning") or ""
+            if thought and on_reasoning is not None:
+                on_reasoning(thought)
+            if delta.get("content"):
+                on_text(delta["content"])
+
+
 # ---------------------------------------------------------------------------------------- the chat
 class ChatSession:
     def __init__(self, budget: int = 700):
         self.budget = budget
+        self.personality: str | None = None
         self.lock = threading.Lock()
         print("Loading the memory models (about 20 s)...", flush=True)
         from integration.pipeline import default_embedder
@@ -112,26 +154,87 @@ class ChatSession:
         self.llm, self.ai = connect_ai()
         return self.ai
 
+    def use_model(self, model: str) -> dict:
+        """Switch the AI model (same endpoint) for the following messages."""
+        if self.llm is None:
+            raise ValueError("no AI is connected")
+        self.llm = OpenAICompatibleLLM(self.llm.url.rsplit("/chat/completions", 1)[0], model, api_key=self.llm.api_key,
+                                       max_tokens=self.llm.max_tokens, temperature=self.llm.temperature,
+                                       timeout_s=self.llm.timeout_s, max_retries=self.llm.max_retries)
+        self.ai = {**self.ai, "model": model}
+        return self.ai
+
+    def models(self) -> list[str]:
+        if self.ai.get("where") == "Ollama on this computer":
+            return _ollama_models()
+        return [self.ai["model"]] if self.ai.get("model") else []
+
+    # replaying saved messages (resume, undo, retry) -------------------------------------------
+    def exchanges(self) -> list[dict]:
+        """The conversation as saved: what was typed, the reply and any per-message memory choice."""
+        out, user = [], None
+        for m in self.messages:
+            if m["role"] == "user":
+                user = m
+            elif user is not None:
+                choice = m["memory"]["strategy"] if m["memory"]["chosen_by"] == "you" else "auto"
+                out.append({"user": user["text"], "reply": m["text"], "memory": choice, "at": user.get("at")})
+                user = None
+        return out
+
+    def load(self, exchanges: list[dict]) -> None:
+        """Rebuild memory from saved exchanges. No AI calls; the memory decisions come out the same."""
+        self.reset()
+        for ex in exchanges:
+            turn = self.prepare(ex["user"], ex.get("memory", "auto"), at=ex.get("at"))
+            self.finish(turn, ex.get("reply"))
+
+    def undo(self) -> dict | None:
+        """Remove the last exchange and return it."""
+        ex = self.exchanges()
+        if not ex:
+            return None
+        self.load(ex[:-1])
+        return ex[-1]
+
+    def side(self, text: str) -> dict:
+        """A side question: answered with memory, but neither the question nor the answer is stored."""
+        res = self.pipe.user_turn(text, remember=False, respond=False)
+        return {"memory": self._explain(res, "auto"), "ask": self._ask(res, text)}
+
+    def _ask(self, res, text: str) -> tuple[str, str]:
+        system = res.prompt.system
+        if self.personality in PERSONALITIES:
+            system += " " + PERSONALITIES[self.personality]
+        return system, f"[Memory context]\n{res.prompt.context}\n\n[Current message]\n{text}"
+
     # one user message ------------------------------------------------------------------------
     def send(self, text: str, memory: str = "auto", reply: str | None = None) -> dict:
+        turn = self.prepare(text, memory)
+        ai_error = None
+        if reply is None and self.llm is not None:
+            try:
+                reply = self.llm(*turn["ask"]).strip()
+            except Exception as e:  # network, model not loaded, timeout
+                ai_error = f"The AI did not answer ({type(e).__name__}). Your message and memory are saved."
+        return self.finish(turn, reply, ai_error)
+
+    def prepare(self, text: str, memory: str = "auto", at: float | None = None) -> dict:
+        """Step 1: the memory system picks a method and builds what the AI will be shown."""
         if memory in STRATEGIES:
             self.pipe.controller.request_override(OverrideRequest(strategy=memory, by="you", scope="next_turn"))
         res = self.pipe.user_turn(text, respond=False)
         n = len([m for m in self.messages if m["role"] == "user"]) + 1
         self.number_of[res.turn.turn_id] = n
-        memory_info = self._explain(res, memory)
-        self.messages.append({"role": "user", "n": n, "text": text})
+        self.messages.append({"role": "user", "n": n, "text": text, "at": at or time.time()})
+        return {"n": n, "memory": self._explain(res, memory), "ask": self._ask(res, text)}
 
-        ai_error = None
-        if reply is None and self.llm is not None:
-            try:
-                reply = self.llm(res.prompt.system, f"[Memory context]\n{res.prompt.context}\n\n[Current message]\n{text}").strip()
-            except Exception as e:  # network, model not loaded, timeout
-                ai_error = f"The AI did not answer ({type(e).__name__}). Your message and memory are saved."
+    def finish(self, turn: dict, reply: str | None, ai_error: str | None = None) -> dict:
+        """Step 3: store the reply (if any) so later messages can draw on it."""
         if reply:
             t = self.pipe.assistant_turn(reply)
-            self.number_of[t.turn_id] = n
-        msg = {"role": "assistant", "n": n, "text": reply, "memory": memory_info, "ai_error": ai_error,
+            self.number_of[t.turn_id] = turn["n"]
+        msg = {"role": "assistant", "n": turn["n"], "text": reply, "memory": turn["memory"], "ai_error": ai_error,
                "memory_only": reply is None and ai_error is None}
         self.messages.append(msg)
         return msg
@@ -161,7 +264,28 @@ class ChatSession:
             reason = f"For a message like this it would normally use {NAME[by_rule]}. It used {NAME[d.selected_strategy]} instead:"
         else:
             reason = BECAUSE.get(rule, "")
+        candidates = []
+        for name, out in res.outputs.items():
+            q = out.quality
+            if name == "sliding_window":
+                detail = f"{len(q.selected_turn_ids)} recent turns"
+            elif name == "summarization":
+                detail = f"tier {q.tier_emitted}, loss {q.loss_score:.2f}" + (" (over the limit)" if q.loss_threshold_exceeded else "")
+            else:
+                detail = f"{len(q.retrieved_chunk_ids)} matches" + (f", {len(q.contradiction_flags)} out of date"
+                                                                    if q.contradiction_flags else "")
+            candidates.append({"strategy": name, "name": NAME[name], "tokens": out.token_count,
+                               "ms": round(out.readiness.estimated_latency_ms, 1), "detail": detail})
+        sections = []
+        for part in SECTION.split(res.prompt.context) if res.prompt.context else []:
+            head = part.splitlines()[0]
+            label = head.strip("[]") if head.startswith("[") and head.endswith("]") else NAME[d.selected_strategy]
+            sections.append({"label": label, "tokens": count_tokens(part)})
         return {
+            "candidates": candidates,
+            "sections": sections,
+            "system_tokens": count_tokens(res.prompt.system),
+            "message_tokens": count_tokens(res.turn.content),
             "strategy": d.selected_strategy,
             "name": NAME[d.selected_strategy],
             "chosen_by": "you" if d.override.applied else "automatic",
