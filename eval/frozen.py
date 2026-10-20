@@ -26,6 +26,7 @@ def frozen_rule_config(**overrides) -> tuple[RuleConfig, str]:
         cfg, default = RuleConfig(**data["config"]), data.get("default_strategy", "sliding_window")
     else:
         cfg, default = RuleConfig(), "sliding_window"
+    overrides = {**SYSTEM_RULES.get(system_name(), {}), **overrides}
     if overrides:
         cfg = cfg.model_copy(update=overrides)
     return cfg, default
@@ -48,6 +49,12 @@ SYSTEMS: dict[str, dict] = {
     "v4b": {},
 }
 SYSTEMS["v4b"] = dict(SYSTEMS["v4"])
+# v5_recall (docs/v5_recall_preregistration.md): the frozen system plus the controller's recall-request
+# rule. Retrieval is unchanged; only the routing differs.
+SYSTEMS["v5_recall"] = {}
+
+# Controller rule overrides per system, applied on top of the frozen rule file.
+SYSTEM_RULES: dict[str, dict] = {"v5_recall": {"recall_requests_as_qa": True}}
 
 # Sliding-window weights per system ("relevance,freshness,importance,state"); the v4 weights were
 # chosen on the dev half of the topic-shift workloads (eval.synthetic.sliding_window.select_weights).

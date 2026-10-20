@@ -1,0 +1,1 @@
+window.CEAI_INDEX = ["async-scraper", "auth-module", "django-shop", "download-cli", "event-pipeline", "go-client", "invoice-service", "platformer", "react-dashboard", "short-utils--control", "task-tracker--original", "training-loop", "user-db-migration"];
